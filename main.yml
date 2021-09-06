@@ -24,5 +24,6 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
-          echo {{ secrets.KAGGLE_TOKEN }} > ~/.kaggle/kaggle.json
-          ${{ github.event.before }}..${{ github.event.after }} | sort -u | kaggle push -p
+          export KAGGLE_USERNAME=CausalML
+          export KAGGLE_KEY={{ secrets.KAGGLE_TOKEN }}
+          ${{ github.event.before }}..${{ github.event.after }} | sort -u | kaggle push -p && kaggle kernels status
