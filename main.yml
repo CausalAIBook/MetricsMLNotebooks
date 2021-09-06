@@ -1,0 +1,28 @@
+name: KagglePush
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  push-to-kaggle:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+      - uses: BSFishy/pip-action@v1
+        with:
+          packages: |
+            kaggle
+      # Runs a single command using the runners shell
+      - name: push to kaggle
+        run: |
+          kaggle 
+
+      # Runs a set of commands using the runners shell
+      - name: Run a multi-line script
+        run: |
+          echo {{ secrets.KAGGLE_TOKEN }} > ~/.kaggle/kaggle.json
+          ${{ github.event.before }}..${{ github.event.after }} | sort -u | kaggle push -p
