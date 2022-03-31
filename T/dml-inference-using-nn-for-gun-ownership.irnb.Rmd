@@ -1,0 +1,172 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+<!-- #region _uuid="051d70d956493feee0c6d64651c6a088724dca2a" _execution_state="idle" -->
+This notebook contains an example for teaching.
+<!-- #endregion -->
+
+# The Effect of Gun Ownership on Gun-Homicide Rates using DML for neural nets
+
+
+In this lab, we estimate the effect of gun ownership on the homicide rate using a neural network.
+
+```{r}
+library(keras)
+library(lfe)
+```
+
+First, we need to load and preprocess the data.
+
+```{r}
+# read in dataset
+data <- read.csv("../input/gun-example/gun_clean.csv") 
+
+
+################## Find Variable Names from the Dataset ###################
+
+varlist <- function (df=NULL,type=c("numeric","factor","character"), pattern="", exclude=NULL) {
+  vars <- character(0)
+  if (any(type %in% "numeric")) {
+    vars <- c(vars,names(df)[sapply(df,is.numeric)])
+  }
+  if (any(type %in% "factor")) {
+    vars <- c(vars,names(df)[sapply(df,is.factor)])
+  }  
+  if (any(type %in% "character")) {
+    vars <- c(vars,names(df)[sapply(df,is.character)])
+  }  
+  vars[(!vars %in% exclude) & grepl(vars,pattern=pattern)]
+}
+
+########################### Create Variables ##############################
+
+# dummy variables for year and county fixed effects
+fixed  <- grep("X_Jfips", names(data), value=TRUE, fixed=TRUE)
+year   <- varlist(data, pattern="X_Tyear")
+
+# census control variables
+census     <- NULL
+census_var <- c("^AGE", "^BN", "^BP", "^BZ", "^ED", "^EL","^HI", "^HS", "^INC", "^LF", "^LN", "^PI", "^PO", "^PP", "^PV", "^SPR", "^VS")
+
+for(i in 1:length(census_var)){
+  census  <- append(census, varlist(data, pattern=census_var[i]))
+}
+
+############################### Variables #################################
+
+# treatment variable
+d     <- "logfssl"
+
+# outcome variable
+y     <- "logghomr"
+
+# other control variables
+X1    <- c("logrobr", "logburg", "burg_missing", "robrate_missing")
+X2    <- c("newblack", "newfhh", "newmove", "newdens", "newmal")
+
+######################  Partial-out Fixed Effects #########################
+
+# new dataset for partialled-out variables
+rdata <- as.data.frame(data$CountyCode) 
+colnames(rdata) <- "CountyCode"
+
+# variables to partial-out
+varlist <- c(y, d,X1, X2, census)
+
+# partial out year and county fixed effects from variables in varlist
+for(i in 1:length(varlist)){
+  form <- as.formula(paste(varlist[i], "~", paste(paste(year,collapse="+"),  paste(fixed,collapse="+"), sep="+")))
+  rdata[, varlist[i]] <- lm(form, data)$residuals
+}
+```
+
+# DML for neural nets
+
+
+
+The following algorithm consumes $Y$,$D$ and $Z$, and learns the residuals $\tilde{Y}$ and $\tilde{D}$ via a neural network, where the residuals are obtained by cross-validation (cross-fitting). Then, it prints the estimated coefficient $\beta$ and the clustered standard error from the final OLS regression.
+
+```{r}
+DML2.for.NN <- function(z, d, y, nfold=2, clu, num_epochs, batch_size) {
+  nobs <- nrow(z) # number of observations
+  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid)  # split observation indices into folds  
+  ytil <- dtil <- rep(NA, nobs)
+  cat("fold: ")
+  for(b in 1:length(I)){
+  # normalize the data
+  mean <- apply(z[-I[[b]],], 2, mean)
+  std <- apply(z[-I[[b]],], 2, sd)
+  z[-I[[b]],] <- scale(z[-I[[b]],], center = mean, scale = std)
+  z[I[[b]],] <- scale(z[I[[b]],], center = mean, scale = std)
+  # building the model with 3 layers, the ReLU activation function, mse loss and rmsprop optimizer                  
+  build_model <- function(){
+  model <- keras_model_sequential() %>% 
+    layer_dense(units = 16, activation = "relu", 
+                input_shape = dim(z[-I[[b]],][2]))%>% 
+    layer_dense(units = 16, activation = "relu") %>% 
+    layer_dense(units = 1) 
+  
+    model %>% compile(
+    optimizer = "rmsprop", 
+    loss = "mse", 
+    metrics = c("mae")
+    )  
+   }
+  model.Y <- build_model()
+  model.D <- build_model()                       
+  # fitting the model                   
+  model.D %>% fit(z[-I[[b]],], d[-I[[b]]],
+                    epochs = num_epochs, batch_size = batch_size, verbose = 0)                       
+  model.Y %>% fit(z[-I[[b]],], y[-I[[b]]],
+                    epochs = num_epochs, batch_size = batch_size, verbose = 0)
+  dhat <- model.D %>% predict(z[I[[b]],])
+  yhat <- model.Y %>% predict(z[I[[b]],])   
+  dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+  ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold                  
+  cat(b," ")
+        }
+  #rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other
+  data <- data.frame(cbind(ytil, dtil, as.matrix(clu)))
+  rfit <- felm(ytil ~ dtil|0|0|CountyCode,data=data)
+  coef.est <- coef(rfit)[2] # extract the coefficient
+  #HC <- vcovHC(rfit)
+  se    <- summary(rfit,robust=T)$coefficients[2,2] # record robust standard error by county
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est , se)) # print the output
+  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil, rfit=rfit) ) # save the output and residuals 
+}
+```
+
+# Estimating the effect with DML for neural nets
+
+```{r}
+# treatment variable
+D <- rdata[which(colnames(rdata) == d)]
+# outcome variable
+Y <- rdata[which(colnames(rdata) == y)]
+# construct matrix Z
+Z <- rdata[which(colnames(rdata) %in% c(X1,X2,census))]
+
+# inputs
+y_nn <- as.matrix(Y)
+d_nn <- as.matrix(D)
+z_nn <- as.matrix(Z)
+clu <- rdata[which(colnames(rdata) == "CountyCode")]
+```
+
+```{r}
+# DML with a NN
+set.seed(123)
+DML2.nn = DML2.for.NN(z_nn, d_nn, y_nn, nfold=2, clu, 100, 10)
+```

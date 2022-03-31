@@ -1,0 +1,139 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+<!-- #region -->
+
+
+This notebook contains an example for teaching.
+
+<!-- #endregion -->
+
+<!-- #region _uuid="051d70d956493feee0c6d64651c6a088724dca2a" _execution_state="idle" -->
+# Deep Neural Networks for Wage Prediction
+<!-- #endregion -->
+
+So far we have considered many machine learning methods such as Lasso and Random Forests for building a predictive model. In this lab, we extend our toolbox by returning to our wage prediction problem and showing how a neural network can be used for prediction.
+
+
+## Data preparation
+
+
+Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.
+
+```{r}
+load("../input/wage2015-inference/wage2015_subsample_inference.Rdata")
+Z <- subset(data,select=-c(lwage,wage)) # regressors
+```
+
+First, we split the data first and normalize it.
+
+```{r}
+# split the data into training and testing sets
+set.seed(1234)
+training <- sample(nrow(data), nrow(data)*(3/4), replace=FALSE)
+
+data_train <- data[training,1:16]
+data_test <- data[-training,1:16]
+
+# data_train <- data[training,]
+# data_test <- data[-training,]
+# X_basic <-  "sex + exp1 + exp2+ shs + hsg+ scl + clg + mw + so + we + occ2+ ind2"
+# formula_basic <- as.formula(paste("lwage", "~", X_basic))
+# model_X_basic_train <- model.matrix(formula_basic,data_train)[,-1]
+# model_X_basic_test <- model.matrix(formula_basic,data_test)[,-1]
+# data_train <- as.data.frame(cbind(data_train$lwage,model_X_basic_train))
+# data_test <- as.data.frame(cbind(data_test$lwage,model_X_basic_test))
+# colnames(data_train)[1]<-'lwage'
+# colnames(data_test)[1]<-'lwage'
+```
+
+```{r}
+# normalize the data
+mean <- apply(data_train, 2, mean)
+std <- apply(data_train, 2, sd)
+data_train <- scale(data_train, center = mean, scale = std)
+data_test <- scale(data_test, center = mean, scale = std)
+data_train <- as.data.frame(data_train)
+data_test <- as.data.frame(data_test)
+```
+
+Then, we construct the inputs for our network.
+
+```{r}
+X_basic <-  "sex + exp1 + shs + hsg+ scl + clg + mw + so + we"
+formula_basic <- as.formula(paste("lwage", "~", X_basic))
+model_X_basic_train <- model.matrix(formula_basic,data_train)
+model_X_basic_test <- model.matrix(formula_basic,data_test)
+
+Y_train <- data_train$lwage
+Y_test <- data_test$lwage
+```
+
+## Neural Networks
+
+
+First, we need to determine the structure of our network. We are using the R package *keras* to build a simple sequential neural network with three dense layers and the ReLU activation function.
+
+```{r}
+library(keras)
+
+build_model <- function() {
+  model <- keras_model_sequential() %>% 
+    layer_dense(units = 20, activation = "relu", # ReLU activation function
+                input_shape = dim(model_X_basic_train)[2])%>% 
+    layer_dense(units = 10, activation = "relu") %>% 
+    layer_dense(units = 1) 
+  
+  model %>% compile(
+    optimizer = optimizer_adam(lr = 0.005), # Adam optimizer
+    loss = "mse", 
+    metrics = c("mae")
+  )
+}
+```
+
+Let us have a look at the structure of our network in detail.
+
+```{r}
+model <- build_model()
+summary(model)
+```
+
+We have $441$ trainable parameters in total.
+
+
+Now, let us train the network. Note that this takes substantial computation time. To speed up the computation time, we use GPU as an accelerator. The extent of computational time improvements varies based on a number of factors, including model architecture, batch-size, input pipeline complexity, etc.
+
+```{r}
+# training the network 
+num_epochs <- 1000
+model %>% fit(model_X_basic_train, Y_train,
+                    epochs = num_epochs, batch_size = 100, verbose = 0)
+```
+
+After training the neural network, we can evaluate the performance of our model on the test sample.
+
+```{r}
+# evaluating performance
+model %>% evaluate(model_X_basic_test, Y_test, verbose = 0)
+```
+
+```{r}
+# calculating the performance measures
+pred.nn <- model %>% predict(model_X_basic_test)
+MSE.nn = summary(lm((Y_test-pred.nn)^2~1))$coef[1:2]
+R2.nn <- 1-MSE.nn[1]/var(Y_test)
+# printing R^2
+cat("R^2 of the neural network:",R2.nn)
+```

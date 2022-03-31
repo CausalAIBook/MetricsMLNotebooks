@@ -1,0 +1,178 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+This notebook contains an example for teaching.
+
+
+# Double Lasso for Testing the Convergence Hypothesis
+
+
+## Introduction
+
+
+We provide an additional empirical example of partialling-out with Lasso to estimate the regression coefficient $\beta_1$ in the high-dimensional linear regression model:
+  $$
+  Y = \beta_1 D +  \beta_2'W + \epsilon.
+  $$
+  
+Specifically, we are interested in how the rates  at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).
+  
+The relationship is captured by $\beta_1$, the *speed of convergence/divergence*, which measures the speed at which poor countries catch up $(\beta_1< 0)$ or fall behind $(\beta_1> 0)$ rich countries, after controlling for $W$. Our inference question here is: do poor countries grow faster than rich countries, controlling for educational and other characteristics? In other words, is the speed of convergence negative: $ \beta_1 <0?$ This is the Convergence Hypothesis predicted by the Solow Growth Model. This is a structural economic model. Under some strong assumptions that we won't state here, the predictive exercise we are doing here can be given a causal interpretation.
+
+
+
+The outcome $Y$ is the realized annual growth rate of a country's wealth  (Gross Domestic Product per capita). The target regressor ($D$) is the initial level of the country's wealth. The target parameter $\beta_1$ is the speed of convergence, which measures the speed at which poor countries catch up with rich countries. The controls ($W$) include measures of education levels, quality of institutions, trade openness, and political stability in the country.
+
+
+## Data analysis
+
+
+
+We consider the data set GrowthData which is included in the package *hdm*. First, let us load the data set to get familiar with the data.
+
+```{r}
+library(hdm) # package of ``high dimensional models (hdm)" estimators 
+growth <- GrowthData
+attach(growth)
+names(growth)
+```
+
+We determine the dimensions of our data set.
+
+```{r}
+dim(growth)
+```
+
+The sample contains $90$ countries and $63$ controls. Thus $p \approx 60$, $n=90$ and $p/n$ is not small. We expect the least squares method to provide a poor estimate of $\beta_1$.  We expect the method based on partialling-out with Lasso to provide a high quality estimate of $\beta_1$.
+
+
+To check this hypothesis, we analyze the relationship between the country's growth rate $Y$ and the country's other characteristics by running a linear regression in the first step.
+
+```{r}
+reg.ols <- lm(Outcome~.-1,data=growth)
+```
+
+We determine the regression coefficient $\beta_1$ of the target regressor *gdpsh465* (initial wealth level, $D$), its 95% confidence interval and the standard error.
+
+```{r}
+est_ols <- summary(reg.ols)$coef["gdpsh465",1]
+# output: estimated regression coefficient corresponding to the target regressor
+
+std_ols <- summary(reg.ols)$coef["gdpsh465",2]
+# output: std. error
+
+ci_ols <- confint(reg.ols)[2,]
+# output: 95% confidence interval
+
+results_ols <- as.data.frame(cbind(est_ols,std_ols,ci_ols[1],ci_ols[2]))
+colnames(results_ols) <-c("estimator","standard error", "lower bound CI", "upper bound CI")
+rownames(results_ols) <-c("OLS")
+```
+
+```{r}
+library(xtable)
+table <- matrix(0, 1, 4)
+table[1,1:4]   <- c(est_ols,std_ols,ci_ols[1],ci_ols[2])
+colnames(table) <-c("estimator","standard error", "lower bound CI", "upper bound CI")
+rownames(table) <-c("OLS")
+tab<- xtable(table, digits = 3)
+print(tab,type="html") # set type="latex" for printing table in LaTeX
+```
+
+<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
+<!-- Tue Jan 19 10:23:32 2021 -->
+<table border=1>
+<tr> <th>  </th> <th> estimator </th> <th> standard error </th> <th> lower bound CI </th> <th> upper bound CI </th>  </tr>
+  <tr> <td align="right"> OLS </td> <td align="right"> -0.009 </td> <td align="right"> 0.030 </td> <td align="right"> -0.071 </td> <td align="right"> 0.052 </td> </tr>
+   </table>
+
+
+As expected, least squares provides a rather noisy estimate of the speed of convergence, and does not allow us to answer the question about the convergence hypothesis as the confidence interval includes zero.
+
+
+In contrast, we can use the partialling-out approach based on lasso regression ("Double Lasso").
+
+```{r}
+Y <- growth[, 1, drop = F] # output variable
+W <- as.matrix(growth)[, -c(1, 2,3)] # controls
+D <- growth[, 3, drop = F] # target regressor
+r.Y <- rlasso(x=W,y=Y)$res # creates the "residual" output variable
+r.D <- rlasso(x=W,y=D)$res # creates the "residual" target regressor
+partial.lasso <- lm(r.Y ~ r.D)
+est_lasso <- partial.lasso$coef[2]
+std_lasso <- summary(partial.lasso)$coef[2,2]
+ci_lasso <- confint(partial.lasso)[2,]
+
+library(xtable)
+table <- matrix(0, 1, 4)
+table[1,1:4]   <- c(est_lasso,std_lasso,ci_lasso[1],ci_lasso[2])
+colnames(table) <-c("estimator","standard error", "lower bound CI", "upper bound CI")
+rownames(table) <-c("Double Lasso")
+tab<- xtable(table, digits = 3)
+print(tab,type="html") # set type="latex" for printing table in LaTeX
+```
+
+<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
+<!-- Tue Jan 19 10:23:51 2021 -->
+<table border=1>
+<tr> <th>  </th> <th> estimator </th> <th> standard error </th> <th> lower bound CI </th> <th> upper bound CI </th>  </tr>
+  <tr> <td align="right"> Double Lasso </td> <td align="right"> -0.050 </td> <td align="right"> 0.014 </td> <td align="right"> -0.078 </td> <td align="right"> -0.022 </td> </tr>
+   </table>
+
+
+
+Lasso provides a more precise estimate (lower standard error). The Lasso based
+point estimate is  about $5\%$ and the $95\%$ confidence interval for the
+(annual) rate of convergence is $7.8\%$ to $2.2\%$. This empirical
+evidence does support the convergence hypothesis.
+
+
+Note: Alternatively, one could also use the *rlassoEffect* funtion from the *hdm* package that directly applies the partialling-out approach.
+
+```{r}
+lasso.effect = rlassoEffect(x = W, y = Y, d = D, method = "partialling out")
+lasso.effect
+```
+
+## Summary
+
+
+
+Finally, let us have a look at the results.
+
+```{r}
+library(xtable)
+table <- matrix(0, 2, 4)
+table[1,1:4]   <- c(est_ols,std_ols,ci_ols[1],ci_ols[2])
+table[2,1:4]   <- c(est_lasso,std_lasso,ci_lasso[1],ci_lasso[2])
+colnames(table) <-c("estimator","standard error", "lower bound CI", "upper bound CI")
+rownames(table) <-c("OLS","Double Lasso")
+tab<- xtable(table, digits = 3)
+print(tab,type="html") # set type="latex" for printing table in LaTeX
+```
+
+The least square method provides a rather noisy estimate of the speed of convergence. We cannot answer the question of whether poor countries grow faster than rich countries. The least square method does not work when the ratio $p/n$ is large.
+
+In sharp contrast, partialling-out via Lasso provides a more precise estimate. The Lasso-based point estimate is $-5\%$ and the $95\%$ confidence interval for the (annual) rate of convergence $[-7.8\%,-2.2\%]$ only includes negative numbers. This empirical evidence does support the convergence hypothesis.
+
+
+
+<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
+<!-- Tue Jan 19 10:28:15 2021 -->
+<table border=1>
+<tr> <th>  </th> <th> estimator </th> <th> standard error </th> <th> lower bound CI </th> <th> upper bound CI </th>  </tr>
+  <tr> <td align="right"> OLS </td> <td align="right"> -0.009 </td> <td align="right"> 0.030 </td> <td align="right"> -0.071 </td> <td align="right"> 0.052 </td> </tr>
+  <tr> <td align="right"> Double Lasso </td> <td align="right"> -0.050 </td> <td align="right"> 0.014 </td> <td align="right"> -0.078 </td> <td align="right"> -0.022 </td> </tr>
+   </table>
+
