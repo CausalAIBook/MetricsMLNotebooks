@@ -43,6 +43,7 @@ We consider the same subsample of the U.S. Current Population Survey (2015) as i
 
 ```{r}
 load("../input/wage2015-inference/wage2015_subsample_inference.Rdata")
+#load("../Data/wage2015_subsample_inference.Rdata")    # To run locally on Hansen's PC
 attach(data)
 dim(data)
 ```
@@ -70,7 +71,7 @@ tab<- xtable(table, digits = 4)
 tab
 ```
 
-```{r}
+```{r, results = FALSE}
 print(tab,type="html") # set type="latex" for printing table in LaTeX
 ```
 
@@ -99,7 +100,7 @@ In particular, the table above shows that the difference in average *logwage* be
 mean(data_female$lwage)-mean(data_male$lwage)
 ```
 
-Thus, the unconditional gender wage gap is about $3,8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
+Thus, the unconditional gender wage gap is about $3.8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
 
 
 This unconditional (predictive) effect of gender equals the coefficient $\beta$ in the univariate ols regression of $Y$ on $D$:
@@ -115,7 +116,7 @@ We verify this by running an ols regression in R.
 library(sandwich) # a package used to compute robust standard errors
 nocontrol.fit <- lm(lwage ~ sex)
 nocontrol.est <- summary(nocontrol.fit)$coef["sex",1]
-HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC - "heteroskedasticity cosistent"
+HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC HEW - "heteroskedasticity consistent"
 nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
 
 # print unconditional effect of gender and the corresponding standard error
@@ -156,6 +157,16 @@ cat("Coefficient for OLS with controls", control.est)
 
 HCV.coefs <- vcovHC(control.fit, type = 'HC');
 control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+JCV.coefs <- vcovHC(control.fit, type = 'HC3');  # Jackknife estimate is more appropriate in moderate dimensional settings
+control.Jse <- sqrt(diag(JCV.coefs))[2] # Estimated std errors
+```
+
+Let's compare Huber-Eicker-White (HEW) standard errors to jackknife standard errors (which are more appropriate in moderate dimensional settings.) We can see that they're pretty close in this case.
+
+```{r}
+cat("HEW s.e. : ", control.se)
+cat("Jackknife s.e. : ", control.Jse)
+
 ```
 
 The estimated regression coefficient $\beta_1\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.
@@ -178,17 +189,19 @@ t.Y <- lm(flex.y, data=data)$res
 t.D <- lm(flex.d, data=data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.fit <- lm(t.Y~t.D)
-partial.est <- summary(partial.fit)$coef[2,1]
+partial.fit <- lm(t.Y~t.D-1)
+partial.est <- summary(partial.fit)$coef[1]
 
 cat("Coefficient for D via partialling-out", partial.est)
 
 # standard error
 HCV.coefs <- vcovHC(partial.fit, type = 'HC')
-partial.se <- sqrt(diag(HCV.coefs))[2]
+partial.se <- sqrt(diag(HCV.coefs))
+# Note that jackknife standard errors depend on all the variables in the model and so are not appropriate for the partialed out regression (without adjustment)
+
 
 # confidence interval
-confint(partial.fit)[2,]
+confint(partial.fit)
 ```
 
 Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem.
@@ -215,14 +228,14 @@ t.Y <- rlasso(flex.y, data=data)$res
 t.D <- rlasso(flex.d, data=data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t.Y~t.D)
-partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]
+partial.lasso.fit <- lm(t.Y~t.D-1)
+partial.lasso.est <- summary(partial.lasso.fit)$coef[1]
 
 cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
 
 # standard error
 HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')
-partial.lasso.se <- sqrt(diag(HCV.coefs))[2]
+partial.lasso.se <- sqrt(diag(HCV.coefs))
 ```
 
 Using lasso for partialling-out here provides similar results as using ols.
@@ -246,7 +259,7 @@ tab<- xtable(table, digits=c(3, 3, 4))
 tab
 ```
 
-```{r}
+```{r, results = FALSE}
 print(tab, type="html")
 ```
 
@@ -269,7 +282,7 @@ selection effects of unobserved differences in covariates between men and women 
 
 
 
-Next we try an "extra" flexible model, where we take interactions of all controls, giving us about 1000 controls.
+Next we try an "extra" flexible model, where we take interactions of all controls, giving us about 800 non-redundant controls.
 
 ```{r}
 # extra flexible model
@@ -280,20 +293,53 @@ control.fit <- lm(extraflex, data=data)
 #summary(control.fit)
 control.est <- summary(control.fit)$coef[2,1]
 
-cat("Number of Extra-Flex Controls", length(control.fit$coef)-1, "\n")
+cat("Number of Extra-Flex Controls", summary(control.fit)$df[1]-1, "\n")
 
 cat("Coefficient for OLS with extra flex controls", control.est)
 
 HCV.coefs <- vcovHC(control.fit, type = 'HC');
+control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
 
-n= length(wage); p =length(control.fit$coef);
+JCV.coefs <- vcovHC(control.fit, type = 'HC3');  # Jackknife 
+control.Jse <- sqrt(diag(JCV.coefs))[2] # Estimated std errors
 
-control.se <- sqrt(diag(HCV.coefs))[2]*sqrt(n/(n-p)) # Estimated std errors
+cat("HEW s.e. : ", control.se)
+cat("Jackknife s.e. : ", control.Jse)
 
-# This is a crude adjustment for the effect of dimensionality on OLS standard errors, 
-# motivated by Cattaneo, Jannson, and Newey (2018). For a more correct approach, we 
-# would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure.
+# From Cattaneo, Jannson, and Newey (2018), we expect jackknife s.e.'s to be  
+# conservative. 
 ```
+
+Interestingly, jackknife standard errors are undefined in this case. Due to the high dimensional control vector, we know that conventional heteroskedasticity robust standard errors will also be severely biased. That is, the approximation obtained under $p/n$ being small is clearly breaking down here. We might then like to implement Cattaneo, Jannson, and Newey (2018) (CJN) which is supposed to work in the $p/n \rightarrow c < 1$ regime. However, computing CJN requires inversion of a matrix which is computationally singular in this example (which is related to why the jackknife s.e. are undefined.)
+
+```{r, eval = FALSE, echo = TRUE}
+# Try to make a brute force implementation of Cattaneo, Jannson, Newey (2018).
+# This is slow and doesn't actually add anything as the matrix needed to 
+# construct CJN is (at least) numerically singular. Don't run this block.
+
+# models
+extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for Y
+extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for D
+
+# CJN requires that M.*M is invertible where M = I-W(W'W)^{-1}W' and .* is the Hadamard product
+
+regexflex.y = lm(extraflex.y, data = data, x = TRUE) # Regression of outcome on controls
+W = tmp$x # Design matrix
+Wli = W[,!is.na(regexflex.y$coefficients)] # Linearly independent columns of W
+np = dim(Wli)
+M = diag(np[1])-Wli%*%solve(t(Wli)%*%Wli)%*%t(Wli) # Matrix M (after removing redundant columns)
+scM = 1 - min(diag(M)) # This number needs to be smaller than 1/2 for CJN theoretical results
+scM # Just stop here
+
+#MM = M^2 # Hadamard product M.*M
+
+#library(Matrix)
+#rankMatrix(MM) # find the (numeric) rank of MM which ends up being less than its dimension. Tried to actually move forward and use other methods to invert/assess invertibility, but none worked. Not going to use a generalized inverse as this goes against the idea of the theory.
+
+# Not going to be able to compute CJN
+```
+
+We can also try to use Lasso to partial out the control variables. We'll justify this later.
 
 ```{r}
 library(hdm)
@@ -308,14 +354,14 @@ t.Y <- rlasso(extraflex.y, data=data)$res
 t.D <- rlasso(extraflex.d, data=data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t.Y~t.D)
-partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]
+partial.lasso.fit <- lm(t.Y~t.D-1)
+partial.lasso.est <- summary(partial.lasso.fit)$coef[1]
 
 cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
 
 # standard error
-HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')
-partial.lasso.se <- sqrt(diag(HCV.coefs))[2]
+HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+partial.lasso.se <- sqrt(diag(HCV.coefs))
 ```
 
 ```{r}
@@ -332,11 +378,8 @@ tab
 print(tab, type="latex")
 ```
 
-In this case p/n = 20%, that is $p/n$ is no longer small and we start seeing the differences between
-unregularized partialling out and regularized partialling out with lasso (double lasso).  The results based on 
-double lasso have rigorous guarantees in this non-small p/n regime under approximate sparsity. The results based on OLS still
-have guarantees in p/n< 1 regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate
-sparsity, although other regularity conditions are needed.
+In this case $p/n$ = 20%, that is $p/n$ is no longer small and we start seeing the differences between unregularized partialling out and regularized partialling out with lasso (double lasso). The results based on double lasso have rigorous guarantees in this non-small $p/n$ regime under approximate sparsity. The results based on OLS still
+have guarantees in $p/n< 1$ regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate sparsity, although other regularity conditions are needed. These additional regularity conditions appear to potentially be violated in our "very flexible" specification.
 
 
 
