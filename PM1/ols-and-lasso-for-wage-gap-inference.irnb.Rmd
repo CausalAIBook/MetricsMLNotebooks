@@ -15,17 +15,17 @@ jupyter:
 This notebook contains an example for teaching.
 
 
-# An inferential problem: The Gender Wage Gap
+# An inferential problem: The Wage Gap
 
 
 In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:
 
 What is the difference in predicted wages between men and women with the same job-relevant characteristics?
 
-Thus, we analyze if there is a difference in the payment of men and women (*gender wage gap*). The gender wage gap may partly reflect *discrimination* against women in the labor market or may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching).
+Thus, we analyze if the differences in the wages of groups defined by the "sex" variable in the data. This wage gap may partly reflect *discrimination* against women, both in the labor market and in settings that affect future labor marketability such as in education, and may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching).
 
 
-To investigate the gender wage gap, we consider the following log-linear regression model
+To investigate the wage gap, we consider the following log-linear regression model
 
 \begin{align}
 \log(Y) &= \beta'X + \epsilon\\
@@ -42,13 +42,12 @@ $W$'s are a vector of worker characteristics explaining variation in wages. Cons
 We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set.
 
 ```{r}
-load("../input/wage2015-inference/wage2015_subsample_inference.Rdata")
-#load("../Data/wage2015_subsample_inference.Rdata")    # To run locally on Hansen's PC
+load("../data/wage2015_subsample_inference.Rdata")
 attach(data)
 dim(data)
 ```
 
-To start our (causal) analysis, we compare the sample means given gender:
+To start our (causal) analysis, we compare the sample means given the "sex" variable:
 
 ```{r}
 library(xtable)
@@ -100,10 +99,10 @@ In particular, the table above shows that the difference in average *logwage* be
 mean(data_female$lwage)-mean(data_male$lwage)
 ```
 
-Thus, the unconditional gender wage gap is about $3.8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
+Thus, the unconditional wage gap is about $3.8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
 
 
-This unconditional (predictive) effect of gender equals the coefficient $\beta$ in the univariate ols regression of $Y$ on $D$:
+This unconditional (predictive) effect of the variable "sex" equals the coefficient $\beta$ in the univariate ols regression of $Y$ on $D$:
 
 \begin{align}
 \log(Y) &=\beta D + \epsilon.
@@ -119,8 +118,8 @@ nocontrol.est <- summary(nocontrol.fit)$coef["sex",1]
 HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC HEW - "heteroskedasticity consistent"
 nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
 
-# print unconditional effect of gender and the corresponding standard error
-cat ("The estimated coefficient on the dummy for gender is",nocontrol.est," and the corresponding robust standard error is",nocontrol.se) 
+# print unconditional effect of sex and the corresponding standard error
+cat ("The estimated coefficient on the dummy for \"sex\" is",nocontrol.est," and the corresponding robust standard error is",nocontrol.se) 
 
 ```
 
@@ -161,6 +160,39 @@ JCV.coefs <- vcovHC(control.fit, type = 'HC3');  # Jackknife estimate is more ap
 control.Jse <- sqrt(diag(JCV.coefs))[2] # Estimated std errors
 ```
 
+We now show how the conditional gap and the remainder decompose the marginal wage gap into the parts explained and unexplained by the additional controls. (Note that this does *not* explain why there is a difference in the controls to begin with in the two groups.)
+
+```{r}
+cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage))
+
+cat("The unexplained difference: ",control.est)
+
+XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==0,])
+y0  = data[data$sex==0,]$lwage
+XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==1,])
+y1  = data[data$sex==1,]$lwage
+mu1 = colMeans(XX1)
+mu0 = colMeans(XX0)
+betarest = summary(control.fit)$coef[3:246,1] # the coefficients excluding intercept and "sex"
+cat("The explained difference:",sum(betarest*(mu1[2:245]-mu0[2:245])))
+
+cat("The sum of these differences:",control.est + sum(betarest*(mu1[2:245]-mu0[2:245])))
+```
+
+We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term.
+
+```{r}
+library(MASS)
+beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0
+beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1
+
+cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage))
+cat("The unexplained difference:",beta1[1]-beta0[1])
+cat("The difference explained by endowment:",sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])))
+cat("The difference explained by coefficient:",sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))
+cat("The sum of these differences:",beta1[1]-beta0[1] + sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])) + sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))
+```
+
 Let's compare Huber-Eicker-White (HEW) standard errors to jackknife standard errors (which are more appropriate in moderate dimensional settings.) We can see that they're pretty close in this case.
 
 ```{r}
@@ -169,7 +201,7 @@ cat("Jackknife s.e. : ", control.Jse)
 
 ```
 
-The estimated regression coefficient $\beta_1\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.
+The estimated regression coefficient $\beta_1\approx-0.0696$ measures how our linear prediction of wage changes if we set the "sex" variable $D$ from 0 to 1, holding the controls $W$ fixed.
 We can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\% for women increases to about $7$\% after controlling for worker characteristics.  
 
 
@@ -275,7 +307,7 @@ print(tab, type="html")
 
 
 
-It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\% to 7\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.
+It it worth noticing that controlling for worker characteristics increases the wage gap from less than 4\% to 7\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.
 
 Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect
 selection effects of unobserved differences in covariates between men and women in our sample.
