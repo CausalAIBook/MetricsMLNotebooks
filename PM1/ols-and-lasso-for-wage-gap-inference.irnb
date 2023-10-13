@@ -1,1 +1,655 @@
-{"metadata":{"kernelspec":{"name":"ir","display_name":"R","language":"R"},"language_info":{"name":"R","codemirror_mode":"r","pygments_lexer":"r","mimetype":"text/x-r-source","file_extension":".r","version":"3.6.3"}},"nbformat_minor":4,"nbformat":4,"cells":[{"cell_type":"markdown","source":"This notebook contains an example for teaching.","metadata":{}},{"cell_type":"markdown","source":"# An inferential problem: The Gender Wage Gap","metadata":{}},{"cell_type":"markdown","source":"In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:\n\nWhat is the difference in predicted wages between men and women with the same job-relevant characteristics?\n\nThus, we analyze if there is a difference in the payment of men and women (*gender wage gap*). The gender wage gap may partly reflect *discrimination* against women in the labor market or may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching).","metadata":{}},{"cell_type":"markdown","source":"To investigate the gender wage gap, we consider the following log-linear regression model\n\n\\begin{align}\n\\log(Y) &= \\beta'X + \\epsilon\\\\\n&= \\beta_1 D  + \\beta_2' W + \\epsilon,\n\\end{align}\n\nwhere $Y$ is hourly wage, $D$ is the indicator of being female ($1$ if female and $0$ otherwise) and the\n$W$'s are a vector of worker characteristics explaining variation in wages. Considering transformed wages by the logarithm, we are analyzing the relative difference in the payment of men and women.","metadata":{}},{"cell_type":"markdown","source":"## Data analysis","metadata":{}},{"cell_type":"markdown","source":"We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set.","metadata":{}},{"cell_type":"code","source":"load(\"../input/wage2015-inference/wage2015_subsample_inference.Rdata\")\nattach(data)\ndim(data)","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:32.67653Z","iopub.execute_input":"2021-07-12T16:59:32.679042Z","iopub.status.idle":"2021-07-12T16:59:32.765537Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"To start our (causal) analysis, we compare the sample means given gender:","metadata":{}},{"cell_type":"code","source":"library(xtable)\n\nZ <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n\ndata_female <- data[data$sex==1,]\nZ_female <- data_female[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n\ndata_male <- data[data$sex==0,]\nZ_male <- data_male[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n\ntable <- matrix(0, 12, 3)\ntable[1:12,1]   <- as.numeric(lapply(Z,mean))\ntable[1:12,2]   <- as.numeric(lapply(Z_male,mean))\ntable[1:12,3]   <- as.numeric(lapply(Z_female,mean))\nrownames(table) <- c(\"Log Wage\",\"Sex\",\"Less then High School\",\"High School Graduate\",\"Some College\",\"College Graduate\",\"Advanced Degree\", \"Northeast\",\"Midwest\",\"South\",\"West\",\"Experience\")\ncolnames(table) <- c(\"All\",\"Men\",\"Women\")\ntab<- xtable(table, digits = 4)\ntab","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:32.770047Z","iopub.execute_input":"2021-07-12T16:59:32.772745Z","iopub.status.idle":"2021-07-12T16:59:32.877413Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"print(tab,type=\"html\") # set type=\"latex\" for printing table in LaTeX","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:32.882357Z","iopub.execute_input":"2021-07-12T16:59:32.8861Z","iopub.status.idle":"2021-07-12T16:59:32.915279Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n<!-- Mon Jan 18 10:41:44 2021 -->\n<table border=1>\n<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n  <tr> <td align=\"right\"> Gollage Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n   </table>","metadata":{}},{"cell_type":"markdown","source":"In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$","metadata":{}},{"cell_type":"code","source":"mean(data_female$lwage)-mean(data_male$lwage)","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:32.920163Z","iopub.execute_input":"2021-07-12T16:59:32.923496Z","iopub.status.idle":"2021-07-12T16:59:32.950737Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"Thus, the unconditional gender wage gap is about $3,8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.","metadata":{}},{"cell_type":"markdown","source":"This unconditional (predictive) effect of gender equals the coefficient $\\beta$ in the univariate ols regression of $Y$ on $D$:\n\n\\begin{align}\n\\log(Y) &=\\beta D + \\epsilon.\n\\end{align}","metadata":{}},{"cell_type":"markdown","source":"We verify this by running an ols regression in R.","metadata":{}},{"cell_type":"code","source":"library(sandwich) # a package used to compute robust standard errors\nnocontrol.fit <- lm(lwage ~ sex)\nnocontrol.est <- summary(nocontrol.fit)$coef[\"sex\",1]\nHCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC - \"heteroskedasticity cosistent\"\nnocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n\n# print unconditional effect of gender and the corresponding standard error\ncat (\"The estimated coefficient on the dummy for gender is\",nocontrol.est,\" and the corresponding robust standard error is\",nocontrol.se) \n","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:32.956083Z","iopub.execute_input":"2021-07-12T16:59:32.959171Z","iopub.status.idle":"2021-07-12T16:59:33.005653Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity. \n","metadata":{}},{"cell_type":"markdown","source":"Next, we run an ols regression of $Y$ on $(D,W)$ to control for the effect of covariates summarized in $W$:\n\n\\begin{align}\n\\log(Y) &=\\beta_1 D  + \\beta_2' W + \\epsilon.\n\\end{align}\n\nHere, we are considering the flexible model from the previous lab. Hence, $W$ controls for experience, education, region, and occupation and industry indicators plus transformations and two-way interactions.","metadata":{}},{"cell_type":"markdown","source":"Let us run the ols regression with controls.","metadata":{}},{"cell_type":"code","source":"# ols regression with controls\n\nflex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n\n#   Note that ()*() operation in formula objects in R creates a formula of the sort:\n#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n#  This is not intuitive at all, but that's what it does.\n\ncontrol.fit <- lm(flex, data=data)\ncontrol.est <- summary(control.fit)$coef[2,1]\n\nsummary(control.fit)\n\ncat(\"Coefficient for OLS with controls\", control.est)\n\nHCV.coefs <- vcovHC(control.fit, type = 'HC');\ncontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:33.008621Z","iopub.execute_input":"2021-07-12T16:59:33.011754Z","iopub.status.idle":"2021-07-12T16:59:33.707831Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"The estimated regression coefficient $\\beta_1\\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.\nWe can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\\% for women increases to about $7$\\% after controlling for worker characteristics.  \n","metadata":{}},{"cell_type":"markdown","source":"Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols.","metadata":{}},{"cell_type":"code","source":"# Partialling-out using ols\n\n# models\nflex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y\nflex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D\n\n# partialling-out the linear effect of W from Y\nt.Y <- lm(flex.y, data=data)$res\n# partialling-out the linear effect of W from D\nt.D <- lm(flex.d, data=data)$res\n\n# regression of Y on D after partialling-out the effect of W\npartial.fit <- lm(t.Y~t.D)\npartial.est <- summary(partial.fit)$coef[2,1]\n\ncat(\"Coefficient for D via partialling-out\", partial.est)\n\n# standard error\nHCV.coefs <- vcovHC(partial.fit, type = 'HC')\npartial.se <- sqrt(diag(HCV.coefs))[2]\n\n# confidence interval\nconfint(partial.fit)[2,]","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:33.710612Z","iopub.execute_input":"2021-07-12T16:59:33.713947Z","iopub.status.idle":"2021-07-12T16:59:34.077195Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem.","metadata":{}},{"cell_type":"markdown","source":"We know that the partialling-out approach works well when the dimension of $W$ is low\nin relation to the sample size $n$. When the dimension of $W$ is relatively high, we need to use variable selection\nor penalization for regularization purposes. \n\nIn the following, we illustrate the partialling-out approach using lasso instead of ols. ","metadata":{}},{"cell_type":"code","source":"# Partialling-out using lasso\n\nlibrary(hdm)\n\n# models\nflex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y\nflex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D\n\n# partialling-out the linear effect of W from Y\nt.Y <- rlasso(flex.y, data=data)$res\n# partialling-out the linear effect of W from D\nt.D <- rlasso(flex.d, data=data)$res\n\n# regression of Y on D after partialling-out the effect of W\npartial.lasso.fit <- lm(t.Y~t.D)\npartial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n\ncat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n\n# standard error\nHCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')\npartial.lasso.se <- sqrt(diag(HCV.coefs))[2]","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:34.080233Z","iopub.execute_input":"2021-07-12T16:59:34.081773Z","iopub.status.idle":"2021-07-12T16:59:37.470399Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"Using lasso for partialling-out here provides similar results as using ols.","metadata":{}},{"cell_type":"markdown","source":"Next, we summarize the results.","metadata":{}},{"cell_type":"code","source":"table<- matrix(0, 4, 2)\ntable[1,1]<- nocontrol.est  \ntable[1,2]<- nocontrol.se   \ntable[2,1]<- control.est\ntable[2,2]<- control.se    \ntable[3,1]<- partial.est  \ntable[3,2]<- partial.se  \ntable[4,1]<-  partial.lasso.est\ntable[4,2]<- partial.lasso.se \ncolnames(table)<- c(\"Estimate\",\"Std. Error\")\nrownames(table)<- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\t\ntab<- xtable(table, digits=c(3, 3, 4))\ntab","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:37.473312Z","iopub.execute_input":"2021-07-12T16:59:37.47687Z","iopub.status.idle":"2021-07-12T16:59:37.536069Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"print(tab, type=\"html\")","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:37.538094Z","iopub.execute_input":"2021-07-12T16:59:37.539348Z","iopub.status.idle":"2021-07-12T16:59:37.552624Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n<!-- Mon Jan 18 11:56:24 2021 -->\n<table border=1>\n<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n   </table>\n","metadata":{}},{"cell_type":"markdown","source":"It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n\nKeep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect\nselection effects of unobserved differences in covariates between men and women in our sample.\n","metadata":{}},{"cell_type":"markdown","source":"Next we try an \"extra\" flexible model, where we take interactions of all controls, giving us about 1000 controls.","metadata":{}},{"cell_type":"code","source":"# extra flexible model\n\nextraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2\n\ncontrol.fit <- lm(extraflex, data=data)\n#summary(control.fit)\ncontrol.est <- summary(control.fit)$coef[2,1]\n\ncat(\"Number of Extra-Flex Controls\", length(control.fit$coef)-1, \"\\n\")\n\ncat(\"Coefficient for OLS with extra flex controls\", control.est)\n\nHCV.coefs <- vcovHC(control.fit, type = 'HC');\n\nn= length(wage); p =length(control.fit$coef);\n\ncontrol.se <- sqrt(diag(HCV.coefs))[2]*sqrt(n/(n-p)) # Estimated std errors\n\n# This is a crude adjustment for the effect of dimensionality on OLS standard errors, \n# motivated by Cattaneo, Jannson, and Newey (2018). For a more correct approach, we \n# would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure.","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:37.554654Z","iopub.execute_input":"2021-07-12T16:59:37.555574Z","iopub.status.idle":"2021-07-12T16:59:43.753096Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"library(hdm)\n\n# models\nextraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for Y\nextraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for D\n\n# partialling-out the linear effect of W from Y\nt.Y <- rlasso(extraflex.y, data=data)$res\n# partialling-out the linear effect of W from D\nt.D <- rlasso(extraflex.d, data=data)$res\n\n# regression of Y on D after partialling-out the effect of W\npartial.lasso.fit <- lm(t.Y~t.D)\npartial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n\ncat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n\n# standard error\nHCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')\npartial.lasso.se <- sqrt(diag(HCV.coefs))[2]","metadata":{"execution":{"iopub.status.busy":"2021-07-12T16:59:43.756261Z","iopub.execute_input":"2021-07-12T16:59:43.758359Z","iopub.status.idle":"2021-07-12T17:00:17.223523Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"table<- matrix(0, 2, 2)\ntable[1,1]<- control.est\ntable[1,2]<- control.se    \ntable[2,1]<-  partial.lasso.est\ntable[2,2]<- partial.lasso.se \ncolnames(table)<- c(\"Estimate\",\"Std. Error\")\nrownames(table)<- c(\"full reg\",\"partial reg via lasso\")\t\ntab<- xtable(table, digits=c(3, 3, 4))\ntab\n\nprint(tab, type=\"latex\")","metadata":{"execution":{"iopub.status.busy":"2021-07-12T17:00:17.226397Z","iopub.execute_input":"2021-07-12T17:00:17.227972Z","iopub.status.idle":"2021-07-12T17:00:17.260738Z"},"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"markdown","source":"In this case p/n = 20%, that is $p/n$ is no longer small and we start seeing the differences between\nunregularized partialling out and regularized partialling out with lasso (double lasso).  The results based on \ndouble lasso have rigorous guarantees in this non-small p/n regime under approximate sparsity. The results based on OLS still\nhave guarantees in p/n< 1 regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate\nsparsity, although other regularity conditions are needed.\n","metadata":{}},{"cell_type":"markdown","source":"\n","metadata":{}}]}
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This notebook contains an example for teaching."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# An inferential problem: The Gender Wage Gap"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:\n",
+    "\n",
+    "What is the difference in predicted wages between men and women with the same job-relevant characteristics?\n",
+    "\n",
+    "Thus, we analyze if there is a difference in the payment of men and women (*gender wage gap*). The gender wage gap may partly reflect *discrimination* against women in the labor market or may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To investigate the gender wage gap, we consider the following log-linear regression model\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &= \\beta'X + \\epsilon\\\\\n",
+    "&= \\beta_1 D  + \\beta_2' W + \\epsilon,\n",
+    "\\end{align}\n",
+    "\n",
+    "where $Y$ is hourly wage, $D$ is the indicator of being female ($1$ if female and $0$ otherwise) and the\n",
+    "$W$'s are a vector of worker characteristics explaining variation in wages. Considering transformed wages by the logarithm, we are analyzing the relative difference in the payment of men and women."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Data analysis"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.679042Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.67653Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.765537Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "load(\"../input/wage2015-inference/wage2015_subsample_inference.Rdata\")\n",
+    "attach(data)\n",
+    "dim(data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To start our (causal) analysis, we compare the sample means given gender:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.772745Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.770047Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.877413Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(xtable)\n",
+    "\n",
+    "Z <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "data_female <- data[data$sex==1,]\n",
+    "Z_female <- data_female[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "data_male <- data[data$sex==0,]\n",
+    "Z_male <- data_male[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "table <- matrix(0, 12, 3)\n",
+    "table[1:12,1]   <- as.numeric(lapply(Z,mean))\n",
+    "table[1:12,2]   <- as.numeric(lapply(Z_male,mean))\n",
+    "table[1:12,3]   <- as.numeric(lapply(Z_female,mean))\n",
+    "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Less then High School\",\"High School Graduate\",\"Some College\",\"College Graduate\",\"Advanced Degree\", \"Northeast\",\"Midwest\",\"South\",\"West\",\"Experience\")\n",
+    "colnames(table) <- c(\"All\",\"Men\",\"Women\")\n",
+    "tab<- xtable(table, digits = 4)\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.8861Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.882357Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.915279Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "print(tab,type=\"html\") # set type=\"latex\" for printing table in LaTeX"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
+    "<!-- Mon Jan 18 10:41:44 2021 -->\n",
+    "<table border=1>\n",
+    "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
+    "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Gollage Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n",
+    "   </table>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.923496Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.920163Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.950737Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "mean(data_female$lwage)-mean(data_male$lwage)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Thus, the unconditional gender wage gap is about $3,8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This unconditional (predictive) effect of gender equals the coefficient $\\beta$ in the univariate ols regression of $Y$ on $D$:\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &=\\beta D + \\epsilon.\n",
+    "\\end{align}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We verify this by running an ols regression in R."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.959171Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.956083Z",
+     "iopub.status.idle": "2021-07-12T16:59:33.005653Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(sandwich) # a package used to compute robust standard errors\n",
+    "nocontrol.fit <- lm(lwage ~ sex)\n",
+    "nocontrol.est <- summary(nocontrol.fit)$coef[\"sex\",1]\n",
+    "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC - \"heteroskedasticity cosistent\"\n",
+    "nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
+    "\n",
+    "# print unconditional effect of gender and the corresponding standard error\n",
+    "cat (\"The estimated coefficient on the dummy for gender is\",nocontrol.est,\" and the corresponding robust standard error is\",nocontrol.se) \n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity. \n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we run an ols regression of $Y$ on $(D,W)$ to control for the effect of covariates summarized in $W$:\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &=\\beta_1 D  + \\beta_2' W + \\epsilon.\n",
+    "\\end{align}\n",
+    "\n",
+    "Here, we are considering the flexible model from the previous lab. Hence, $W$ controls for experience, education, region, and occupation and industry indicators plus transformations and two-way interactions."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let us run the ols regression with controls."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:33.011754Z",
+     "iopub.status.busy": "2021-07-12T16:59:33.008621Z",
+     "iopub.status.idle": "2021-07-12T16:59:33.707831Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# ols regression with controls\n",
+    "\n",
+    "flex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "\n",
+    "#   Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
+    "#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "#  This is not intuitive at all, but that's what it does.\n",
+    "\n",
+    "control.fit <- lm(flex, data=data)\n",
+    "control.est <- summary(control.fit)$coef[2,1]\n",
+    "\n",
+    "summary(control.fit)\n",
+    "\n",
+    "cat(\"Coefficient for OLS with controls\", control.est)\n",
+    "\n",
+    "HCV.coefs <- vcovHC(control.fit, type = 'HC');\n",
+    "control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The estimated regression coefficient $\\beta_1\\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.\n",
+    "We can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\\% for women increases to about $7$\\% after controlling for worker characteristics.  \n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We now show how the conditional gap and the remainder decompose the marginal wage gap into the parts explained and unexplained by the additional controls. (Note that this does *not* explain why there is a difference in the controls to begin with in the two groups.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
+    "\n",
+    "cat(\"The unexplained difference: \",control.est)\n",
+    "\n",
+    "XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==0,])\n",
+    "y0  = data[data$sex==0,]$lwage\n",
+    "XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==1,])\n",
+    "y1  = data[data$sex==1,]$lwage\n",
+    "mu1 = colMeans(XX1)\n",
+    "mu0 = colMeans(XX0)\n",
+    "betarest = summary(control.fit)$coef[3:246,1] # the coefficients excluding intercept and \"sex\"\n",
+    "cat(\"The explained difference:\",sum(betarest*(mu1[2:245]-mu0[2:245])))\n",
+    "\n",
+    "cat(\"The sum of these differences:\",control.est + sum(betarest*(mu1[2:245]-mu0[2:245])))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "library(MASS)\n",
+    "beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0\n",
+    "beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1\n",
+    "\n",
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
+    "cat(\"The unexplained difference:\",beta1[1]-beta0[1])\n",
+    "cat(\"The difference explained by endowment:\",sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])))\n",
+    "cat(\"The difference explained by coefficient:\",sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))\n",
+    "cat(\"The sum of these differences:\",beta1[1]-beta0[1] + sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])) + sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:33.713947Z",
+     "iopub.status.busy": "2021-07-12T16:59:33.710612Z",
+     "iopub.status.idle": "2021-07-12T16:59:34.077195Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Partialling-out using ols\n",
+    "\n",
+    "# models\n",
+    "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y\n",
+    "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- lm(flex.y, data=data)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- lm(flex.d, data=data)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.fit <- lm(t.Y~t.D)\n",
+    "partial.est <- summary(partial.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out\", partial.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.fit, type = 'HC')\n",
+    "partial.se <- sqrt(diag(HCV.coefs))[2]\n",
+    "\n",
+    "# confidence interval\n",
+    "confint(partial.fit)[2,]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We know that the partialling-out approach works well when the dimension of $W$ is low\n",
+    "in relation to the sample size $n$. When the dimension of $W$ is relatively high, we need to use variable selection\n",
+    "or penalization for regularization purposes. \n",
+    "\n",
+    "In the following, we illustrate the partialling-out approach using lasso instead of ols. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:34.081773Z",
+     "iopub.status.busy": "2021-07-12T16:59:34.080233Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.470399Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Partialling-out using lasso\n",
+    "\n",
+    "library(hdm)\n",
+    "\n",
+    "# models\n",
+    "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y\n",
+    "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- rlasso(flex.y, data=data)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- rlasso(flex.d, data=data)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.lasso.fit <- lm(t.Y~t.D)\n",
+    "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')\n",
+    "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Using lasso for partialling-out here provides similar results as using ols."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we summarize the results."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.47687Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.473312Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.536069Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "table<- matrix(0, 4, 2)\n",
+    "table[1,1]<- nocontrol.est  \n",
+    "table[1,2]<- nocontrol.se   \n",
+    "table[2,1]<- control.est\n",
+    "table[2,2]<- control.se    \n",
+    "table[3,1]<- partial.est  \n",
+    "table[3,2]<- partial.se  \n",
+    "table[4,1]<-  partial.lasso.est\n",
+    "table[4,2]<- partial.lasso.se \n",
+    "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
+    "rownames(table)<- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\t\n",
+    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.539348Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.538094Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.552624Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "print(tab, type=\"html\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
+    "<!-- Mon Jan 18 11:56:24 2021 -->\n",
+    "<table border=1>\n",
+    "<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n",
+    "  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n",
+    "   </table>\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n",
+    "\n",
+    "Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect\n",
+    "selection effects of unobserved differences in covariates between men and women in our sample.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next we try an \"extra\" flexible model, where we take interactions of all controls, giving us about 1000 controls."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.555574Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.554654Z",
+     "iopub.status.idle": "2021-07-12T16:59:43.753096Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# extra flexible model\n",
+    "\n",
+    "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2\n",
+    "\n",
+    "control.fit <- lm(extraflex, data=data)\n",
+    "#summary(control.fit)\n",
+    "control.est <- summary(control.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Number of Extra-Flex Controls\", length(control.fit$coef)-1, \"\\n\")\n",
+    "\n",
+    "cat(\"Coefficient for OLS with extra flex controls\", control.est)\n",
+    "\n",
+    "HCV.coefs <- vcovHC(control.fit, type = 'HC');\n",
+    "\n",
+    "n= length(wage); p =length(control.fit$coef);\n",
+    "\n",
+    "control.se <- sqrt(diag(HCV.coefs))[2]*sqrt(n/(n-p)) # Estimated std errors\n",
+    "\n",
+    "# This is a crude adjustment for the effect of dimensionality on OLS standard errors, \n",
+    "# motivated by Cattaneo, Jannson, and Newey (2018). For a more correct approach, we \n",
+    "# would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:43.758359Z",
+     "iopub.status.busy": "2021-07-12T16:59:43.756261Z",
+     "iopub.status.idle": "2021-07-12T17:00:17.223523Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(hdm)\n",
+    "\n",
+    "# models\n",
+    "extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for Y\n",
+    "extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- rlasso(extraflex.y, data=data)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- rlasso(extraflex.d, data=data)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.lasso.fit <- lm(t.Y~t.D)\n",
+    "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')\n",
+    "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2021-07-12T17:00:17.227972Z",
+     "iopub.status.busy": "2021-07-12T17:00:17.226397Z",
+     "iopub.status.idle": "2021-07-12T17:00:17.260738Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "table<- matrix(0, 2, 2)\n",
+    "table[1,1]<- control.est\n",
+    "table[1,2]<- control.se    \n",
+    "table[2,1]<-  partial.lasso.est\n",
+    "table[2,2]<- partial.lasso.se \n",
+    "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
+    "rownames(table)<- c(\"full reg\",\"partial reg via lasso\")\t\n",
+    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab\n",
+    "\n",
+    "print(tab, type=\"latex\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In this case p/n = 20%, that is $p/n$ is no longer small and we start seeing the differences between\n",
+    "unregularized partialling out and regularized partialling out with lasso (double lasso).  The results based on \n",
+    "double lasso have rigorous guarantees in this non-small p/n regime under approximate sparsity. The results based on OLS still\n",
+    "have guarantees in p/n< 1 regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate\n",
+    "sparsity, although other regularity conditions are needed.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.3.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
