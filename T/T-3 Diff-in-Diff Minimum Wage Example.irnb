@@ -29,7 +29,7 @@
         "This notebook implements Difference-in-Differences in an application on\n",
         "the effect of minimum wage changes on teen employment. We use data from\n",
         "[Callaway\n",
-        "(2022)](https://bcallaway11.github.io/files/Callaway-Chapter-2022/main.pdf). The data are annual county level data from the United States covering 2001 to 2007. The outcome variable is log county-level teen employment, and the treatment variable is an indicator for whether the county has a minimum wage above the federal minimum wage. Note that this definition of the treatment variable makes the analysis straightforward but ignores the nuances of the exact value of the minimum wage in each county and how far those values are from the federal minimum. The data also includes county population and county average annual pay.\n",
+        "(2022)](https://bcallaway11.github.io/files/Callaway-Chapter-2022/main.pdf). The data are annual county level data from the United States covering 2001 to 2007. The outcome variable is log county-level teen employment, and the treatment variable is an indicator for whether the county has a minimum wage above the federal minimum wage. Note that this definition of the treatment variable makes the analysis straightforward but ignores the nuances of the exact value of the minimum wage in each county and how far those values are from the federal minimum. The data also include county population and county average annual pay.\n",
         "See [Callaway and Sant’Anna\n",
         "(2021)](https://www.sciencedirect.com/science/article/abs/pii/S0304407620303948)\n",
         "for additional details on the data.\n",
@@ -247,7 +247,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "### Data Preperation\n",
+        "### Data Preparation\n",
         "\n",
         "We remove observations that are already treated in the first observed period (2001). We drop all variables that we won't use in our analysis."
       ],
@@ -272,7 +272,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "Next, we created the treatment groups. We focus our analysis exclusively on the set of counties that had wage increases away from the federal minimum wage in 2004. That is, we treat 2003 and earler as the pre-treatment period."
+        "Next, we create the treatment groups. We focus our analysis exclusively on the set of counties that had wage increases away from the federal minimum wage in 2004. That is, we treat 2003 and earlier as the pre-treatment period."
       ],
       "metadata": {
         "id": "Ri12EDNJaAfF"
@@ -306,8 +306,8 @@
     {
       "cell_type": "markdown",
       "source": [
-        "We assume that the basic assumptions, particularly parallel trends hold after conditioning on pre-treatment variables: 2001 population, 2001 average pay and 2001 teen employment, as well as the region in which the county is located. (The region is characterized by four\n",
-        "categories)\n",
+        "We assume that the basic assumptions, particularly parallel trends, hold after conditioning on pre-treatment variables: 2001 population, 2001 average pay and 2001 teen employment, as well as the region in which the county is located. (The region is characterized by four\n",
+        "categories.)\n",
         "\n",
         "Consequently, we want to extract the control variables for both treatment and control group in 2001."
       ],
@@ -331,7 +331,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "2003 serves as the pre-treatmend period for both counties that do receive the treatment in 2004 and those that do not."
+        "2003 serves as the pre-treatmeny period for both counties that do receive the treatment in 2004 and those that do not."
       ],
       "metadata": {
         "id": "zU7rM_5Ne3Xr"
@@ -355,7 +355,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "We estimate the ATET in 2004-2007, which corresponds to the effect the year of treatment as well as in the three years after the treatment. The control observations are the observations that still have the federal minimum wage in each year. (The control group is shrinking in each year as additional units receive treatment)."
+        "We estimate the ATET in 2004-2007, which corresponds to the effect in the year of treatment as well as in the three years after the treatment. The control observations are the observations that still have the federal minimum wage in each year. (The control group is shrinking in each year as additional units receive treatment)."
       ],
       "metadata": {
         "id": "xL1fSfb5e82d"
@@ -425,8 +425,8 @@
       "source": [
         "### Estimation of the ATET with DML\n",
         "\n",
-        "We estimate the ATET of the county level minimum wage being larger than the federal minimum with the DML algorithm presented in Section 16.3 in the book. This requires estimation of the nuisance functions $E[Y|D=0,X]$, $E[D|X]$ as well as $P(D = 1)$. For the conditional functions we will consider different modern ML regression methods, namely: Constant (= no controls); a linear combination of the controls; a expansion of the raw control variables including all third order interactions; Lasso (CV); Ridge (CV); Random Forest; Shallow Tree; Deep Tree; and CV Tree.\n",
-        "The methods indicated with CV have their tuning parameter cross-validated.\n",
+        "We estimate the ATET of the county level minimum wage being larger than the federal minimum with the DML algorithm presented in Section 16.3 in the book. This requires estimation of the nuisance functions $E[Y|D=0,X]$, $E[D|X]$ as well as $P(D = 1)$. For the conditional expectation functions, we will consider different modern ML regression methods, namely: Constant (= no controls); a linear combination of the controls; an expansion of the raw control variables including all third order interactions; Lasso (CV); Ridge (CV); Random Forest; Shallow Tree; Deep Tree; and CV Tree.\n",
+        "The methods indicated with CV have their tuning parameter selected by cross-validation.\n",
         "\n",
         "The following code block implements the DML cross-fitting procedure."
       ],
@@ -904,7 +904,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "Here, we see that the majority of methods provide point estimates that suggest the effect of the minimum wage increase leads to decreases in youth employment with small effects in the initial period that become larger in the years following the treatment. This pattern seems economically plausible as it may take time for firms to adjust employment and other input choices in response to the minimum wage change. The methods that produce estiamtes that are not consistent with this pattern are Deep Tree and Expansion which are both suspect as they systematically underperform in terms of having poor cross-fit prediction performance. In terms of point estimates, the other pattern that emerges is that all estimates that use the covariates produce ATET estimates that are systematically smaller in magnitude than the No Controls baseline, suggesting that failing to include the controls may lead to overstatement of treatment effects in this example.\n",
+        "Here, we see that the majority of methods provide point estimates that suggest the effect of the minimum wage increase leads to decreases in youth employment with small effects in the initial period that become larger in the years following the treatment. This pattern seems economically plausible as it may take time for firms to adjust employment and other input choices in response to a minimum wage change. The methods that produce estiamtes that are not consistent with this pattern are Deep Tree and Expansion which are both suspect as they systematically underperform in terms of having poor cross-fit prediction performance. In terms of point estimates, the other pattern that emerges is that all estimates that use the covariates produce ATET estimates that are systematically smaller in magnitude than the No Controls baseline, suggesting that failing to include the controls may lead to overstatement of treatment effects in this example.\n",
         "\n",
         "Turning to inference, we would reject the hypothesis of no minimum wage effect two or more years after the change at the 5% level, even after multiple testing correction, if we were to focus on the row \"Best\" (or many of the other individual rows). Focusing on \"Best\" is a reasonable ex ante strategy that could be committed to prior to conducting any analysis. It is, of course, reassuring that this broad conclusion is also obtained using many of the individual learners suggesting some robustness to the exact choice of learner made."
       ],
@@ -917,7 +917,7 @@
       "source": [
         "### Assess pre-trends\n",
         "\n",
-        "Because we have data for the period 2001-2007, we can perform a so-called pre-trends test to provide some evidence about the plausibility of the conditional parallel trends assumptions. Specifically, we can continue to use 2003 as the reference period but now consider 2002 to be the treatment period. Sensible economic mechanisms underlying the assumption would then typically suggest that the ATET in 2002 - before the 2004 minimum wage change we are considering - should be zero. Finding evidence that the ATET in 2002 is non-zero then calls into question the validity of the assumption.\n",
+        "Because we have data for the period 2001-2007, we can perform a so-called pre-trends test to provide some evidence about the plausibility of the conditional parallel trends assumption. Specifically, we can continue to use 2003 as the reference period but now consider 2002 to be the treatment period. Sensible economic mechanisms underlying the assumption would then typically suggest that the ATET in 2002 - before the 2004 minimum wage change we are considering - should be zero. Finding evidence that the ATET in 2002 is non-zero then calls into question the validity of the assumption.\n",
         "\n",
         "We change the treatment status of those observations, which received treatment in 2004 in the 2002 data and create a placebo treatment as well as control group."
       ],
@@ -1247,7 +1247,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "Here we see broad agreement across all methods in the sense of returning point estimates that are small in magnitude and small relative to standard errors. In no case would we reject the hypothesis that the pre-event effect in 2002 is different from zero at usual levels of significance. We note that failing to reject the hypothesis of no pre-event effects certainly does not imply that the conditional DiD assumption is in fact satisfied. For example, confidence intervals include values that would be consistent with relatively large pre-event effects. However, it is also reassuring to see that there is not strong evidence of a violation of the underlying identifying assumption."
+        "Here we see broad agreement across all methods in the sense of returning point estimates that are small in magnitude and small relative to standard errors. In no case would we reject the hypothesis that the pre-event effect in 2002 is different from zero at usual levels of significance. We note that failing to reject the hypothesis of no pre-event effects certainly does not imply that the conditional DiD assumption is in fact satisfied. For example, confidence intervals include values that would be consistent with relatively large pre-event effects. However, it is reassuring to see that there is not strong evidence of a violation of the underlying identifying assumption."
       ],
       "metadata": {
         "id": "k0jGwOFO6NZD"
