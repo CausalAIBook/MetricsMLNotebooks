@@ -1179,8 +1179,8 @@
       "cell_type": "code",
       "source": [
         "tableP <- matrix(0, 4, 10)\n",
-        "tableP[1,1:9] <- RMSE.yP\n",
-        "tableP[2,1:9] <- RMSE.dP\n",
+        "tableP[1,] <- c(RMSE.yP, min(RMSE.yP))\n",
+        "tableP[2,] <- c(RMSE.dP, min(RMSE.dP))\n",
         "tableP[3,] <- attP\n",
         "tableP[4,] <- se.attP\n",
         "rownames(tableP)<- c(\"RMSE Y\",\"RMSE D\",\"ATET\",\"s.e.\")\n",
@@ -1237,7 +1237,7 @@
               "Deep Tree     0.1822166 0.2233871  0.008046653 0.02757672\n",
               "Shallow Tree  0.1619653 0.1884214 -0.003712959 0.01337397\n",
               "Tree (CV)     0.1550254 0.1905196 -0.005603010 0.01330858\n",
-              "Best          0.0000000 0.0000000 -0.003072304 0.01342307"
+              "Best          0.1540562 0.1884214 -0.003072304 0.01342307"
             ]
           },
           "metadata": {}
