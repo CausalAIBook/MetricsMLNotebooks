@@ -1,0 +1,910 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "YUCX_4AeCFrO"
+      },
+      "source": [
+        "# Simulation Design"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"hdm\")\n",
+        "library(hdm)\n",
+        "library(stats)"
+      ],
+      "metadata": {
+        "id": "mS89_Re5ECjm"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Generating RCT data"
+      ],
+      "metadata": {
+        "id": "VczKl9DMouLw"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "gen_data <- function(n, d, p, delta, base) {\n",
+        "  X <- matrix(rnorm(n * d), nrow = n, ncol = d)\n",
+        "  D <- rbinom(n, 1, p)\n",
+        "  y0 <- base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)\n",
+        "  y1 <- delta + base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)\n",
+        "  y <- y1 * D + y0 * (1 - D)\n",
+        "  return(list(y=y, D=D, X=X))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "zHRwbkqncrH_"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "n <- 100 # n samples\n",
+        "d <- 100 # n features\n",
+        "delta <- 1.0 # treatment effect\n",
+        "base <- 0.3 # baseline outcome"
+      ],
+      "metadata": {
+        "id": "B3BX59QhcrK4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Two Means Estimator"
+      ],
+      "metadata": {
+        "id": "A8lx8FOpoqzj"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Simple two means estimate and calculation of variance\n",
+        "twomeans <- function(y, D) {\n",
+        "  hat0 <- mean(y[D == 0]) # mean of outcome of un-treated\n",
+        "  hat1 <- mean(y[D == 1]) # mean of outcome of treated\n",
+        "  V0 <- var(y[D == 0]) / mean(1 - D) # asymptotic variance of the mean of outcome of untreated\n",
+        "  V1 <- var(y[D == 1]) / mean(D) # asymptotic variance of the mean of outcome of treated\n",
+        "  hat <- hat1 - hat0 # estimate of the treatment effect\n",
+        "  stderr <- sqrt((V0 + V1) / n) # standard error of the estimate of the treatment effect\n",
+        "  return(list(hat=hat, stderr=stderr))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "uKriPptNcrQo"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Set the random seed for reproducibility\n",
+        "set.seed(125)\n",
+        "\n",
+        "# Generate RCT data\n",
+        "data <- gen_data(n, d, 0.2, delta, base)\n",
+        "y <- data$y\n",
+        "D <- data$D\n",
+        "X <- data$X\n",
+        "\n",
+        "# Calculate estimation quantities\n",
+        "twomeans(y, D)"
+      ],
+      "metadata": {
+        "id": "kUAwErtycrTf"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Partialling-Out Estimator"
+      ],
+      "metadata": {
+        "id": "LxS_DAjWoyAk"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# We implement the partialling out version of OLS (for pedagogical purposes)\n",
+        "partialling_out <- function(y, D, W) {\n",
+        "  # Residualize outcome with OLS\n",
+        "  yfit <- lm(y ~ W)\n",
+        "  yhat <- predict(yfit, as.data.frame(W))\n",
+        "  yres <- y-as.numeric(yhat)\n",
+        "\n",
+        "  # Residualize treatment with OLS\n",
+        "  Dfit <- lm(D ~ W)\n",
+        "  Dhat <- predict(Dfit, as.data.frame(W))\n",
+        "  Dres <- D-as.numeric(Dhat)\n",
+        "\n",
+        "  # Calculate final residual ~ residual OLS estimate\n",
+        "  hat <- mean(yres * Dres) / mean(Dres^2)\n",
+        "\n",
+        "  # Calculate residual of final regression (epsilon in the BLP decomposition)\n",
+        "  epsilon <- yres - hat * Dres\n",
+        "\n",
+        "  # Calculate variance of the treatment effect\n",
+        "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
+        "  stderr = sqrt(V / length(y))\n",
+        "\n",
+        "  return(list(hat = hat, stderr = stderr))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "Bszks8xNcrWV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "partialling_out(y, D, cbind(D * X, X))"
+      ],
+      "metadata": {
+        "id": "eCoa9F1gcrY_"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Double Lasso Partialling-Out Estimator"
+      ],
+      "metadata": {
+        "id": "3C5agjr2o0wA"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Now we simply replace OLS with Lasso to implement the Double Lasso process\n",
+        "\n",
+        "double_lasso <- function(y, D, W) {\n",
+        "  # residualize outcome with Lasso\n",
+        "  yfit.rlasso <- rlasso(W,y, post=FALSE)\n",
+        "  yhat.rlasso <- predict(yfit.rlasso, as.data.frame(W))\n",
+        "  yres <- y - as.numeric(yhat.rlasso)\n",
+        "\n",
+        "\n",
+        "  # residualize treatment with Lasso\n",
+        "  Dfit.rlasso <- rlasso(W,D, post=FALSE)\n",
+        "  Dhat.rlasso <- predict(Dfit.rlasso, as.data.frame(W))\n",
+        "  Dres <- D - as.numeric(Dhat.rlasso)\n",
+        "\n",
+        "  # rest is the same as in the OLS case\n",
+        "  hat <- mean(yres * Dres) / mean(Dres^2)\n",
+        "  epsilon <- yres - hat * Dres\n",
+        "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
+        "  stderr = sqrt(V / length(y))\n",
+        "\n",
+        "  return(list(hat = hat, stderr = stderr))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "YcHiwiJ1jtFz"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "double_lasso(y, D, cbind(D * X, X))"
+      ],
+      "metadata": {
+        "id": "HBeGQAW9jtIa"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Simulation"
+      ],
+      "metadata": {
+        "id": "dnouR1CPo3tF"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Two-Means"
+      ],
+      "metadata": {
+        "id": "qS3i_zabo8e1"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# We now check the distributional properties of the different estimators across experiments\n",
+        "# First is the simple two means estimate\n",
+        "\n",
+        "n_experiments <- 100\n",
+        "# we will keep track of coverage (truth is in CI) and of the point estimate and stderr\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data(n, d, 0.2, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "  # Calculate two-means estimate\n",
+        "  results <- twomeans(y, D)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "boYM55VIlzch"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Calculate average coverage (should be .95 ideally)\n",
+        "coverage_rate <- mean(cov)\n",
+        "\n",
+        "cat(\"Coverage Rate (95% CI):\", coverage_rate, \"\\n\")"
+      ],
+      "metadata": {
+        "id": "77Nr_nANngWz"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")"
+      ],
+      "metadata": {
+        "id": "3EdakeDKmAv4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(hats) # mean of estimate; measures how biased the estimate is (should be =delta ideally)"
+      ],
+      "metadata": {
+        "id": "hNt5QmEKmCLo"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "sd(hats)# standard deviation of estimates; should be close to the standard errors we calculated for the CIs"
+      ],
+      "metadata": {
+        "id": "ku_EVTfemM_I"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(stderrs)"
+      ],
+      "metadata": {
+        "id": "4r5MP3PYmODP"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Partialling Out"
+      ],
+      "metadata": {
+        "id": "gI1ph04ro9-7"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Let's repeat this for the partialling out process (OLS), controlling for X\n",
+        "\n",
+        "n_experiments <- 100\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data(n, d, 0.2, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "  # Calculate partialling out estimate with OLS\n",
+        "  results <- partialling_out(y, D, X)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "GDcD1JEVmQ3A"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(cov)"
+      ],
+      "metadata": {
+        "id": "fwgT8Nd3m1-S"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")"
+      ],
+      "metadata": {
+        "id": "Y0yYO1xBmt6Z"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(hats)  # ols is heavily biased... mean of estimates very far from delta=1"
+      ],
+      "metadata": {
+        "id": "fd-9aNqImvLG"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "sd(hats)"
+      ],
+      "metadata": {
+        "id": "1kVDTlZunN-c"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(stderrs) # standard error severely under estimates the variance of the estimate; all this is due to overfitting"
+      ],
+      "metadata": {
+        "id": "Ta8s0QlunOrP"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Double Lasso"
+      ],
+      "metadata": {
+        "id": "cqiR8n54pAM3"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Now let's try the double Lasso.\n",
+        "n_experiments <- 100\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data(n, d, 0.2, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "  # Calculate partialling out estimate with OLS\n",
+        "  results <- double_lasso(y, D, X)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "CApI-UF0n3yx"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(cov)"
+      ],
+      "metadata": {
+        "id": "Ujw3sUicoOgK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")"
+      ],
+      "metadata": {
+        "id": "NveiO9xnoEgv"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(hats) # much closer to 1... (almost the same as two-means)\n",
+        "sd(hats) # standard deviation much smaller than two means, which did not adjust for X\n",
+        "mean(stderrs) # and close to the calculate standard errors; we correctly estimated uncertainty"
+      ],
+      "metadata": {
+        "id": "spy0Fd8goGt6"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Single Lasso"
+      ],
+      "metadata": {
+        "id": "PbroSXpNpCaj"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Now we simply replace OLS with Lasso to implement the Double Lasso process\n",
+        "\n",
+        "double_lasso <- function(y, D, W) {\n",
+        "  # residualize outcome with Lasso\n",
+        "  yfit.rlasso <- rlasso(W,y, post=FALSE)\n",
+        "  yhat.rlasso <- predict(yfit.rlasso, as.data.frame(W))\n",
+        "  yres <- y - as.numeric(yhat.rlasso)\n",
+        "\n",
+        "\n",
+        "  # residualize treatment with Lasso\n",
+        "  Dfit.rlasso <- rlasso(W,D, post=FALSE)\n",
+        "  Dhat.rlasso <- predict(Dfit.rlasso, as.data.frame(W))\n",
+        "  Dres <- D - as.numeric(Dhat.rlasso)\n",
+        "\n",
+        "  # rest is the same as in the OLS case\n",
+        "  hat <- mean(yres * Dres) / mean(Dres^2)\n",
+        "  epsilon <- yres - hat * Dres\n",
+        "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
+        "  stderr = sqrt(V / length(y))\n",
+        "\n",
+        "  return(list(hat = hat, stderr = stderr))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "Q7PkXPAdpEjh"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Now let's try the double Lasso.\n",
+        "\n",
+        "n_experiments <- 100\n",
+        "hats <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data(n, d, 0.2, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "  # Calculate single lasso estimate\n",
+        "\n",
+        "\n",
+        "  yfit.rlasso <- rlasso(cbind(D, X),y, post=FALSE)\n",
+        "  hat <- yfit.rlasso$coefficients[2]\n",
+        "\n",
+        "  hats[i] <- hat\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "z86ziKegpLf_"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")\n"
+      ],
+      "metadata": {
+        "id": "JVHyQxSNrLFw"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# bias is comparable and larger than standard deviation.\n",
+        "# Even if we could estimate the standard deviation, confidence intervals would undercover\n",
+        "1 - mean(hats)\n",
+        "sd(hats)"
+      ],
+      "metadata": {
+        "id": "5RK6CFCVrNVB"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Post-Lasso OLS"
+      ],
+      "metadata": {
+        "id": "-oeenku7sWC9"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Now let's try the post-Lasso.\n",
+        "n_experiments <- 100\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data(n, d, 0.2, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "\n",
+        "  # run a big lasso y ~ D, X\n",
+        "  DX = cbind(D,X)\n",
+        "  yfit.rlasso <- rlasso(DX, y, post=FALSE) # could just use this functionality\n",
+        "  coefs <- yfit.rlasso$coefficients[2:n]\n",
+        "  selected_columns <- X[, abs(coefs) > 0.0]\n",
+        "  # run OLS on y ~ D, X[chosen by lasso]\n",
+        "  # calculate standard error as if lasso step never happened\n",
+        "  results <- partialling_out(y, D - mean(D), selected_columns)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "VjjbagsFsYLe"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(cov)"
+      ],
+      "metadata": {
+        "id": "ZpFKqURXsdGg"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")\n"
+      ],
+      "metadata": {
+        "id": "-XlZuHuFsw3E"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "1 - mean(hats) # quite un-biased; bias < standard deviation\n",
+        "sd(hats)"
+      ],
+      "metadata": {
+        "id": "-_frAjzet5Oe"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# we under-estimated a bit the uncertainty; smaller estimated stderr than true std.\n",
+        "# this is most prob a finite sample error, from ignoring the lasso variable selection step\n",
+        "# this is an RCT and so even post lasso ols is Neyman orthogonal. We should expect good behavior.\n",
+        "mean(stderrs)"
+      ],
+      "metadata": {
+        "id": "K0sBTl3FtFeV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Not RCT Data"
+      ],
+      "metadata": {
+        "id": "EXqKbFLkuKZi"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "gen_data_nonRCT <- function(n, d, p, delta, base) {\n",
+        "  X <- matrix(rnorm(n * d), nrow = n, ncol = d)\n",
+        "  D <- X[, 1] + rnorm(n, mean = 0, sd = 1/4)\n",
+        "  y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)\n",
+        "  return(list(y = y, D = D, X = X))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "C3ZJTnpLt9-0"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# post-lasso\n",
+        "n_experiments <- 100\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data_nonRCT(n, d, p, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "\n",
+        "  # run a big lasso y ~ D, X\n",
+        "  DX = cbind(D,X)\n",
+        "  yfit.rlasso <- rlasso(DX, y, post=FALSE) # could just use this functionality\n",
+        "  coefs <- yfit.rlasso$coefficients[2:n]\n",
+        "  selected_columns <- X[, abs(coefs) > 0.0]\n",
+        "  # run OLS on y ~ D, X[chosen by lasso]\n",
+        "  # calculate standard error as if lasso step never happened\n",
+        "  results <- partialling_out(y, D - mean(D), selected_columns)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "4dnILAzPuTR7"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(cov) # Oops! Post Lasso OLS severely undercovers; It is not Neyman orthogonal when D is correlated with X"
+      ],
+      "metadata": {
+        "id": "uOo3L6W9uXZd"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")"
+      ],
+      "metadata": {
+        "id": "oTTJJUyBux9u"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(hats) # very heavily biased"
+      ],
+      "metadata": {
+        "id": "wrPu3ypku02M"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# But now let's try the double Lasso.\n",
+        "n_experiments <- 100\n",
+        "cov <- numeric(n_experiments)\n",
+        "hats <- numeric(n_experiments)\n",
+        "stderrs <- numeric(n_experiments)\n",
+        "\n",
+        "for (i in 1:n_experiments) {\n",
+        "  # Generate data for each experiment\n",
+        "  data <- gen_data_nonRCT(n, d, p, delta, base)\n",
+        "  y <- data$y\n",
+        "  D <- data$D\n",
+        "  X <- data$X\n",
+        "\n",
+        "  # Calculate partialling out estimate with OLS\n",
+        "  results <- double_lasso(y, D, X)\n",
+        "  hat <- results$hat\n",
+        "  stderr <- results$stderr\n",
+        "\n",
+        "  # Calculate the 95% confidence interval\n",
+        "  ci_lower <- hat - 1.96 * stderr\n",
+        "  ci_upper <- hat + 1.96 * stderr\n",
+        "\n",
+        "  # Check if the true parameter delta is within the confidence interval\n",
+        "  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)\n",
+        "\n",
+        "  hats[i] <- hat\n",
+        "  stderrs[i] <- stderr\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "2ZU1ihfcu6z5"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mean(cov) # great coverage"
+      ],
+      "metadata": {
+        "id": "x1BfN7HEu_E9"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "hist(hats, main = \"Distribution of Estimates\", xlab = \"Estimate\", col = \"skyblue\")"
+      ],
+      "metadata": {
+        "id": "4mSy5U0CvEBs"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "1 - mean(hats)\n",
+        "sd(hats) # very small bias compared to standard deviation\n",
+        "mean(stderrs)"
+      ],
+      "metadata": {
+        "id": "ElXwDxR-vEzT"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ],
+  "metadata": {
+    "hide_input": false,
+    "kernelspec": {
+      "display_name": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "name": "R"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}

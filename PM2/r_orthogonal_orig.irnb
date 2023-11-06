@@ -1,0 +1,155 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Simulation on Orthogonal Estimation\n"
+      ],
+      "metadata": {
+        "id": "7HCJkA2ifjEk"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We compare the performance of the naive and orthogonal methods in a computational experiment where\n",
+        "$p=n=100$, $\\beta_j = 1/j^2$, $(\\gamma_{DW})_j = 1/j^2$ and $$Y = 1 \\cdot D + \\beta' W + \\epsilon_Y$$\n",
+        "\n",
+        "where $W \\sim N(0,I)$, $\\epsilon_Y \\sim N(0,1)$, and $$D = \\gamma'_{DW} W + \\tilde{D}$$ where $\\tilde{D} \\sim N(0,1)/4$.\n",
+        "\n",
+        "The true treatment effect here is 1. From the plots produced in this notebook (estimate minus ground truth), we show that the naive single-selection estimator is heavily biased (lack of Neyman orthogonality in its estimation strategy), while the orthogonal estimator based on partialling out, is approximately unbiased and Gaussian."
+      ],
+      "metadata": {
+        "id": "4sldk16nfXw9"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"hdm\")\n",
+        "library(hdm)\n",
+        "library(ggplot2)"
+      ],
+      "metadata": {
+        "id": "dSvVz5Z6D14H"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
+        "_execution_state": "idle",
+        "trusted": true,
+        "id": "fAe2EP5VCFN_"
+      },
+      "cell_type": "code",
+      "source": [
+        "set.seed(1)\n",
+        "\n",
+        "# Initialize constants\n",
+        "B <- 1000  # Number of iterations\n",
+        "n <- 100  # Sample size\n",
+        "p <- 100  # Number of features\n",
+        "\n",
+        "# Initialize arrays to store results\n",
+        "Naive <- rep(0, B)\n",
+        "Orthogonal <- rep(0, B)\n",
+        "\n",
+        "for (i in 1:B) {\n",
+        "  # Generate parameters\n",
+        "  beta <- 1 / (1:p)^2\n",
+        "  gamma <- 1 / (1:p)^2\n",
+        "\n",
+        "  # Generate covariates / random data\n",
+        "  X <- matrix(rnorm(n * p), n, p)\n",
+        "  D <- X %*% gamma + rnorm(n) / 4\n",
+        "\n",
+        "  # Generate Y using DGP\n",
+        "  Y <- D + X %*% beta + rnorm(n)\n",
+        "\n",
+        "  # Single selection method\n",
+        "  rlasso_result <- rlasso(Y ~ D + X)  # Fit lasso regression\n",
+        "  SX_IDs <- which(rlasso_result$coef[-c(1, 2)] != 0)  # Selected covariates\n",
+        "\n",
+        "  # Check if any Xs are selected\n",
+        "  if (sum(SX_IDs) == 0) {\n",
+        "    Naive[i] <- lm(Y ~ D)$coef[2]  # Fit linear regression with only D if no Xs are selected\n",
+        "  } else {\n",
+        "    Naive[i] <- lm(Y ~ D + X[, SX_IDs])$coef[2]  # Fit linear regression with selected X otherwise\n",
+        "  }\n",
+        "\n",
+        "  # Partialling out / Double Lasso\n",
+        "  resY <- rlasso(Y ~ X, Post = FALSE)$res\n",
+        "  resD <- rlasso(D ~ X, Post = FALSE)$res\n",
+        "  Orthogonal[i] <- lm(resY ~ resD)$coef[2]  # Fit linear regression for residuals\n",
+        "}\n"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "id": "N7bdztt1CFOE"
+      },
+      "cell_type": "code",
+      "source": [
+        "# Create a data frame for the estimates\n",
+        "df <- data.frame(Method = rep(c(\"Naive\", \"Orthogonal\"), each = B), Value = c(Naive-1,Orthogonal-1))\n",
+        "\n",
+        "# Create the histogram using ggplot2\n",
+        "hist_plot <- ggplot(df, aes(x = Value, fill = Method)) +\n",
+        "  geom_histogram(binwidth = 0.1, color = \"black\", alpha = 0.7) +\n",
+        "  facet_wrap(~Method, scales = \"free\") +\n",
+        "  labs(\n",
+        "    title = \"Distribution of Estimates (Centered around Ground Truth)\",\n",
+        "    x = \"Bias\",\n",
+        "    y = \"Frequency\"\n",
+        "  ) +\n",
+        "  theme_minimal() +\n",
+        "  theme(\n",
+        "    plot.title = element_text(hjust = 0.5),  # Center the plot title\n",
+        "    strip.text = element_text(size = 10)  # Increase text size in facet labels\n",
+        "  )\n",
+        "\n",
+        "# Set a wider plot size\n",
+        "options(repr.plot.width = 10, repr.plot.height = 5)\n",
+        "\n",
+        "# Display the histogram\n",
+        "print(hist_plot)\n"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "As we can see from the above bias plots (estimates minus the ground truth effect of 1), the double lasso procedure concentrates around zero whereas the naive estimator does not."
+      ],
+      "metadata": {
+        "id": "8hrJ3M5mrD8_"
+      }
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "ir",
+      "display_name": "R",
+      "language": "R"
+    },
+    "language_info": {
+      "name": "R",
+      "codemirror_mode": "r",
+      "pygments_lexer": "r",
+      "mimetype": "text/x-r-source",
+      "file_extension": ".r",
+      "version": "3.6.3"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
