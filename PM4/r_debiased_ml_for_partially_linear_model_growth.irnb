@@ -1,0 +1,395 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.005873,
+          "end_time": "2021-02-13T17:32:35.332473",
+          "exception": false,
+          "start_time": "2021-02-13T17:32:35.326600",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "pb2sy6fp2HrD"
+      },
+      "source": [
+        "# Double/Debiased Machine Learning for the Partially Linear Regression Model\n",
+        "\n",
+        "This is a simple implementation of Debiased Machine Learning for the Partially Linear Regression Model, which provides an application of DML inference to determine the causal effect of countries' intitial wealth on the rate of economic growth.\n",
+        "\n",
+        "\n",
+        "Reference:\n",
+        "\n",
+        "- https://arxiv.org/abs/1608.00060\n",
+        "- https://www.amazon.com/Business-Data-Science-Combining-Accelerate/dp/1260452778\n",
+        "\n",
+        "The code is based on the book."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "aFdfwVRSGb-X"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "collapsed": true,
+        "execution": {
+          "iopub.execute_input": "2021-02-13T17:32:35.378544Z",
+          "iopub.status.busy": "2021-02-13T17:32:35.375857Z",
+          "iopub.status.idle": "2021-02-13T17:33:08.345196Z",
+          "shell.execute_reply": "2021-02-13T17:33:08.343218Z"
+        },
+        "papermill": {
+          "duration": 33.00131,
+          "end_time": "2021-02-13T17:33:08.345470",
+          "exception": false,
+          "start_time": "2021-02-13T17:32:35.344160",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "cbZVJg6j2HrH"
+      },
+      "outputs": [],
+      "source": [
+        "install.packages(\"xtable\")\n",
+        "install.packages(\"hdm\")\n",
+        "install.packages(\"randomForest\")\n",
+        "install.packages(\"glmnet\")\n",
+        "\n",
+        "library(xtable)\n",
+        "library(randomForest)\n",
+        "library(hdm)\n",
+        "library(glmnet)\n",
+        "\n",
+        "set.seed(1)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/GrowthData.csv\"\n",
+        "data <- read.csv(file)\n",
+        "data <- subset(data, select = -1) # get rid of index column\n",
+        "head(data)\n",
+        "dim(data)"
+      ],
+      "metadata": {
+        "id": "1I8mEMEM33fS"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "|"
+      ],
+      "metadata": {
+        "id": "i9_Ep1Cu9BHf"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "y = as.matrix(data[,1])         # outcome: growth rate\n",
+        "d = as.matrix(data[,3])         # treatment: initial wealth\n",
+        "x = as.matrix(data[,-c(1,2,3)]) # controls: country characteristics\n",
+        "\n",
+        "# some summary statistics\n",
+        "cat(sprintf(\"\\nThe length of y is %g \\n\", length(y) ))\n",
+        "cat(sprintf(\"\\nThe number of features in x is %g \\n\", dim(x)[2] ))\n",
+        "\n",
+        "lres=summary(lm(y~d +x))$coef[2,1:2]\n",
+        "cat(sprintf(\"\\nNaive OLS that uses all features w/o cross-fitting Y ~ D+X yields: \\ncoef (se) = %g (%g)\\n\", lres[1] , lres[2]))"
+      ],
+      "metadata": {
+        "id": "hiwEVN6i4FIH"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.003613,
+          "end_time": "2021-02-13T17:32:35.340781",
+          "exception": false,
+          "start_time": "2021-02-13T17:32:35.337168",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "OLPq-MxG2HrH"
+      },
+      "source": [
+        "# DML algorithm\n",
+        "\n",
+        "Here we perform estimation and inference of predictive coefficient $\\alpha$ in the partially linear statistical model,\n",
+        "$$\n",
+        "Y = D\\alpha + g(X) + U, \\quad E (U | D, X) = 0.\n",
+        "$$\n",
+        "For $\\tilde Y = Y- E(Y|X)$ and $\\tilde D= D- E(D|X)$, we can write\n",
+        "$$\n",
+        "\\tilde Y = \\alpha \\tilde D + U, \\quad E (U |\\tilde D) =0.\n",
+        "$$\n",
+        "Parameter $\\alpha$ is then estimated using cross-fitting approach to obtain the residuals $\\tilde D$ and $\\tilde Y$.\n",
+        "The algorithm comsumes $Y, D, X$, and machine learning methods for learning the residuals $\\tilde Y$ and $\\tilde D$, where\n",
+        "the residuals are obtained by cross-validation (cross-fitting).\n",
+        "\n",
+        "The statistical parameter $\\alpha$ has a causal interpretation of being the effect of $D$ on $Y$ in the causal DAG $$ D\\to Y, \\quad X\\to (D,Y)$$ or the counterfactual outcome model with conditionally exogenous (conditionally random) assignment of treatment $D$ given $X$:\n",
+        "$$\n",
+        "Y(d) = d\\alpha + g(X) + U(d),\\quad  U(d) \\text{ indep } D |X, \\quad Y = Y(D), \\quad U = U(D).\n",
+        "$$\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2021-02-13T17:33:08.406107Z",
+          "iopub.status.busy": "2021-02-13T17:33:08.360037Z",
+          "iopub.status.idle": "2021-02-13T17:33:08.423732Z",
+          "shell.execute_reply": "2021-02-13T17:33:08.422038Z"
+        },
+        "papermill": {
+          "duration": 0.07299,
+          "end_time": "2021-02-13T17:33:08.423882",
+          "exception": false,
+          "start_time": "2021-02-13T17:33:08.350892",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "2HTwak-I2HrK"
+      },
+      "outputs": [],
+      "source": [
+        "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=2) {\n",
+        "  nobs <- nrow(x) #number of observations\n",
+        "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices\n",
+        "  I <- split(1:nobs, foldid)  #split observation indices into folds\n",
+        "  ytil <- dtil <- rep(NA, nobs)\n",
+        "  cat(\"fold: \")\n",
+        "  for(b in 1:length(I)){\n",
+        "    dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out\n",
+        "    yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out\n",
+        "    dhat <- predict(dfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
+        "    yhat <- predict(yfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
+        "    dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
+        "    ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
+        "    cat(b,\" \")\n",
+        "        }\n",
+        "  rfit <- lm(ytil ~ dtil)    #estimate the main parameter by regressing one residual on the other\n",
+        "  coef.est <- coef(rfit)[2]  #extract coefficient\n",
+        "  se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error\n",
+        "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))  #printing output\n",
+        "  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals\n",
+        "}\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We now run through DML using as first stage models:\n",
+        " 1. OLS\n",
+        " 2. (Rigorous) Lasso\n",
+        " 3. Random Forests\n",
+        " 4. Mix of Random Forest and Lasso"
+      ],
+      "metadata": {
+        "id": "IZ7zixqZCE3s"
+      }
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2021-02-13T17:33:08.438648Z",
+          "iopub.status.busy": "2021-02-13T17:33:08.436622Z",
+          "iopub.status.idle": "2021-02-13T17:33:27.087838Z",
+          "shell.execute_reply": "2021-02-13T17:33:27.086924Z"
+        },
+        "papermill": {
+          "duration": 18.659748,
+          "end_time": "2021-02-13T17:33:27.088051",
+          "exception": false,
+          "start_time": "2021-02-13T17:33:08.428303",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "6-yAopZY2HrK"
+      },
+      "outputs": [],
+      "source": [
+        "#DML with OLS\n",
+        "cat(sprintf(\"\\nDML with OLS w/o feature selection \\n\"))\n",
+        "dreg <- function(x,d){ glmnet(x, d, lambda = 0) } #ML method= OLS using glmnet; using lm gives bugs\n",
+        "yreg <- function(x,y){ glmnet(x, y, lambda = 0) } #ML method = OLS\n",
+        "DML2.OLS = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+        "\n",
+        "\n",
+        "#DML with Lasso:\n",
+        "cat(sprintf(\"\\nDML with Lasso \\n\"))\n",
+        "dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method= lasso from hdm\n",
+        "yreg <- function(x,y){ rlasso(x,y, post=FALSE) } #ML method = lasso from hdm\n",
+        "DML2.lasso = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+        "\n",
+        "\n",
+        "#DML with Random Forest:\n",
+        "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
+        "dreg <- function(x,d){ randomForest(x, d) } #ML method=Forest\n",
+        "yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest\n",
+        "DML2.RF = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+        "\n",
+        "#DML MIX:\n",
+        "cat(sprintf(\"\\nDML with Lasso for D and Random Forest for Y \\n\"))\n",
+        "dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method=Forest\n",
+        "yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest\n",
+        "DML2.mix = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Now we examine the RMSE of D and Y to see which method performs well in the first-stage. We print all results below in the following table:"
+      ],
+      "metadata": {
+        "id": "KvnMvuYo_gm1"
+      }
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2021-02-13T17:33:27.115049Z",
+          "iopub.status.busy": "2021-02-13T17:33:27.113322Z",
+          "iopub.status.idle": "2021-02-13T17:33:27.269334Z",
+          "shell.execute_reply": "2021-02-13T17:33:27.268359Z"
+        },
+        "papermill": {
+          "duration": 0.169839,
+          "end_time": "2021-02-13T17:33:27.269543",
+          "exception": false,
+          "start_time": "2021-02-13T17:33:27.099704",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "JLXHbUwN2HrL"
+      },
+      "outputs": [],
+      "source": [
+        "prRes.D<- c( mean((DML2.OLS$dtil)^2), mean((DML2.lasso$dtil)^2), mean((DML2.RF$dtil)^2), mean((DML2.mix$dtil)^2));\n",
+        "prRes.Y<- c(mean((DML2.OLS$ytil)^2), mean((DML2.lasso$ytil)^2),mean((DML2.RF$ytil)^2),mean((DML2.mix$ytil)^2));\n",
+        "prRes<- rbind(sqrt(prRes.D), sqrt(prRes.Y));\n",
+        "rownames(prRes)<- c(\"RMSE D\", \"RMSE Y\");\n",
+        "colnames(prRes)<- c(\"OLS\", \"Lasso\", \"RF\", \"Mix\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "table <- matrix(0,4,4)\n",
+        "\n",
+        "# Point Estimate\n",
+        "table[1,1] <- as.numeric(DML2.OLS$coef.est)\n",
+        "table[2,1] <- as.numeric(DML2.lasso$coef.est)\n",
+        "table[3,1] <- as.numeric(DML2.RF$coef.est)\n",
+        "table[4,1]   <- as.numeric(DML2.mix$coef.est)\n",
+        "\n",
+        "# SE\n",
+        "table[1,2] <- as.numeric(DML2.OLS$se)\n",
+        "table[2,2] <- as.numeric(DML2.lasso$se)\n",
+        "table[3,2] <- as.numeric(DML2.RF$se)\n",
+        "table[4,2]   <- as.numeric(DML2.mix$se)\n",
+        "\n",
+        "# RMSE Y\n",
+        "table[1,3] <- as.numeric(prRes[2,1])\n",
+        "table[2,3] <- as.numeric(prRes[2,2])\n",
+        "table[3,3] <- as.numeric(prRes[2,3])\n",
+        "table[4,3]   <- as.numeric(prRes[2,4])\n",
+        "\n",
+        "# RMSE D\n",
+        "table[1,4] <- as.numeric(prRes[1,1])\n",
+        "table[2,4] <- as.numeric(prRes[1,2])\n",
+        "table[3,4] <- as.numeric(prRes[1,3])\n",
+        "table[4,4]   <- as.numeric(prRes[1,4])\n",
+        "\n",
+        "\n",
+        "\n",
+        "# print results\n",
+        "colnames(table) <- c(\"Estimate\",\"Standard Error\", \"RMSE Y\", \"RMSE D\")\n",
+        "rownames(table) <- c(\"OLS\", \"Lasso\", \"RF\", \"RF/Lasso Mix\")\n",
+        "table"
+      ],
+      "metadata": {
+        "id": "a7WC2-_6_wMl"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(table, digit=3)"
+      ],
+      "metadata": {
+        "id": "zZMbnWTE_yYd"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tab<- xtable(table, digits=3)\n",
+        "print(tab, type=\"latex\")"
+      ],
+      "metadata": {
+        "id": "pNDCsznF_zyR"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.6.3"
+    },
+    "papermill": {
+      "duration": 55.808166,
+      "end_time": "2021-02-13T17:33:28.352086",
+      "environment_variables": {},
+      "exception": null,
+      "input_path": "__notebook__.ipynb",
+      "output_path": "__notebook__.ipynb",
+      "parameters": {},
+      "start_time": "2021-02-13T17:32:32.543920",
+      "version": "2.1.3"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
