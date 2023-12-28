@@ -1,0 +1,740 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_execution_state": "idle",
+        "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
+        "papermill": {
+          "duration": 0.010774,
+          "end_time": "2021-02-15T11:01:41.782833",
+          "exception": false,
+          "start_time": "2021-02-15T11:01:41.772059",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "EaMt_4G0ONZ7"
+      },
+      "source": [
+        "# Penalized Linear Regressions: A Simulation Experiment"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"xtable\")\n",
+        "install.packages(\"hdm\")\n",
+        "install.packages(\"glmnet\")\n",
+        "\n",
+        "library(hdm)\n",
+        "library(xtable)\n",
+        "library(glmnet)\n",
+        "library(ggplot2)"
+      ],
+      "metadata": {
+        "id": "Fw3Ya0m6vboO"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Data Generating Process"
+      ],
+      "metadata": {
+        "id": "GNTVs-CtE-U9"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We define a simple data generating process that contains both linear and non-linear components and allows for both sparse and dense coefficients"
+      ],
+      "metadata": {
+        "id": "UXGpnWeeFAHV"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "gen_data <- function(n, p, sparse = TRUE) {\n",
+        "  if (sparse) {\n",
+        "    beta <- 1/seq(1:(p-1))^2; # 399 x 1\n",
+        "  } else {\n",
+        "    beta <- (rnorm(p-1))*0.2;\n",
+        "  }\n",
+        "\n",
+        "  true_fn <- function(x) {\n",
+        "    exp(4*x[,1]) + (x[,2:dim(x)[2]]%*%beta) # (100,399) x (399,1) = (100,1)\n",
+        "  }\n",
+        "\n",
+        "  X <- matrix(runif(n*p, min = -0.5, max = 0.5), n, p);\n",
+        "  gX <- true_fn(X)\n",
+        "  y <- gX + rnorm(n)\n",
+        "\n",
+        "  Xtest <- matrix(runif(n*p, min = -0.5, max = 0.5), n, p)\n",
+        "  gXtest <- true_fn(Xtest)\n",
+        "  ytest <- gXtest + rnorm(n)\n",
+        "\n",
+        "  Xpop <- matrix(runif(100000*p, min = -0.5, max = 0.5), 100000,p)\n",
+        "  gXpop <- true_fn(Xpop)\n",
+        "  ypop <- gXpop + rnorm(100000)\n",
+        "\n",
+        "  return(list(X = X, y = y, gX = gX, Xtest = Xtest, ytest = ytest, gXtest = gXtest, Xpop = Xpop, ypop = ypop, gXpop = gXpop))\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "N1TPWyBtBrqB"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.010616,
+          "end_time": "2021-02-15T11:01:41.804126",
+          "exception": false,
+          "start_time": "2021-02-15T11:01:41.793510",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "5UedfBJpONZ7"
+      },
+      "source": [
+        "## Data Generating Process: Approximately Sparse"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "set.seed(1)\n",
+        "n <- 100\n",
+        "p <- 400\n",
+        "res <- gen_data(n,p,sparse=TRUE)"
+      ],
+      "metadata": {
+        "id": "LV521EPdA05z"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "X <- res$X\n",
+        "y <- res$y\n",
+        "gX <- res$gX\n",
+        "Xtest <- res$Xtest\n",
+        "ytest <- res$ytest\n",
+        "gXtest <- res$gXtest\n",
+        "Xpop <- res$Xpop\n",
+        "ypop <- res$ypop\n",
+        "gXpop <- res$gXpop"
+      ],
+      "metadata": {
+        "id": "REt70Qs_zBPl"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "plot(gX,y, xlab=\"g(X)\", ylab=\"y\")    #plot V vs g(X)\n",
+        "print( c(\"theoretical R2:\", var(gX)/var(y))) # theoretical R-square in the simulation example"
+      ],
+      "metadata": {
+        "id": "3lvcbHdqv11D"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Data Pre-Processing"
+      ],
+      "metadata": {
+        "id": "All8ipKMSQER"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We create non-linear features of the first regressor."
+      ],
+      "metadata": {
+        "id": "hYZTDa3DST5D"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "poly <- function(x) {\n",
+        "  cbind(x[, 1, drop = FALSE], x[, 1]^2, x[, 1]^3, x[, -1, drop = FALSE])\n",
+        "}\n",
+        "\n",
+        "X_train <- poly(X)\n",
+        "X_test <- poly(Xtest)\n",
+        "X_pop <- poly(Xpop)"
+      ],
+      "metadata": {
+        "id": "iaFvA8nwxDOy"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Lasso, Ridge, ElasticNet"
+      ],
+      "metadata": {
+        "id": "g6jcTnhwUkhl"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We use glmnet's penalized estimators, which choose the penalty parameter via cross-validation (by default 10-fold cross-validation). These methods search over an adaptively chosen grid of hyperparameters. The parameter `alpha` controls what penalty (or allows for a convex combination of `l1` and `l2` penalty). Set `alpha=0.5` for elastic net.\n",
+        "\n",
+        "Features will be standardized (by glmnet) so that penalization does not favor.different features asymmetrically. If one wishes to standardize before passing it into glmnet, you can use R's `scale()` function:\n",
+        "\n",
+        "```\n",
+        "X_scaled <- scale(poly(X_train))\n",
+        "Xtest_scaled <- scale(poly(X_test), center = attr(X_scaled, \"scaled:center\"), scale = attr(X_scaled, \"scaled:scale\"))\n",
+        "Xpop_scaled <- scale(poly(Xpop), center = attr(X_scaled, \"scaled:center\"), scale = attr(X_scaled, \"scaled:scale\"))\n",
+        "```\n"
+      ],
+      "metadata": {
+        "id": "aRWiO93SUw1G"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "r2_score <- function(preds,actual){\n",
+        "  rss <- sum((preds - actual) ^ 2)  ## residual sum of squares\n",
+        "  tss <- sum((actual - mean(actual)) ^ 2)  ## total sum of squares\n",
+        "  rsq <- 1 - rss/tss\n",
+        "  return(rsq)\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "Dy1XNF6JXPpe"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 2.898022,
+          "end_time": "2021-02-15T11:01:45.358083",
+          "exception": false,
+          "start_time": "2021-02-15T11:01:42.460061",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "Cy7dThUhONZ_"
+      },
+      "outputs": [],
+      "source": [
+        "fit.lasso.cv   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
+        "fit.ridge   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
+        "fit.elnet   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
+        "\n",
+        "yhat.lasso.cv   <- predict(fit.lasso.cv, newx = X_test)            # predictions\n",
+        "yhat.ridge   <- predict(fit.ridge, newx = X_test)\n",
+        "yhat.elnet   <- predict(fit.elnet, newx = X_test)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "cat('lassocv R2 (Test): ', r2_score(predict(fit.lasso.cv, newx = X_test), ytest),\n",
+        "    'ridge R2 (Test): ', r2_score(predict(fit.ridge, newx = X_test), ytest),\n",
+        "    'elnet R2 (Test): ', r2_score(predict(fit.elnet, newx = X_test), ytest)\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "SMuo4MlvXtxH"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We note here that Ridge regression performs worse relatively to the Ridge in the correponding Python notebook. Even with the exact same data, the Ridge predictions with R's glmnet lead to worse $R^2$ scores, but as a sanity check, we can train on `X_pop` and we'll see that we recover similar $R^2$ scores across all methods. This suggests some implementation differences between Python and R. As an example, Python's Ridge regression uses leave-one-out cross validation (LOOCV), while glmnet in R uses $n$-fold cross validation."
+      ],
+      "metadata": {
+        "id": "QECIRikt3j5y"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We also calculate what the R-squared would be in the population limit (in our case for practical purposes when we have a very very large test sample)"
+      ],
+      "metadata": {
+        "id": "Fw7a-6_-Yhbb"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "R2.lasso.cv <- r2_score(predict(fit.lasso.cv, newx = X_pop), ypop)\n",
+        "R2.ridge <- r2_score(predict(fit.ridge, newx = X_pop), ypop)\n",
+        "R2.elnet <- r2_score(predict(fit.elnet, newx = X_pop), ypop)\n",
+        "\n",
+        "cat('lassocv R2 (Pop): ', R2.lasso.cv,\n",
+        "    'ridge R2 (Pop): ', R2.ridge,\n",
+        "    'elnet R2 (Pop): ', R2.elnet\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "UKmjj0fdYiL1"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Plug-in Hyperparameter Lasso and Post-Lasso OLS"
+      ],
+      "metadata": {
+        "id": "-GuaTiprcCqq"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Here we compute the lasso and ols post lasso using plug-in choices for penalty levels."
+      ],
+      "metadata": {
+        "id": "T2te6CvUcEa5"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\\We use \"plug-in\" tuning with a theoretically valid choice of penalty $\\lambda = 2 \\cdot c \\hat{\\sigma} \\sqrt{n} \\Phi^{-1}(1-\\alpha/2p)$, where $c>1$ and $1-\\alpha$ is a confidence level, and $\\Phi^{-1}$ denotes the quantile function. Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\\epsilon$ and $X$ in the regression equation decay quickly at the tails.\n",
+        "\n",
+        "In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks."
+      ],
+      "metadata": {
+        "id": "NQGL2JsocEjC"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We pull an analogue of R's rlasso. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\\\n",
+        "The post lasso function makes OLS with the selected ***T*** regressors.\n",
+        "To select those parameters, they use $\\lambda$ as variable to penalize\\\n",
+        "**Funny thing: the function rlasso was named like that because it is the \"rigorous\" Lasso.**"
+      ],
+      "metadata": {
+        "id": "G7yKoP1IcI5y"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "fit.rlasso  <- rlasso(y~X_train,  post=FALSE)      # lasso with plug-in penalty level\n",
+        "fit.rlasso.post <- rlasso(y~X_train, post=TRUE)    # post-lasso with plug-in penalty level\n",
+        "\n",
+        "yhat.rlasso   <- predict(fit.rlasso, newdata = X_test)\n",
+        "yhat.rlasso.post   <- predict(fit.rlasso.post, newdata = X_test)"
+      ],
+      "metadata": {
+        "id": "fHDKDGlVcXBh"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "R2.lasso <- r2_score(predict(fit.rlasso, newdata = X_test), ytest)\n",
+        "R2.lasso.post <- r2_score(predict(fit.rlasso.post, newdata = X_test), ytest)\n",
+        "\n",
+        "cat('rlasso R2 (Test): ', R2.lasso,\n",
+        "    'rlasso-post R2 (Test): ', R2.lasso.post\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "YMpfjDycchEp"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## LAVA: Dense + Sparse Coefficients"
+      ],
+      "metadata": {
+        "id": "WUaAe00Uc5-r"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.02899,
+          "end_time": "2021-02-15T11:01:56.880825",
+          "exception": false,
+          "start_time": "2021-02-15T11:01:56.851835",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "YBN4j8FMONaA"
+      },
+      "source": [
+        "Next we code up lava, which alternates the fitting of lasso and ridge"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "lava.fit <- function(X,Y,iter=5){\n",
+        "    r_fit = cv.glmnet(X, Y, family=\"gaussian\", alpha=0, nfolds=5) # ridge step fits the \"dense\" part\n",
+        "    l_fit = rlasso(X, as.vector(Y-predict(r_fit, newx=X)), post=F) # lasso step fits \"sparse part\"\n",
+        "\n",
+        "    # Alternate the Ridge and Lasso regressions\n",
+        "    i=1\n",
+        "    while(i <= iter) {\n",
+        "        r_fit = cv.glmnet(X, as.vector(Y-predict(l_fit,newdata=X)), family=\"gaussian\",  alpha=0, nfolds=5)\n",
+        "        l_fit = rlasso(X, as.vector(Y-predict(r_fit,newx=X)), post=F)\n",
+        "        i = i+1\n",
+        "    }\n",
+        "\n",
+        "    return(list(r_fit,l_fit))\n",
+        "}\n",
+        "\n",
+        "lava.predict <- function(mod_ridge, mod_lasso, X){\n",
+        "    r_pred = predict(mod_ridge, newx=X)\n",
+        "    l_pred = predict(mod_lasso, newdata=X)\n",
+        "    return(r_pred + l_pred)\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "4M7kkuACgLK3"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "mods <- lava.fit(X_train,y) # 1st index is ridge, 2nd is lasso\n",
+        "yhat.lava <- lava.predict(mods[[1]],mods[[2]], X_test)\n",
+        "R2.lava.test <- r2_score(yhat.lava, ytest)\n",
+        "cat('LAVA R2 (Test): ', R2.lava.test)"
+      ],
+      "metadata": {
+        "id": "GaTBT7NkhRmH"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "yhat.lava <- lava.predict(mods[[1]],mods[[2]], X_pop)\n",
+        "R2.lava <- r2_score(yhat.lava, ypop)\n",
+        "cat('LAVA R2 (Pop) ', R2.lava)"
+      ],
+      "metadata": {
+        "id": "17ubPKSPiDZj"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Summarizing Results"
+      ],
+      "metadata": {
+        "id": "Gv0bAoZZiLnH"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "table<- matrix(0, 6, 1)\n",
+        "table[1,1]   <- R2.lasso.cv\n",
+        "table[2,1]   <- R2.ridge\n",
+        "table[3,1]   <- R2.elnet\n",
+        "table[4,1]   <- R2.lasso\n",
+        "table[5,1]   <- R2.lasso.post\n",
+        "table[6,1]   <- R2.lava\n",
+        "\n",
+        "colnames(table)<- c(\"R2\")\n",
+        "rownames(table)<- c(\"Cross-Validated Lasso\", \"Cross-Validated ridge\",\"Cross-Validated elnet\",\n",
+        "                    \"Lasso\",\"Post-Lasso\",\"Lava\")\n",
+        "tab <- xtable(table, digits =3)\n",
+        "print(tab,type=\"latex\") # set type=\"latex\" for printing table in LaTeX\n",
+        "tab\n"
+      ],
+      "metadata": {
+        "id": "VtzIoSdyS9To"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 0.15987,
+          "end_time": "2021-02-15T11:02:51.903624",
+          "exception": false,
+          "start_time": "2021-02-15T11:02:51.743754",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "bmKsI1Z0ONaB"
+      },
+      "outputs": [],
+      "source": [
+        "# Creating a data frame with the predicted values\n",
+        "data <- data.frame(\n",
+        "  gXtest = gXtest,\n",
+        "  RLasso = predict(fit.rlasso, newdata = X_test),\n",
+        "  RLassoPost = predict(fit.rlasso.post, newdata =X_test),\n",
+        "  LassoCV = predict(fit.lasso.cv, newx = X_test)\n",
+        ")\n",
+        "\n",
+        "# Reshaping data into longer format for ggplot\n",
+        "data_long <- tidyr::gather(data, Model, Predicted, -gXtest)\n",
+        "\n",
+        "# Plotting\n",
+        "ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +\n",
+        "  geom_point(aes(shape = Model)) +\n",
+        "  geom_abline(slope = 1, intercept = 0, linetype = \"dashed\", color = \"black\") +  # gX by gX\n",
+        "  scale_color_manual(values = c('red', 'green', 'blue'), guide = guide_legend(title = \"Model\"),\n",
+        "                     labels = c(\"RLasso\", \"RLassoOLS\", \"LassoCV\")) +\n",
+        "  theme_minimal() +\n",
+        "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
+        "       x = \"gXtest\",\n",
+        "       y = \"Predictions\") +\n",
+        "  guides(shape = FALSE)  # Remove the shape legend"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.018842,
+          "end_time": "2021-02-15T11:02:51.941852",
+          "exception": false,
+          "start_time": "2021-02-15T11:02:51.923010",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "sxZFIhYuONaB"
+      },
+      "source": [
+        "## Data Generating Process: Approximately Sparse + Small Dense Part"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 0.207598,
+          "end_time": "2021-02-15T11:02:52.168536",
+          "exception": false,
+          "start_time": "2021-02-15T11:02:51.960938",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "nQcWgf3KONaC"
+      },
+      "outputs": [],
+      "source": [
+        "set.seed(1)\n",
+        "n <- 100\n",
+        "p <- 400\n",
+        "res <- gen_data(n,p, sparse=FALSE)\n",
+        "\n",
+        "X <- res$X\n",
+        "y <- res$y\n",
+        "gX <- res$gX\n",
+        "Xtest <- res$Xtest\n",
+        "ytest <- res$ytest\n",
+        "gXtest <- res$gXtest\n",
+        "Xpop <- res$Xpop\n",
+        "ypop <- res$ypop\n",
+        "gXpop <- res$gXpop\n",
+        "\n",
+        "print( c(\"theoretical R2:\", var(gX)/var(y))) # theoretical R-square in the simulation example"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "poly <- function(x) {\n",
+        "  cbind(x[, 1, drop = FALSE], x[, 1]^2, x[, 1]^3, x[, -1, drop = FALSE])\n",
+        "}\n",
+        "\n",
+        "X_train <- poly(X)\n",
+        "X_test <- poly(Xtest)\n",
+        "X_pop <- poly(Xpop)"
+      ],
+      "metadata": {
+        "id": "M6tO_WULs-mX"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 1.432822,
+          "end_time": "2021-02-15T11:02:53.626802",
+          "exception": false,
+          "start_time": "2021-02-15T11:02:52.193980",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "obWejQaJONaC"
+      },
+      "outputs": [],
+      "source": [
+        "fit.lasso.cv   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
+        "fit.ridge   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
+        "fit.elnet   <- cv.glmnet(X_train, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
+        "fit.rlasso  <- rlasso(y~X_train,  post=FALSE)      # lasso with plug-in penalty level\n",
+        "fit.rlasso.post <- rlasso(y~X_train, post=TRUE)    # post-lasso with plug-in penalty level\n",
+        "fit.lava.mods <- lava.fit(X_train,y) # 1st index is ridge, 2nd is lasso\n",
+        "\n",
+        "R2.lasso.cv <- r2_score(predict(fit.lasso.cv,newx=X_pop), ypop)\n",
+        "R2.ridge <- r2_score(predict(fit.ridge,newx=X_pop), ypop)\n",
+        "R2.elnet <- r2_score(predict(fit.elnet,newx=X_pop), ypop)\n",
+        "R2.rlasso <- r2_score(predict(fit.rlasso,newdata=X_pop), ypop)\n",
+        "R2.rlasso.post <- r2_score(predict(fit.rlasso.post,newdata=X_pop), ypop)\n",
+        "R2.lava <- r2_score(lava.predict(mods[[1]],mods[[2]], X_pop), ypop)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 13.756606,
+          "end_time": "2021-02-15T11:03:07.405363",
+          "exception": false,
+          "start_time": "2021-02-15T11:02:53.648757",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "38KYAe5MONaC"
+      },
+      "outputs": [],
+      "source": [
+        "table <- matrix(0, 6, 1)\n",
+        "table[1,1]   <- R2.lasso.cv\n",
+        "table[2,1]   <- R2.ridge\n",
+        "table[3,1]   <- R2.elnet\n",
+        "table[4,1]   <- R2.lasso\n",
+        "table[5,1]   <- R2.lasso.post\n",
+        "table[6,1]   <- R2.lava\n",
+        "\n",
+        "colnames(table)<- c(\"R2\")\n",
+        "rownames(table)<- c(\"Cross-Validated Lasso\", \"Cross-Validated ridge\",\"Cross-Validated elnet\",\n",
+        "                    \"Lasso\",\"Post-Lasso\",\"Lava\")\n",
+        "tab <- xtable(table, digits =3)\n",
+        "print(tab,type=\"latex\") # set type=\"latex\" for printing table in LaTeX\n",
+        "tab"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "papermill": {
+          "duration": 0.147036,
+          "end_time": "2021-02-15T11:04:15.205679",
+          "exception": false,
+          "start_time": "2021-02-15T11:04:15.058643",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "VMwR9sbKONaD"
+      },
+      "outputs": [],
+      "source": [
+        "# Creating a data frame with the predicted values\n",
+        "data <- data.frame(\n",
+        "  gXtest = gXtest,\n",
+        "  RLasso = predict(fit.rlasso, newdata = X_test),\n",
+        "  RLassoPost = predict(fit.rlasso.post, newdata =X_test),\n",
+        "  LassoCV = predict(fit.lasso.cv, newx = X_test),\n",
+        "  Lava = lava.predict(mods[[1]],mods[[2]], X_test)\n",
+        ")\n",
+        "\n",
+        "# Reshaping data into longer format for ggplot\n",
+        "data_long <- tidyr::gather(data, Model, Predicted, -gXtest)\n",
+        "\n",
+        "# Plotting\n",
+        "ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +\n",
+        "  geom_point(aes(shape = Model)) +\n",
+        "  geom_abline(slope = 1, intercept = 0, linetype = \"dashed\", color = \"black\") +  # gX by gX\n",
+        "  scale_color_manual(values = c('red', 'green', 'blue','pink'), guide = guide_legend(title = \"Model\"),\n",
+        "                     labels = c(\"RLasso\", \"RLassoOLS\", \"LassoCV\", \"Lava\")) +\n",
+        "  theme_minimal() +\n",
+        "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
+        "       x = \"gXtest\",\n",
+        "       y = \"Predictions\") +\n",
+        "  guides(shape = FALSE)  # Remove the shape legend"
+      ]
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.6.3"
+    },
+    "papermill": {
+      "default_parameters": {},
+      "duration": 157.995397,
+      "end_time": "2021-02-15T11:04:16.324442",
+      "environment_variables": {},
+      "exception": null,
+      "input_path": "__notebook__.ipynb",
+      "output_path": "__notebook__.ipynb",
+      "parameters": {},
+      "start_time": "2021-02-15T11:01:38.329045",
+      "version": "2.2.2"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
