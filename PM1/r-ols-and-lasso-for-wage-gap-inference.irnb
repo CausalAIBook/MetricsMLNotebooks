@@ -1119,6 +1119,7 @@
       "cell_type": "code",
       "source": [
         "set.seed(2724)\n",
+        "subset_size <- 1000\n",
         "random <- sample(1:nrow(data), subset_size)\n",
         "subset <- data[random,]"
       ],
