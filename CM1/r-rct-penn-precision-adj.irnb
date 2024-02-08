@@ -159,7 +159,7 @@
       },
       "cell_type": "markdown",
       "source": [
-        "The regression below is done using \"type='HC1'\" which computes the correct Eicker-Huber-White standard errors, instead of the classical non-robust formula based on homoscdedasticity."
+        "The regression below is done using \"type='HC1'\" which computes the correct Eicker-Huber-White standard errors, instead of the classical non-robust formula based on homoscedasticity."
       ]
     },
     {
