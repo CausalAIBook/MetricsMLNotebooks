@@ -782,8 +782,8 @@
         "MSE.test.ex <- sum((y.test.ex-yhat.ex)^2)/length(y.test.ex)\n",
         "R2.test.ex<- 1- MSE.test.ex/mean((y.test.ex-mean(train$lwage))^2)\n",
         "\n",
-        "cat(\"Test MSE for the extra flexible model: \", MSE.test.ex, \" \")\n",
-        "cat(\"Test R2 for the extra flexible model: \", R2.test.ex)"
+        "cat(\"Test MSE for the basic model: \", MSE.test.ex, \" \")\n",
+        "cat(\"Test R2 for the basic model: \", R2.test.ex)"
       ],
       "metadata": {
         "id": "vFrRnnlmo9yG"
