@@ -47,7 +47,7 @@ def fetch_data_generator(*, data, semi_synth=False, simple_synth=False,
 
         abtest = True
         
-        df = pd.read_csv('./welfarenolabel3.csv', na_values=-999)
+        df = pd.read_csv('https://raw.githubusercontent.com/gsbDBI/ExperimentData/master/Welfare/ProcessedData/welfarenolabel3.csv', na_values=-999)
         continuous = ['hrs1', 'income', 'rincome', 'age', 'polviews',
                     'educ', 'earnrs', 'sibs', 'childs', 'occ80', 'prestg80', 'indus80',
                     'res16', 'reg16', 'family16', 'parborn', 'maeduc', 'degree', 
