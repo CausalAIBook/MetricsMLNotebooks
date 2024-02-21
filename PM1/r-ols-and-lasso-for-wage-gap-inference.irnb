@@ -836,20 +836,20 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage),\"\\n\")\n",
     "\n",
-    "cat(\"The unexplained difference: \",control.est)\n",
+    "cat(\"The unexplained difference: \",control.est,\"\\n\")\n",
     "\n",
-    "XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==0,])\n",
+    "XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==0,])\n",
     "y0  = data[data$sex==0,]$lwage\n",
-    "XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==1,])\n",
+    "XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==1,])\n",
     "y1  = data[data$sex==1,]$lwage\n",
     "mu1 = colMeans(XX1)\n",
     "mu0 = colMeans(XX0)\n",
-    "betarest = summary(control.fit)$coef[3:246,1] # the coefficients excluding intercept and \"sex\"\n",
-    "cat(\"The explained difference:\",sum(betarest*(mu1[2:245]-mu0[2:245])))\n",
+    "betarest = summary(control.fit)$coef[3:(ncol(XX0)+1),1] # the coefficients excluding intercept and \"sex\"\n",
+    "cat(\"The explained difference:\",sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),\"\\n\")\n",
     "\n",
-    "cat(\"The sum of these differences:\",control.est + sum(betarest*(mu1[2:245]-mu0[2:245])))"
+    "cat(\"The sum of these differences:\",control.est + sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),\"\\n\")"
    ]
   },
   {
@@ -869,11 +869,11 @@
     "beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0\n",
     "beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1\n",
     "\n",
-    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
-    "cat(\"The unexplained difference:\",beta1[1]-beta0[1])\n",
-    "cat(\"The difference explained by endowment:\",sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])))\n",
-    "cat(\"The difference explained by coefficient:\",sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))\n",
-    "cat(\"The sum of these differences:\",beta1[1]-beta0[1] + sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])) + sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))"
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage),\"\\n\")\n",
+    "cat(\"The unexplained difference:\",beta1[1]-beta0[1],\"\\n\")\n",
+    "cat(\"The difference explained by endowment:\",sum(beta0[2:ncol(XX0)]*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),\"\\n\")\n",
+    "cat(\"The difference explained by coefficient:\",sum((beta1[2:ncol(XX0)]-beta0[2:ncol(XX0)])*mu1[2:ncol(XX0)]),\"\\n\")\n",
+    "cat(\"The sum of these differences:\",beta1[1]-beta0[1] + sum(beta0[2:ncol(XX0)]*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])) + sum((beta1[2:ncol(XX0)]-beta0[2:ncol(XX0)])*mu1[2:ncol(XX0)]),\"\\n\")"
    ]
   },
   {
