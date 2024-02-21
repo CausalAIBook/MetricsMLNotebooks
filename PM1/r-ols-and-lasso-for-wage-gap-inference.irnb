@@ -41,7 +41,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 87,
+   "execution_count": 2,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/"
@@ -51,18 +51,26 @@
    },
    "outputs": [
     {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "The downloaded binary packages are in\n",
+      "\t/var/folders/35/c51w3jrd19xb7bn278b2_zy40000gn/T//Rtmpy1P2xH/downloaded_packages\n",
+      "\n",
+      "The downloaded binary packages are in\n",
+      "\t/var/folders/35/c51w3jrd19xb7bn278b2_zy40000gn/T//Rtmpy1P2xH/downloaded_packages\n",
+      "\n",
+      "The downloaded binary packages are in\n",
+      "\t/var/folders/35/c51w3jrd19xb7bn278b2_zy40000gn/T//Rtmpy1P2xH/downloaded_packages\n"
+     ]
+    },
+    {
      "name": "stderr",
      "output_type": "stream",
      "text": [
-      "Installing package into ‘/usr/local/lib/R/site-library’\n",
-      "(as ‘lib’ is unspecified)\n",
-      "\n",
-      "Installing package into ‘/usr/local/lib/R/site-library’\n",
-      "(as ‘lib’ is unspecified)\n",
-      "\n",
-      "Installing package into ‘/usr/local/lib/R/site-library’\n",
-      "(as ‘lib’ is unspecified)\n",
-      "\n"
+      "Warning message:\n",
+      "“package ‘hdm’ was built under R version 4.3.2”\n"
      ]
     }
    ],
@@ -97,7 +105,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 88,
+   "execution_count": 3,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/",
@@ -163,7 +171,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 89,
+   "execution_count": 4,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/",
@@ -284,7 +292,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 90,
+   "execution_count": 5,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/"
@@ -302,8 +310,8 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "<!-- html table generated in R 4.3.2 by xtable 1.8-4 package -->\n",
-      "<!-- Wed Feb  7 19:11:57 2024 -->\n",
+      "<!-- html table generated in R 4.3.1 by xtable 1.8-4 package -->\n",
+      "<!-- Wed Feb 21 14:31:42 2024 -->\n",
       "<table border=1>\n",
       "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
       "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
@@ -362,7 +370,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 91,
+   "execution_count": 6,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/",
@@ -433,7 +441,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 92,
+   "execution_count": 7,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/"
@@ -500,7 +508,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 93,
+   "execution_count": 8,
    "metadata": {
     "colab": {
      "base_uri": "https://localhost:8080/",
@@ -832,14 +840,21 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": 210,
    "metadata": {},
-   "outputs": [],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The marginal gap: -0.03834473 \n",
+      "The unexplained difference:  -0.0695532 \n",
+      "The explained difference: 0.03120847 \n",
+      "The sum of these differences: -0.03834473 \n"
+     ]
+    }
+   ],
    "source": [
-    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage),\"\\n\")\n",
-    "\n",
-    "cat(\"The unexplained difference: \",control.est,\"\\n\")\n",
-    "\n",
     "XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==0,])\n",
     "y0  = data[data$sex==0,]$lwage\n",
     "XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==1,])\n",
@@ -847,9 +862,13 @@
     "mu1 = colMeans(XX1)\n",
     "mu0 = colMeans(XX0)\n",
     "betarest = summary(control.fit)$coef[3:(ncol(XX0)+1),1] # the coefficients excluding intercept and \"sex\"\n",
-    "cat(\"The explained difference:\",sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),\"\\n\")\n",
     "\n",
-    "cat(\"The sum of these differences:\",control.est + sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),\"\\n\")"
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage),\"\\n\")\n",
+    "diff.unexplained = control.est\n",
+    "cat(\"The unexplained difference: \",diff.unexplained,\"\\n\")\n",
+    "diff.explained = sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)]))\n",
+    "cat(\"The explained difference:\",diff.explained,\"\\n\")\n",
+    "cat(\"The sum of these differences:\",diff.unexplained + diff.explained,\"\\n\")"
    ]
   },
   {
@@ -861,13 +880,30 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": 239,
    "metadata": {},
-   "outputs": [],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The marginal gap: -0.03834473 \n",
+      "The unexplained difference: -2.320208 \n",
+      "The difference explained by endowment: 0.001595472 \n",
+      "The difference explained by coefficient: 2.280268 \n",
+      "The sum of these differences: -0.03834474 \n"
+     ]
+    }
+   ],
    "source": [
-    "library(MASS)\n",
-    "beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0\n",
-    "beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1\n",
+    "svd0=svd(XX0)\n",
+    "svd1=svd(XX1)\n",
+    "svd0$d[svd0$d<=1e-10]=0\n",
+    "svd0$d[svd0$d>1e-10]=1/svd0$d[svd0$d>1e-10]\n",
+    "beta0 = (svd0$v %*% (svd0$d*svd0$d*t(svd0$v))) %*% t(XX0) %*% y0\n",
+    "svd1$d[svd1$d<=1e-10]=0\n",
+    "svd1$d[svd1$d>1e-10]=1/svd1$d[svd1$d>1e-10]\n",
+    "beta1 = (svd1$v %*% (svd1$d*svd1$d*t(svd1$v))) %*% t(XX1) %*% y1\n",
     "\n",
     "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage),\"\\n\")\n",
     "cat(\"The unexplained difference:\",beta1[1]-beta0[1],\"\\n\")\n",
