@@ -1,1364 +1,1508 @@
 {
-  "metadata": {
-    "kernelspec": {
-      "name": "ir",
-      "display_name": "R",
-      "language": "R"
-    },
-    "language_info": {
-      "name": "R",
-      "codemirror_mode": "r",
-      "pygments_lexer": "r",
-      "mimetype": "text/x-r-source",
-      "file_extension": ".r",
-      "version": "3.6.3"
-    },
-    "colab": {
-      "provenance": []
-    }
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "e7UCaeGYyors"
+   },
+   "source": [
+    "# An inferential problem: The Gender Wage Gap"
+   ]
   },
-  "nbformat_minor": 0,
-  "nbformat": 4,
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# An inferential problem: The Gender Wage Gap"
-      ],
-      "metadata": {
-        "id": "e7UCaeGYyors"
-      }
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "tzCBb84nyort"
+   },
+   "source": [
+    "In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:\n",
+    "\n",
+    "What is the difference in predicted wages between men and women with the same job-relevant characteristics?\n",
+    "\n",
+    "Thus, we analyze if there is a difference in the payment of men and women (*gender wage gap*). The gender wage gap may partly reflect *discrimination* against women in the labor market or may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "QzOxBZQwyoru"
+   },
+   "source": [
+    "To investigate the gender wage gap, we consider the following log-linear regression model\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &= \\beta'X + \\epsilon\\\\\n",
+    "&= \\beta_1 D  + \\beta_2' W + \\epsilon,\n",
+    "\\end{align}\n",
+    "\n",
+    "where $Y$ is hourly wage, $D$ is the indicator of being female ($1$ if female and $0$ otherwise) and the\n",
+    "$W$'s are a vector of worker characteristics explaining variation in wages. Considering transformed wages by the logarithm, we are analyzing the relative difference in the payment of men and women."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 87,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
     },
+    "id": "XuSVp1TShFKs",
+    "outputId": "6e38357e-eef8-44bf-c11b-d4e4aa4139a8"
+   },
+   "outputs": [
     {
-      "cell_type": "markdown",
-      "source": [
-        "In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:\n",
-        "\n",
-        "What is the difference in predicted wages between men and women with the same job-relevant characteristics?\n",
-        "\n",
-        "Thus, we analyze if there is a difference in the payment of men and women (*gender wage gap*). The gender wage gap may partly reflect *discrimination* against women in the labor market or may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching)."
-      ],
-      "metadata": {
-        "id": "tzCBb84nyort"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "To investigate the gender wage gap, we consider the following log-linear regression model\n",
-        "\n",
-        "\\begin{align}\n",
-        "\\log(Y) &= \\beta'X + \\epsilon\\\\\n",
-        "&= \\beta_1 D  + \\beta_2' W + \\epsilon,\n",
-        "\\end{align}\n",
-        "\n",
-        "where $Y$ is hourly wage, $D$ is the indicator of being female ($1$ if female and $0$ otherwise) and the\n",
-        "$W$'s are a vector of worker characteristics explaining variation in wages. Considering transformed wages by the logarithm, we are analyzing the relative difference in the payment of men and women."
-      ],
-      "metadata": {
-        "id": "QzOxBZQwyoru"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "install.packages(\"xtable\")\n",
-        "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
-        "install.packages(\"sandwich\") # a package used to compute robust standard errors\n",
-        "\n",
-        "\n",
-        "library(hdm)\n",
-        "library(xtable)\n",
-        "library(sandwich)\n"
-      ],
-      "metadata": {
-        "id": "XuSVp1TShFKs",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "6e38357e-eef8-44bf-c11b-d4e4aa4139a8"
-      },
-      "execution_count": 87,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Data analysis"
-      ],
-      "metadata": {
-        "id": "CP3Sd17dyorv"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set."
-      ],
-      "metadata": {
-        "id": "lNi1CwnGyorv"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# load(\"../input/wage2015-inference/wage2015_subsample_inference.Rdata\")\n",
-        "# attach(data)\n",
-        "# dim(data)\n",
-        "\n",
-        "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
-        "data <- read.csv(file)\n",
-        "dim(data)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:32.67653Z",
-          "iopub.execute_input": "2021-07-12T16:59:32.679042Z",
-          "iopub.status.idle": "2021-07-12T16:59:32.765537Z"
-        },
-        "trusted": true,
-        "id": "T46lur9zyorw",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 34
-        },
-        "outputId": "bad9c980-6655-4027-f9dd-b07a2216ab0a"
-      },
-      "execution_count": 88,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<style>\n",
-              ".list-inline {list-style: none; margin:0; padding: 0}\n",
-              ".list-inline>li {display: inline-block}\n",
-              ".list-inline>li:not(:last-child)::after {content: \"\\00b7\"; padding: 0 .5ex}\n",
-              "</style>\n",
-              "<ol class=list-inline><li>5150</li><li>20</li></ol>\n"
-            ],
-            "text/markdown": "1. 5150\n2. 20\n\n\n",
-            "text/latex": "\\begin{enumerate*}\n\\item 5150\n\\item 20\n\\end{enumerate*}\n",
-            "text/plain": [
-              "[1] 5150   20"
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "To start our (causal) analysis, we compare the sample means given gender:"
-      ],
-      "metadata": {
-        "id": "4wFySBolyory"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "Z <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
-        "\n",
-        "data_female <- data[data$sex==1,]\n",
-        "Z_female <- data_female[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
-        "\n",
-        "data_male <- data[data$sex==0,]\n",
-        "Z_male <- data_male[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
-        "\n",
-        "table <- matrix(0, 12, 3)\n",
-        "table[1:12,1]   <- as.numeric(lapply(Z,mean))\n",
-        "table[1:12,2]   <- as.numeric(lapply(Z_male,mean))\n",
-        "table[1:12,3]   <- as.numeric(lapply(Z_female,mean))\n",
-        "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Less then High School\",\"High School Graduate\",\"Some College\",\"College Graduate\",\"Advanced Degree\", \"Northeast\",\"Midwest\",\"South\",\"West\",\"Experience\")\n",
-        "colnames(table) <- c(\"All\",\"Men\",\"Women\")\n",
-        "tab<- xtable(table, digits = 4)\n",
-        "tab"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:32.770047Z",
-          "iopub.execute_input": "2021-07-12T16:59:32.772745Z",
-          "iopub.status.idle": "2021-07-12T16:59:32.877413Z"
-        },
-        "trusted": true,
-        "id": "hsx7vuc2yor3",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 474
-        },
-        "outputId": "2f3378b9-4534-40c0-98e4-36a4b135f1e9"
-      },
-      "execution_count": 89,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<table class=\"dataframe\">\n",
-              "<caption>A xtable: 12 × 3</caption>\n",
-              "<thead>\n",
-              "\t<tr><th></th><th scope=col>All</th><th scope=col>Men</th><th scope=col>Women</th></tr>\n",
-              "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
-              "</thead>\n",
-              "<tbody>\n",
-              "\t<tr><th scope=row>Log Wage</th><td> 2.97078670</td><td> 2.98782963</td><td> 2.94948490</td></tr>\n",
-              "\t<tr><th scope=row>Sex</th><td> 0.44446602</td><td> 0.00000000</td><td> 1.00000000</td></tr>\n",
-              "\t<tr><th scope=row>Less then High School</th><td> 0.02330097</td><td> 0.03180706</td><td> 0.01266929</td></tr>\n",
-              "\t<tr><th scope=row>High School Graduate</th><td> 0.24388350</td><td> 0.29430269</td><td> 0.18086501</td></tr>\n",
-              "\t<tr><th scope=row>Some College</th><td> 0.27805825</td><td> 0.27333100</td><td> 0.28396680</td></tr>\n",
-              "\t<tr><th scope=row>College Graduate</th><td> 0.31766990</td><td> 0.29395316</td><td> 0.34731324</td></tr>\n",
-              "\t<tr><th scope=row>Advanced Degree</th><td> 0.13708738</td><td> 0.10660608</td><td> 0.17518567</td></tr>\n",
-              "\t<tr><th scope=row>Northeast</th><td> 0.25961165</td><td> 0.25900035</td><td> 0.26037571</td></tr>\n",
-              "\t<tr><th scope=row>Midwest</th><td> 0.29650485</td><td> 0.29814750</td><td> 0.29445173</td></tr>\n",
-              "\t<tr><th scope=row>South</th><td> 0.21611650</td><td> 0.22090178</td><td> 0.21013543</td></tr>\n",
-              "\t<tr><th scope=row>West</th><td> 0.22776699</td><td> 0.22195037</td><td> 0.23503713</td></tr>\n",
-              "\t<tr><th scope=row>Experience</th><td>13.76058252</td><td>13.78399161</td><td>13.73132372</td></tr>\n",
-              "</tbody>\n",
-              "</table>\n"
-            ],
-            "text/markdown": "\nA xtable: 12 × 3\n\n| <!--/--> | All &lt;dbl&gt; | Men &lt;dbl&gt; | Women &lt;dbl&gt; |\n|---|---|---|---|\n| Log Wage |  2.97078670 |  2.98782963 |  2.94948490 |\n| Sex |  0.44446602 |  0.00000000 |  1.00000000 |\n| Less then High School |  0.02330097 |  0.03180706 |  0.01266929 |\n| High School Graduate |  0.24388350 |  0.29430269 |  0.18086501 |\n| Some College |  0.27805825 |  0.27333100 |  0.28396680 |\n| College Graduate |  0.31766990 |  0.29395316 |  0.34731324 |\n| Advanced Degree |  0.13708738 |  0.10660608 |  0.17518567 |\n| Northeast |  0.25961165 |  0.25900035 |  0.26037571 |\n| Midwest |  0.29650485 |  0.29814750 |  0.29445173 |\n| South |  0.21611650 |  0.22090178 |  0.21013543 |\n| West |  0.22776699 |  0.22195037 |  0.23503713 |\n| Experience | 13.76058252 | 13.78399161 | 13.73132372 |\n\n",
-            "text/latex": "A xtable: 12 × 3\n\\begin{tabular}{r|lll}\n  & All & Men & Women\\\\\n  & <dbl> & <dbl> & <dbl>\\\\\n\\hline\n\tLog Wage &  2.97078670 &  2.98782963 &  2.94948490\\\\\n\tSex &  0.44446602 &  0.00000000 &  1.00000000\\\\\n\tLess then High School &  0.02330097 &  0.03180706 &  0.01266929\\\\\n\tHigh School Graduate &  0.24388350 &  0.29430269 &  0.18086501\\\\\n\tSome College &  0.27805825 &  0.27333100 &  0.28396680\\\\\n\tCollege Graduate &  0.31766990 &  0.29395316 &  0.34731324\\\\\n\tAdvanced Degree &  0.13708738 &  0.10660608 &  0.17518567\\\\\n\tNortheast &  0.25961165 &  0.25900035 &  0.26037571\\\\\n\tMidwest &  0.29650485 &  0.29814750 &  0.29445173\\\\\n\tSouth &  0.21611650 &  0.22090178 &  0.21013543\\\\\n\tWest &  0.22776699 &  0.22195037 &  0.23503713\\\\\n\tExperience & 13.76058252 & 13.78399161 & 13.73132372\\\\\n\\end{tabular}\n",
-            "text/plain": [
-              "                      All         Men         Women      \n",
-              "Log Wage               2.97078670  2.98782963  2.94948490\n",
-              "Sex                    0.44446602  0.00000000  1.00000000\n",
-              "Less then High School  0.02330097  0.03180706  0.01266929\n",
-              "High School Graduate   0.24388350  0.29430269  0.18086501\n",
-              "Some College           0.27805825  0.27333100  0.28396680\n",
-              "College Graduate       0.31766990  0.29395316  0.34731324\n",
-              "Advanced Degree        0.13708738  0.10660608  0.17518567\n",
-              "Northeast              0.25961165  0.25900035  0.26037571\n",
-              "Midwest                0.29650485  0.29814750  0.29445173\n",
-              "South                  0.21611650  0.22090178  0.21013543\n",
-              "West                   0.22776699  0.22195037  0.23503713\n",
-              "Experience            13.76058252 13.78399161 13.73132372"
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "print(tab,type=\"html\") # set type=\"latex\" for printing table in LaTeX"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:32.882357Z",
-          "iopub.execute_input": "2021-07-12T16:59:32.8861Z",
-          "iopub.status.idle": "2021-07-12T16:59:32.915279Z"
-        },
-        "trusted": true,
-        "id": "X81tdQRFyor4",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "406ea0b4-4dda-4d81-d2a3-ef94505942c7"
-      },
-      "execution_count": 90,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "<!-- html table generated in R 4.3.2 by xtable 1.8-4 package -->\n",
-            "<!-- Wed Feb  7 19:11:57 2024 -->\n",
-            "<table border=1>\n",
-            "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
-            "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> College Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n",
-            "   </table>\n"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
-        "<!-- Mon Jan 18 10:41:44 2021 -->\n",
-        "<table border=1>\n",
-        "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
-        "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Gollage Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n",
-        "   </table>"
-      ],
-      "metadata": {
-        "id": "zGq87hhPyor5"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$"
-      ],
-      "metadata": {
-        "id": "6AeYKnjuyor6"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "mean(data_female$lwage)-mean(data_male$lwage)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:32.920163Z",
-          "iopub.execute_input": "2021-07-12T16:59:32.923496Z",
-          "iopub.status.idle": "2021-07-12T16:59:32.950737Z"
-        },
-        "trusted": true,
-        "id": "r8B46bNgyor6",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 34
-        },
-        "outputId": "b4d7a26d-fc67-4595-99d8-178ed1a872fe"
-      },
-      "execution_count": 91,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "-0.0383447336744149"
-            ],
-            "text/markdown": "-0.0383447336744149",
-            "text/latex": "-0.0383447336744149",
-            "text/plain": [
-              "[1] -0.03834473"
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Thus, the unconditional gender wage gap is about $3,8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience."
-      ],
-      "metadata": {
-        "id": "rHTtc671yor7"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "This unconditional (predictive) effect of gender equals the coefficient $\\beta$ in the univariate ols regression of $Y$ on $D$:\n",
-        "\n",
-        "\\begin{align}\n",
-        "\\log(Y) &=\\beta D + \\epsilon.\n",
-        "\\end{align}"
-      ],
-      "metadata": {
-        "id": "n3Bw_N6Jyor7"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We verify this by running an ols regression in R."
-      ],
-      "metadata": {
-        "id": "X76_SKi5yor8"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "nocontrol.fit <- lm(lwage ~ sex, data=data)\n",
-        "nocontrol.est <- summary(nocontrol.fit)$coef[\"sex\",1]\n",
-        "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3'); # HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
-        "nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
-        "\n",
-        "# print unconditional effect of gender and the corresponding standard error\n",
-        "cat (\"The estimated coefficient on the dummy for gender is\",nocontrol.est,\" and the corresponding robust standard error is\",nocontrol.se)\n"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:32.956083Z",
-          "iopub.execute_input": "2021-07-12T16:59:32.959171Z",
-          "iopub.status.idle": "2021-07-12T16:59:33.005653Z"
-        },
-        "trusted": true,
-        "id": "2kGIBjpYyor8",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "bface8f9-2135-43bb-9e54-7ab2d5641b16"
-      },
-      "execution_count": 92,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "The estimated coefficient on the dummy for gender is -0.03834473  and the corresponding robust standard error is 0.01590824"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity.\n"
-      ],
-      "metadata": {
-        "id": "UTiIT57Pyor8"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Next, we run an ols regression of $Y$ on $(D,W)$ to control for the effect of covariates summarized in $W$:\n",
-        "\n",
-        "\\begin{align}\n",
-        "\\log(Y) &=\\beta_1 D  + \\beta_2' W + \\epsilon.\n",
-        "\\end{align}\n",
-        "\n",
-        "Here, we are considering the flexible model from the previous lab. Hence, $W$ controls for experience, education, region, and occupation and industry indicators plus transformations and two-way interactions."
-      ],
-      "metadata": {
-        "id": "Uo8vOL0TyosB"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Let us run the ols regression with controls."
-      ],
-      "metadata": {
-        "id": "Q0phToJfyosB"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# ols regression with controls\n",
-        "\n",
-        "flex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
-        "\n",
-        "#   Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
-        "#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
-        "#  This is not intuitive at all, but that's what it does.\n",
-        "\n",
-        "control.fit <- lm(flex, data=data)\n",
-        "control.est <- summary(control.fit)$coef[2,1]\n",
-        "\n",
-        "summary(control.fit)\n",
-        "\n",
-        "cat(\"Coefficient for OLS with controls\", control.est)\n",
-        "\n",
-        "HCV.coefs <- vcovHC(control.fit, type = 'HC3');\n",
-        "control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:33.008621Z",
-          "iopub.execute_input": "2021-07-12T16:59:33.011754Z",
-          "iopub.status.idle": "2021-07-12T16:59:33.707831Z"
-        },
-        "trusted": true,
-        "id": "gemX0ZyTyosC",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 1000
-        },
-        "outputId": "e5255cb1-5bed-491b-98b9-f95c39aa13e6"
-      },
-      "execution_count": 93,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "\n",
-              "Call:\n",
-              "lm(formula = flex, data = data)\n",
-              "\n",
-              "Residuals:\n",
-              "    Min      1Q  Median      3Q     Max \n",
-              "-1.9384 -0.2782 -0.0041  0.2733  3.4934 \n",
-              "\n",
-              "Coefficients:\n",
-              "                 Estimate Std. Error t value Pr(>|t|)    \n",
-              "(Intercept)     3.8602606  0.4286188   9.006  < 2e-16 ***\n",
-              "sex            -0.0695532  0.0152180  -4.570 4.99e-06 ***\n",
-              "exp1           -0.0677247  0.1519756  -0.446 0.655885    \n",
-              "exp2            1.6362944  1.6909253   0.968 0.333246    \n",
-              "exp3           -0.9154735  0.6880249  -1.331 0.183388    \n",
-              "exp4            0.1429357  0.0907569   1.575 0.115337    \n",
-              "shs            -0.1233089  0.9068325  -0.136 0.891845    \n",
-              "hsg            -0.5289024  0.1977559  -2.675 0.007508 ** \n",
-              "scl            -0.2920581  0.1260155  -2.318 0.020510 *  \n",
-              "clg            -0.0411641  0.0703862  -0.585 0.558688    \n",
-              "C(occ2)2        0.1613397  0.1297243   1.244 0.213665    \n",
-              "C(occ2)3        0.2101514  0.1686774   1.246 0.212869    \n",
-              "C(occ2)4        0.0708570  0.1837167   0.386 0.699746    \n",
-              "C(occ2)5       -0.3960076  0.1885398  -2.100 0.035745 *  \n",
-              "C(occ2)6       -0.2310611  0.1869662  -1.236 0.216576    \n",
-              "C(occ2)7        0.3147249  0.1941519   1.621 0.105077    \n",
-              "C(occ2)8       -0.1875417  0.1692988  -1.108 0.268022    \n",
-              "C(occ2)9       -0.3390270  0.1672301  -2.027 0.042685 *  \n",
-              "C(occ2)10       0.0209545  0.1564982   0.134 0.893490    \n",
-              "C(occ2)11      -0.6424177  0.3090899  -2.078 0.037723 *  \n",
-              "C(occ2)12      -0.0674774  0.2520486  -0.268 0.788929    \n",
-              "C(occ2)13      -0.2329781  0.2315379  -1.006 0.314359    \n",
-              "C(occ2)14       0.2562009  0.3226729   0.794 0.427236    \n",
-              "C(occ2)15      -0.1938585  0.2595082  -0.747 0.455086    \n",
-              "C(occ2)16      -0.0551256  0.1470658  -0.375 0.707798    \n",
-              "C(occ2)17      -0.4156093  0.1361144  -3.053 0.002275 ** \n",
-              "C(occ2)18      -0.4822168  1.0443540  -0.462 0.644290    \n",
-              "C(occ2)19      -0.2579412  0.3325215  -0.776 0.437956    \n",
-              "C(occ2)20      -0.3010203  0.2341022  -1.286 0.198556    \n",
-              "C(occ2)21      -0.4271811  0.2206486  -1.936 0.052922 .  \n",
-              "C(occ2)22      -0.8694527  0.2975222  -2.922 0.003490 ** \n",
-              "C(ind2)3       -1.2473654  0.6454941  -1.932 0.053365 .  \n",
-              "C(ind2)4       -0.0948281  0.4636021  -0.205 0.837935    \n",
-              "C(ind2)5       -0.5293860  0.4345990  -1.218 0.223244    \n",
-              "C(ind2)6       -0.6221688  0.4347226  -1.431 0.152441    \n",
-              "C(ind2)7       -0.5047497  0.5024770  -1.005 0.315176    \n",
-              "C(ind2)8       -0.7295442  0.4674008  -1.561 0.118623    \n",
-              "C(ind2)9       -0.8025334  0.4252462  -1.887 0.059190 .  \n",
-              "C(ind2)10      -0.5805840  0.4808776  -1.207 0.227358    \n",
-              "C(ind2)11      -0.9852350  0.4481566  -2.198 0.027966 *  \n",
-              "C(ind2)12      -0.7375777  0.4243260  -1.738 0.082232 .  \n",
-              "C(ind2)13      -1.0183283  0.4826544  -2.110 0.034922 *  \n",
-              "C(ind2)14      -0.5860174  0.4159033  -1.409 0.158892    \n",
-              "C(ind2)15      -0.3801359  0.5908517  -0.643 0.520014    \n",
-              "C(ind2)16      -0.5703905  0.4386579  -1.300 0.193556    \n",
-              "C(ind2)17      -0.8201843  0.4259846  -1.925 0.054239 .  \n",
-              "C(ind2)18      -0.7613604  0.4238287  -1.796 0.072495 .  \n",
-              "C(ind2)19      -0.8812815  0.4565671  -1.930 0.053635 .  \n",
-              "C(ind2)20      -0.9099021  0.4484198  -2.029 0.042499 *  \n",
-              "C(ind2)21      -0.7586534  0.4405801  -1.722 0.085143 .  \n",
-              "C(ind2)22      -0.4040775  0.4328735  -0.933 0.350620    \n",
-              "mw              0.1106834  0.0814463   1.359 0.174218    \n",
-              "so              0.0224244  0.0743855   0.301 0.763075    \n",
-              "we             -0.0215659  0.0841591  -0.256 0.797767    \n",
-              "exp1:shs       -0.1919981  0.1955408  -0.982 0.326206    \n",
-              "exp1:hsg       -0.0173433  0.0572279  -0.303 0.761859    \n",
-              "exp1:scl       -0.0664505  0.0433730  -1.532 0.125570    \n",
-              "exp1:clg       -0.0550346  0.0310279  -1.774 0.076172 .  \n",
-              "exp1:C(occ2)2  -0.0736239  0.0501108  -1.469 0.141837    \n",
-              "exp1:C(occ2)3  -0.0714859  0.0637688  -1.121 0.262336    \n",
-              "exp1:C(occ2)4  -0.0723997  0.0747715  -0.968 0.332953    \n",
-              "exp1:C(occ2)5   0.0946732  0.0794005   1.192 0.233182    \n",
-              "exp1:C(occ2)6  -0.0348928  0.0712136  -0.490 0.624175    \n",
-              "exp1:C(occ2)7  -0.2279338  0.0784860  -2.904 0.003699 ** \n",
-              "exp1:C(occ2)8  -0.0727459  0.0645883  -1.126 0.260094    \n",
-              "exp1:C(occ2)9   0.0274143  0.0669517   0.409 0.682217    \n",
-              "exp1:C(occ2)10  0.0075628  0.0581715   0.130 0.896564    \n",
-              "exp1:C(occ2)11  0.1014221  0.1005094   1.009 0.312986    \n",
-              "exp1:C(occ2)12 -0.0862744  0.0874768  -0.986 0.324057    \n",
-              "exp1:C(occ2)13  0.0067149  0.0761825   0.088 0.929768    \n",
-              "exp1:C(occ2)14 -0.1369153  0.0974458  -1.405 0.160073    \n",
-              "exp1:C(occ2)15 -0.0400425  0.0898931  -0.445 0.656017    \n",
-              "exp1:C(occ2)16 -0.0539314  0.0520926  -1.035 0.300580    \n",
-              "exp1:C(occ2)17  0.0147277  0.0467903   0.315 0.752958    \n",
-              "exp1:C(occ2)18  0.1074099  0.4718440   0.228 0.819937    \n",
-              "exp1:C(occ2)19  0.0047165  0.1060745   0.044 0.964536    \n",
-              "exp1:C(occ2)20  0.0243156  0.0743274   0.327 0.743575    \n",
-              "exp1:C(occ2)21  0.0791776  0.0696947   1.136 0.255985    \n",
-              "exp1:C(occ2)22  0.1093246  0.0880828   1.241 0.214607    \n",
-              "exp1:C(ind2)3   0.4758891  0.2227484   2.136 0.032693 *  \n",
-              "exp1:C(ind2)4   0.0147304  0.1571102   0.094 0.925305    \n",
-              "exp1:C(ind2)5   0.1256987  0.1531626   0.821 0.411864    \n",
-              "exp1:C(ind2)6   0.1540275  0.1524289   1.010 0.312312    \n",
-              "exp1:C(ind2)7   0.1029245  0.1786939   0.576 0.564654    \n",
-              "exp1:C(ind2)8   0.2357669  0.1689203   1.396 0.162859    \n",
-              "exp1:C(ind2)9   0.1359079  0.1489486   0.912 0.361578    \n",
-              "exp1:C(ind2)10  0.1512578  0.1644341   0.920 0.357687    \n",
-              "exp1:C(ind2)11  0.3174885  0.1590023   1.997 0.045907 *  \n",
-              "exp1:C(ind2)12  0.2591089  0.1510588   1.715 0.086356 .  \n",
-              "exp1:C(ind2)13  0.3396094  0.1669241   2.035 0.041954 *  \n",
-              "exp1:C(ind2)14  0.1441411  0.1477994   0.975 0.329485    \n",
-              "exp1:C(ind2)15 -0.0568181  0.2349853  -0.242 0.808950    \n",
-              "exp1:C(ind2)16  0.0847295  0.1550425   0.546 0.584753    \n",
-              "exp1:C(ind2)17  0.1728867  0.1513280   1.142 0.253317    \n",
-              "exp1:C(ind2)18  0.1565399  0.1494171   1.048 0.294842    \n",
-              "exp1:C(ind2)19  0.1516103  0.1620851   0.935 0.349641    \n",
-              "exp1:C(ind2)20  0.1326629  0.1566883   0.847 0.397222    \n",
-              "exp1:C(ind2)21  0.2190905  0.1555052   1.409 0.158930    \n",
-              "exp1:C(ind2)22  0.1145814  0.1523427   0.752 0.452010    \n",
-              "exp1:mw        -0.0279931  0.0296572  -0.944 0.345274    \n",
-              "exp1:so        -0.0099678  0.0266868  -0.374 0.708786    \n",
-              "exp1:we         0.0063077  0.0301417   0.209 0.834248    \n",
-              "exp2:shs        1.9005060  1.4502480   1.310 0.190098    \n",
-              "exp2:hsg        0.1171642  0.5509729   0.213 0.831609    \n",
-              "exp2:scl        0.6217923  0.4629986   1.343 0.179344    \n",
-              "exp2:clg        0.4096746  0.3802171   1.077 0.281321    \n",
-              "exp2:C(occ2)2   0.6632173  0.5523220   1.201 0.229895    \n",
-              "exp2:C(occ2)3   0.6415456  0.7102783   0.903 0.366448    \n",
-              "exp2:C(occ2)4   0.9748422  0.8655351   1.126 0.260099    \n",
-              "exp2:C(occ2)5  -0.9778823  0.9737990  -1.004 0.315335    \n",
-              "exp2:C(occ2)6   0.1050860  0.8002267   0.131 0.895527    \n",
-              "exp2:C(occ2)7   3.1407119  0.9389423   3.345 0.000829 ***\n",
-              "exp2:C(occ2)8   0.6710877  0.7192077   0.933 0.350818    \n",
-              "exp2:C(occ2)9   0.0231977  0.7629142   0.030 0.975744    \n",
-              "exp2:C(occ2)10 -0.2692292  0.6405270  -0.420 0.674267    \n",
-              "exp2:C(occ2)11 -1.0816539  1.0057575  -1.075 0.282221    \n",
-              "exp2:C(occ2)12  0.8323737  0.9341245   0.891 0.372933    \n",
-              "exp2:C(occ2)13 -0.2209813  0.7728463  -0.286 0.774942    \n",
-              "exp2:C(occ2)14  0.7511163  0.9272548   0.810 0.417955    \n",
-              "exp2:C(occ2)15 -0.0326858  0.9409116  -0.035 0.972290    \n",
-              "exp2:C(occ2)16  0.3635814  0.5509550   0.660 0.509342    \n",
-              "exp2:C(occ2)17 -0.2659285  0.4861131  -0.547 0.584369    \n",
-              "exp2:C(occ2)18 -2.5608762  5.1700911  -0.495 0.620393    \n",
-              "exp2:C(occ2)19 -0.1291756  1.0616901  -0.122 0.903165    \n",
-              "exp2:C(occ2)20 -0.3323297  0.7229071  -0.460 0.645743    \n",
-              "exp2:C(occ2)21 -0.9099997  0.6854114  -1.328 0.184349    \n",
-              "exp2:C(occ2)22 -0.8550536  0.8279414  -1.033 0.301773    \n",
-              "exp2:C(ind2)3  -5.9368948  2.4067939  -2.467 0.013670 *  \n",
-              "exp2:C(ind2)4  -1.1053411  1.7101982  -0.646 0.518100    \n",
-              "exp2:C(ind2)5  -2.0149181  1.6919190  -1.191 0.233748    \n",
-              "exp2:C(ind2)6  -2.2277748  1.6816902  -1.325 0.185325    \n",
-              "exp2:C(ind2)7  -1.4648099  2.0137888  -0.727 0.467022    \n",
-              "exp2:C(ind2)8  -2.9479949  1.8595425  -1.585 0.112955    \n",
-              "exp2:C(ind2)9  -1.7796219  1.6471248  -1.080 0.279999    \n",
-              "exp2:C(ind2)10 -2.1973300  1.7738638  -1.239 0.215507    \n",
-              "exp2:C(ind2)11 -3.8776807  1.7637372  -2.199 0.027956 *  \n",
-              "exp2:C(ind2)12 -3.1690425  1.6819362  -1.884 0.059602 .  \n",
-              "exp2:C(ind2)13 -3.9651983  1.8130709  -2.187 0.028789 *  \n",
-              "exp2:C(ind2)14 -2.0783289  1.6490355  -1.260 0.207610    \n",
-              "exp2:C(ind2)15  0.1911692  2.6075396   0.073 0.941559    \n",
-              "exp2:C(ind2)16 -1.3265850  1.7185648  -0.772 0.440202    \n",
-              "exp2:C(ind2)17 -2.2002873  1.6837183  -1.307 0.191341    \n",
-              "exp2:C(ind2)18 -2.2006232  1.6566630  -1.328 0.184125    \n",
-              "exp2:C(ind2)19 -1.9308536  1.7876673  -1.080 0.280152    \n",
-              "exp2:C(ind2)20 -1.9467267  1.7244008  -1.129 0.258983    \n",
-              "exp2:C(ind2)21 -3.1127363  1.7237908  -1.806 0.071019 .  \n",
-              "exp2:C(ind2)22 -1.8578340  1.6849542  -1.103 0.270254    \n",
-              "exp2:mw         0.2005611  0.3172911   0.632 0.527348    \n",
-              "exp2:so         0.0544354  0.2815662   0.193 0.846708    \n",
-              "exp2:we         0.0012717  0.3207873   0.004 0.996837    \n",
-              "exp3:shs       -0.6721239  0.4426627  -1.518 0.128987    \n",
-              "exp3:hsg       -0.0179937  0.2083176  -0.086 0.931171    \n",
-              "exp3:scl       -0.1997877  0.1855189  -1.077 0.281572    \n",
-              "exp3:clg       -0.1025230  0.1643648  -0.624 0.532819    \n",
-              "exp3:C(occ2)2  -0.2039403  0.2211386  -0.922 0.356455    \n",
-              "exp3:C(occ2)3  -0.2369620  0.2870372  -0.826 0.409103    \n",
-              "exp3:C(occ2)4  -0.4366958  0.3520168  -1.241 0.214830    \n",
-              "exp3:C(occ2)5   0.3885298  0.4118861   0.943 0.345577    \n",
-              "exp3:C(occ2)6   0.0484737  0.3293525   0.147 0.882997    \n",
-              "exp3:C(occ2)7  -1.3949288  0.4050109  -3.444 0.000578 ***\n",
-              "exp3:C(occ2)8  -0.2053899  0.2895727  -0.709 0.478181    \n",
-              "exp3:C(occ2)9  -0.0909660  0.3143348  -0.289 0.772293    \n",
-              "exp3:C(occ2)10  0.1854753  0.2575565   0.720 0.471477    \n",
-              "exp3:C(occ2)11  0.3931553  0.3817758   1.030 0.303152    \n",
-              "exp3:C(occ2)12 -0.2202559  0.3660206  -0.602 0.547363    \n",
-              "exp3:C(occ2)13  0.0950356  0.2904370   0.327 0.743519    \n",
-              "exp3:C(occ2)14 -0.1443933  0.3341622  -0.432 0.665684    \n",
-              "exp3:C(occ2)15  0.1477077  0.3645191   0.405 0.685339    \n",
-              "exp3:C(occ2)16 -0.0378548  0.2151288  -0.176 0.860330    \n",
-              "exp3:C(occ2)17  0.1510497  0.1878081   0.804 0.421276    \n",
-              "exp3:C(occ2)18  1.4084443  1.8852467   0.747 0.455047    \n",
-              "exp3:C(occ2)19  0.0923425  0.4042308   0.228 0.819314    \n",
-              "exp3:C(occ2)20  0.1806994  0.2652079   0.681 0.495682    \n",
-              "exp3:C(occ2)21  0.3779083  0.2553031   1.480 0.138875    \n",
-              "exp3:C(occ2)22  0.2855058  0.2984206   0.957 0.338754    \n",
-              "exp3:C(ind2)3   2.6665808  0.9807497   2.719 0.006573 ** \n",
-              "exp3:C(ind2)4   0.7298431  0.6879811   1.061 0.288811    \n",
-              "exp3:C(ind2)5   0.9942250  0.6842435   1.453 0.146280    \n",
-              "exp3:C(ind2)6   1.0641428  0.6800948   1.565 0.117718    \n",
-              "exp3:C(ind2)7   0.7089089  0.8337963   0.850 0.395245    \n",
-              "exp3:C(ind2)8   1.2340948  0.7483474   1.649 0.099193 .  \n",
-              "exp3:C(ind2)9   0.8287315  0.6675904   1.241 0.214526    \n",
-              "exp3:C(ind2)10  1.0448162  0.7066717   1.479 0.139337    \n",
-              "exp3:C(ind2)11  1.6877578  0.7162155   2.356 0.018487 *  \n",
-              "exp3:C(ind2)12  1.3734455  0.6835570   2.009 0.044564 *  \n",
-              "exp3:C(ind2)13  1.6376669  0.7259301   2.256 0.024117 *  \n",
-              "exp3:C(ind2)14  1.0162910  0.6714525   1.514 0.130199    \n",
-              "exp3:C(ind2)15  0.1879483  1.0299675   0.182 0.855214    \n",
-              "exp3:C(ind2)16  0.6889680  0.6968028   0.989 0.322831    \n",
-              "exp3:C(ind2)17  1.0085540  0.6836992   1.475 0.140238    \n",
-              "exp3:C(ind2)18  1.0605598  0.6725232   1.577 0.114863    \n",
-              "exp3:C(ind2)19  0.8959865  0.7225602   1.240 0.215029    \n",
-              "exp3:C(ind2)20  0.9768944  0.6955822   1.404 0.160255    \n",
-              "exp3:C(ind2)21  1.4415215  0.6996480   2.060 0.039418 *  \n",
-              "exp3:C(ind2)22  0.9687884  0.6828498   1.419 0.156037    \n",
-              "exp3:mw        -0.0625771  0.1241291  -0.504 0.614194    \n",
-              "exp3:so        -0.0115842  0.1084217  -0.107 0.914917    \n",
-              "exp3:we        -0.0124875  0.1251376  -0.100 0.920515    \n",
-              "exp4:shs        0.0777418  0.0475427   1.635 0.102071    \n",
-              "exp4:hsg        0.0004913  0.0265964   0.018 0.985264    \n",
-              "exp4:scl        0.0210760  0.0245289   0.859 0.390256    \n",
-              "exp4:clg        0.0078695  0.0227528   0.346 0.729457    \n",
-              "exp4:C(occ2)2   0.0176389  0.0289257   0.610 0.542021    \n",
-              "exp4:C(occ2)3   0.0303057  0.0376552   0.805 0.420962    \n",
-              "exp4:C(occ2)4   0.0584146  0.0457704   1.276 0.201927    \n",
-              "exp4:C(occ2)5  -0.0515181  0.0549489  -0.938 0.348514    \n",
-              "exp4:C(occ2)6  -0.0170182  0.0440847  -0.386 0.699488    \n",
-              "exp4:C(occ2)7   0.1905353  0.0558757   3.410 0.000655 ***\n",
-              "exp4:C(occ2)8   0.0196522  0.0379084   0.518 0.604195    \n",
-              "exp4:C(occ2)9   0.0190014  0.0421099   0.451 0.651841    \n",
-              "exp4:C(occ2)10 -0.0333347  0.0338825  -0.984 0.325246    \n",
-              "exp4:C(occ2)11 -0.0465914  0.0479018  -0.973 0.330778    \n",
-              "exp4:C(occ2)12  0.0110212  0.0470536   0.234 0.814820    \n",
-              "exp4:C(occ2)13 -0.0136895  0.0358988  -0.381 0.702970    \n",
-              "exp4:C(occ2)14  0.0055582  0.0400331   0.139 0.889581    \n",
-              "exp4:C(occ2)15 -0.0327444  0.0462379  -0.708 0.478872    \n",
-              "exp4:C(occ2)16 -0.0089706  0.0275729  -0.325 0.744937    \n",
-              "exp4:C(occ2)17 -0.0256735  0.0239306  -1.073 0.283400    \n",
-              "exp4:C(occ2)18 -0.2121372  0.2204003  -0.963 0.335841    \n",
-              "exp4:C(occ2)19 -0.0169398  0.0513428  -0.330 0.741463    \n",
-              "exp4:C(occ2)20 -0.0296125  0.0323353  -0.916 0.359819    \n",
-              "exp4:C(occ2)21 -0.0524577  0.0317251  -1.654 0.098291 .  \n",
-              "exp4:C(occ2)22 -0.0350646  0.0360687  -0.972 0.331018    \n",
-              "exp4:C(ind2)3  -0.3851791  0.1329065  -2.898 0.003771 ** \n",
-              "exp4:C(ind2)4  -0.1209478  0.0899580  -1.344 0.178852    \n",
-              "exp4:C(ind2)5  -0.1441045  0.0897994  -1.605 0.108616    \n",
-              "exp4:C(ind2)6  -0.1526110  0.0892689  -1.710 0.087410 .  \n",
-              "exp4:C(ind2)7  -0.1001993  0.1119398  -0.895 0.370768    \n",
-              "exp4:C(ind2)8  -0.1609664  0.0979780  -1.643 0.100471    \n",
-              "exp4:C(ind2)9  -0.1178080  0.0877821  -1.342 0.179642    \n",
-              "exp4:C(ind2)10 -0.1482842  0.0918416  -1.615 0.106469    \n",
-              "exp4:C(ind2)11 -0.2322961  0.0944506  -2.459 0.013949 *  \n",
-              "exp4:C(ind2)12 -0.1872911  0.0899985  -2.081 0.037481 *  \n",
-              "exp4:C(ind2)13 -0.2155617  0.0946011  -2.279 0.022731 *  \n",
-              "exp4:C(ind2)14 -0.1483524  0.0884992  -1.676 0.093740 .  \n",
-              "exp4:C(ind2)15 -0.0532195  0.1313815  -0.405 0.685439    \n",
-              "exp4:C(ind2)16 -0.1044336  0.0916252  -1.140 0.254429    \n",
-              "exp4:C(ind2)17 -0.1427349  0.0899315  -1.587 0.112543    \n",
-              "exp4:C(ind2)18 -0.1546248  0.0885883  -1.745 0.080973 .  \n",
-              "exp4:C(ind2)19 -0.1269592  0.0948784  -1.338 0.180918    \n",
-              "exp4:C(ind2)20 -0.1468554  0.0911188  -1.612 0.107094    \n",
-              "exp4:C(ind2)21 -0.2032619  0.0920972  -2.207 0.027358 *  \n",
-              "exp4:C(ind2)22 -0.1480951  0.0897937  -1.649 0.099154 .  \n",
-              "exp4:mw         0.0062439  0.0158699   0.393 0.694007    \n",
-              "exp4:so         0.0003145  0.0136275   0.023 0.981591    \n",
-              "exp4:we         0.0017685  0.0159602   0.111 0.911776    \n",
-              "---\n",
-              "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1\n",
-              "\n",
-              "Residual standard error: 0.4708 on 4904 degrees of freedom\n",
-              "Multiple R-squared:  0.3511,\tAdjusted R-squared:  0.3187 \n",
-              "F-statistic: 10.83 on 245 and 4904 DF,  p-value: < 2.2e-16\n"
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Coefficient for OLS with controls -0.0695532"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "The estimated regression coefficient $\\beta_1\\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.\n",
-        "We can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\\% for women increases to about $7$\\% after controlling for worker characteristics.  \n"
-      ],
-      "metadata": {
-        "id": "oVs_jmB1yosC"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols."
-      ],
-      "metadata": {
-        "id": "rzsU_0dsyosD"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Partialling-out using ols\n",
-        "\n",
-        "# models\n",
-        "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y\n",
-        "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D\n",
-        "\n",
-        "# partialling-out the linear effect of W from Y\n",
-        "t.Y <- lm(flex.y, data=data)$res\n",
-        "# partialling-out the linear effect of W from D\n",
-        "t.D <- lm(flex.d, data=data)$res\n",
-        "\n",
-        "# regression of Y on D after partialling-out the effect of W\n",
-        "partial.fit <- lm(t.Y~t.D)\n",
-        "partial.est <- summary(partial.fit)$coef[2,1]\n",
-        "\n",
-        "cat(\"Coefficient for D via partialling-out\", partial.est)\n",
-        "\n",
-        "# standard error\n",
-        "HCV.coefs <- vcovHC(partial.fit, type = 'HC3')\n",
-        "partial.se <- sqrt(diag(HCV.coefs))[2]\n",
-        "\n",
-        "# confidence interval\n",
-        "confint(partial.fit)[2,]"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:33.710612Z",
-          "iopub.execute_input": "2021-07-12T16:59:33.713947Z",
-          "iopub.status.idle": "2021-07-12T16:59:34.077195Z"
-        },
-        "trusted": true,
-        "id": "iYSsI8ZEyosD",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 52
-        },
-        "outputId": "a11b3ec7-f1ec-4488-9350-69a28481d342"
-      },
-      "execution_count": 94,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Coefficient for D via partialling-out -0.0695532"
-          ]
-        },
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<style>\n",
-              ".dl-inline {width: auto; margin:0; padding: 0}\n",
-              ".dl-inline>dt, .dl-inline>dd {float: none; width: auto; display: inline-block}\n",
-              ".dl-inline>dt::after {content: \":\\0020\"; padding-right: .5ex}\n",
-              ".dl-inline>dt:not(:first-of-type) {padding-left: .5ex}\n",
-              "</style><dl class=dl-inline><dt>2.5 %</dt><dd>-0.098671423574863</dd><dt>97.5 %</dt><dd>-0.0404349830188283</dd></dl>\n"
-            ],
-            "text/markdown": "2.5 %\n:   -0.09867142357486397.5 %\n:   -0.0404349830188283\n\n",
-            "text/latex": "\\begin{description*}\n\\item[2.5 \\textbackslash{}\\%] -0.098671423574863\n\\item[97.5 \\textbackslash{}\\%] -0.0404349830188283\n\\end{description*}\n",
-            "text/plain": [
-              "      2.5 %      97.5 % \n",
-              "-0.09867142 -0.04043498 "
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem."
-      ],
-      "metadata": {
-        "id": "K58yKR0qyosH"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We know that the partialling-out approach works well when the dimension of $W$ is low\n",
-        "in relation to the sample size $n$. When the dimension of $W$ is relatively high, we need to use variable selection\n",
-        "or penalization for regularization purposes.\n",
-        "\n",
-        "In the following, we illustrate the partialling-out approach using lasso instead of ols."
-      ],
-      "metadata": {
-        "id": "IpWd1dISyosH"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Partialling-out using lasso\n",
-        "\n",
-        "# models\n",
-        "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y\n",
-        "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D\n",
-        "\n",
-        "# partialling-out the linear effect of W from Y\n",
-        "t.Y <- rlasso(flex.y, data=data)$res\n",
-        "# partialling-out the linear effect of W from D\n",
-        "t.D <- rlasso(flex.d, data=data)$res\n",
-        "\n",
-        "# regression of Y on D after partialling-out the effect of W\n",
-        "partial.lasso.fit <- lm(t.Y~t.D)\n",
-        "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
-        "\n",
-        "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
-        "\n",
-        "# standard error\n",
-        "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
-        "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:34.080233Z",
-          "iopub.execute_input": "2021-07-12T16:59:34.081773Z",
-          "iopub.status.idle": "2021-07-12T16:59:37.470399Z"
-        },
-        "trusted": true,
-        "id": "Pd-5O1U8yosH",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "ffc5adbe-b367-422c-9421-112485563b6e"
-      },
-      "execution_count": 95,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Coefficient for D via partialling-out using lasso -0.07193551"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Using lasso for partialling-out here provides similar results as using ols."
-      ],
-      "metadata": {
-        "id": "cNuW404SyosI"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Next, we summarize the results."
-      ],
-      "metadata": {
-        "id": "k1c-QjpFyosI"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "table<- matrix(0, 4, 2)\n",
-        "table[1,1]<- nocontrol.est\n",
-        "table[1,2]<- nocontrol.se\n",
-        "table[2,1]<- control.est\n",
-        "table[2,2]<- control.se\n",
-        "table[3,1]<- partial.est\n",
-        "table[3,2]<- partial.se\n",
-        "table[4,1]<-  partial.lasso.est\n",
-        "table[4,2]<- partial.lasso.se\n",
-        "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
-        "rownames(table)<- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\n",
-        "tab<- xtable(table, digits=c(3, 3, 4))\n",
-        "tab"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:37.473312Z",
-          "iopub.execute_input": "2021-07-12T16:59:37.47687Z",
-          "iopub.status.idle": "2021-07-12T16:59:37.536069Z"
-        },
-        "trusted": true,
-        "id": "IpU4gNZayosI",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 224
-        },
-        "outputId": "fdb05e51-0596-4804-bad2-50c729ddd0aa"
-      },
-      "execution_count": 96,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<table class=\"dataframe\">\n",
-              "<caption>A xtable: 4 × 2</caption>\n",
-              "<thead>\n",
-              "\t<tr><th></th><th scope=col>Estimate</th><th scope=col>Std. Error</th></tr>\n",
-              "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
-              "</thead>\n",
-              "<tbody>\n",
-              "\t<tr><th scope=row>Without controls</th><td>-0.03834473</td><td>0.01590824</td></tr>\n",
-              "\t<tr><th scope=row>full reg</th><td>-0.06955320</td><td>0.01569920</td></tr>\n",
-              "\t<tr><th scope=row>partial reg</th><td>-0.06955320</td><td>0.01500873</td></tr>\n",
-              "\t<tr><th scope=row>partial reg via lasso</th><td>-0.07193551</td><td>0.01539897</td></tr>\n",
-              "</tbody>\n",
-              "</table>\n"
-            ],
-            "text/markdown": "\nA xtable: 4 × 2\n\n| <!--/--> | Estimate &lt;dbl&gt; | Std. Error &lt;dbl&gt; |\n|---|---|---|\n| Without controls | -0.03834473 | 0.01590824 |\n| full reg | -0.06955320 | 0.01569920 |\n| partial reg | -0.06955320 | 0.01500873 |\n| partial reg via lasso | -0.07193551 | 0.01539897 |\n\n",
-            "text/latex": "A xtable: 4 × 2\n\\begin{tabular}{r|ll}\n  & Estimate & Std. Error\\\\\n  & <dbl> & <dbl>\\\\\n\\hline\n\tWithout controls & -0.03834473 & 0.01590824\\\\\n\tfull reg & -0.06955320 & 0.01569920\\\\\n\tpartial reg & -0.06955320 & 0.01500873\\\\\n\tpartial reg via lasso & -0.07193551 & 0.01539897\\\\\n\\end{tabular}\n",
-            "text/plain": [
-              "                      Estimate    Std. Error\n",
-              "Without controls      -0.03834473 0.01590824\n",
-              "full reg              -0.06955320 0.01569920\n",
-              "partial reg           -0.06955320 0.01500873\n",
-              "partial reg via lasso -0.07193551 0.01539897"
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "print(tab, type=\"html\")"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:37.538094Z",
-          "iopub.execute_input": "2021-07-12T16:59:37.539348Z",
-          "iopub.status.idle": "2021-07-12T16:59:37.552624Z"
-        },
-        "trusted": true,
-        "id": "wGa29D7NyosJ",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "36b56e8c-3853-48e6-8740-16db8a5eab9e"
-      },
-      "execution_count": 97,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "<!-- html table generated in R 4.3.2 by xtable 1.8-4 package -->\n",
-            "<!-- Wed Feb  7 19:12:24 2024 -->\n",
-            "<table border=1>\n",
-            "<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n",
-            "  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0157 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
-            "  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n",
-            "   </table>\n"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
-        "<!-- Mon Jan 18 11:56:24 2021 -->\n",
-        "<table border=1>\n",
-        "<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n",
-        "  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
-        "  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n",
-        "   </table>\n"
-      ],
-      "metadata": {
-        "id": "TJwfLANWyosK"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n",
-        "\n",
-        "Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect\n",
-        "selection effects of unobserved differences in covariates between men and women in our sample.\n"
-      ],
-      "metadata": {
-        "id": "unil0UcWyosK"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## OLS Overfitting"
-      ],
-      "metadata": {
-        "id": "v-PlTq6xQ889"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Next we motivate the usage of lasso. We try an \"extra\" flexible model, where we take interactions of all controls, giving us about 1000 controls. To highlight the potential impact of overfitting on inference, we subset to the first 1000 observations so that $p \\approx n$."
-      ],
-      "metadata": {
-        "id": "9xPz2qcVyosK"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "set.seed(2724)\n",
-        "subset_size <- 1000\n",
-        "random <- sample(1:nrow(data), subset_size)\n",
-        "subset <- data[random,]"
-      ],
-      "metadata": {
-        "id": "hjSPZpef1Mfc"
-      },
-      "execution_count": 98,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "For a linear model, the covariance matrix of the estimated $\\hat{\\beta}$ coefficients is given by $$\\Sigma_{\\hat{\\beta}} = (X'X)^{-1} X' \\Omega X (X'X)^{-1}$$ Under homoskedasticity, $\\Omega = \\sigma^2 I$ so $\\Sigma_{\\hat{\\beta}}$ reduces to $\\sigma^2(X'X)^{-1}$ with $\\sigma^2$ estimated with the mean squared residuals. Under heteroskedasticity, $\\Omega \\neq \\sigma^2 I$, so we must use an approach that yields valid standard errors. Under heteroskedasticity, there exists a variety of consistent \"sandwich\" estimators proposed for $\\Sigma_{\\hat{\\beta}}$. With $e_i$ denoting the residual of observation $i:\n",
-        "\n",
-        "$ HC0 = (X'X)^{-1} X' \\text{diag} [e_i^2] X(X'X)^{-1}$\n",
-        "\n",
-        "$ HC1 = \\frac{n}{n-p-1} (X'X)^{-1} X' \\text{diag} [e_i^2] X(X'X)^{-1}$\n",
-        "\n",
-        "$ HC2 = (X'X)^{-1} X' \\text{diag} \\left[\\frac{e_i^2}{1-h_{ii}} \\right] X(X'X)^{-1}$\n",
-        "\n",
-        "$ HC3 = (X'X)^{-1} X' \\text{diag}  \\left[\\frac{e_i^2}{(1-h_{ii})^2} \\right] X(X'X)^{-1}$\n",
-        "\n",
-        "\n",
-        "For small sample sizes, the errors from HC0 are biased (usually downward). HC1 is a simple degree-of-freedom adjustment. HC2 is inspired by the insight that HC0's bias in finite samples results from points of high leverage in the design matrix $X$ (intuitively, outliers with respect to the independent variables). Thus, HC2 weights the $i$th squared residual by the reciprocal of $(1-h_{ii})$, with leverage values $h_{ii}$ as the $i$th diagonal element of the \"hat\" matrix $H = X(X'X)^{-1}X'$ to adjust for the finite-sample bias present in HC0.\n",
-        "\n",
-        "HC3 is similar to HC2, weighting by the squared $(1-h_{ii})^2$ in the denominator instead. HC3 is also equivalent to jackknife standard errors. HC3 has been shown to perform well regardless of the absence/presence of homoskedasticity and remains valid, in the sense of being biased upward under regularity conditions, in high dimensional settings."
-      ],
-      "metadata": {
-        "id": "n8rHd4_Q-64D"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# extra flexible model\n",
-        "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\n",
-        "\n",
-        "control.fit <- lm(extraflex, data=subset)\n",
-        "#summary(control.fit)\n",
-        "control.est <- summary(control.fit)$coef[2,1]\n",
-        "cat(\"Number of Extra-Flex Controls\", length(control.fit$coef)-1, \"\\n\")\n",
-        "cat(\"Coefficient for OLS with extra flex controls\", control.est)\n",
-        "\n",
-        "\n",
-        "n=subset_size; p=length(control.fit$coef);\n",
-        "\n",
-        "# HC0 SE\n",
-        "HCV.coefs_HC0 <- vcovHC(control.fit, type = 'HC0')\n",
-        "control.se.HC0 <- sqrt(diag(HCV.coefs_HC0))[2]\n",
-        "\n",
-        "# For a more correct approach, we\n",
-        "# would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure.\n",
-        "\n",
-        "# Jackknife. Need to trim some leverages or otherwise regularize. Theory shouldn't\n",
-        "# really work here.\n",
-        "# HC3 SE\n",
-        "# estimates\n",
-        "coefs = hatvalues(control.fit)\n",
-        "trim = 0.99999999999\n",
-        "coefs_trimmed = coefs*(coefs < trim) + trim*(coefs >= trim)\n",
-        "omega = (control.fit$residuals^2)/((1-coefs_trimmed)^2)\n",
-        "HCV.coefs <- vcovHC(control.fit, omega = as.vector(omega), type = 'HC3')\n",
-        "control.se.HC3 <- sqrt(diag(HCV.coefs))[2]"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:37.554654Z",
-          "iopub.execute_input": "2021-07-12T16:59:37.555574Z",
-          "iopub.status.idle": "2021-07-12T16:59:43.753096Z"
-        },
-        "trusted": true,
-        "id": "vZ84pYQVyosL",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "f73bb150-a229-43b5-e052-7ab8390cc851"
-      },
-      "execution_count": 105,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Number of Extra-Flex Controls 979 \n",
-            "Coefficient for OLS with extra flex controls -0.06699231"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# models\n",
-        "extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for Y\n",
-        "extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for D\n",
-        "\n",
-        "# partialling-out the linear effect of W from Y\n",
-        "t.Y <- rlasso(extraflex.y, data=subset)$res\n",
-        "# partialling-out the linear effect of W from D\n",
-        "t.D <- rlasso(extraflex.d, data=subset)$res\n",
-        "\n",
-        "# regression of Y on D after partialling-out the effect of W\n",
-        "partial.lasso.fit <- lm(t.Y~t.D)\n",
-        "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
-        "\n",
-        "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
-        "\n",
-        "# standard error\n",
-        "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
-        "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T16:59:43.756261Z",
-          "iopub.execute_input": "2021-07-12T16:59:43.758359Z",
-          "iopub.status.idle": "2021-07-12T17:00:17.223523Z"
-        },
-        "trusted": true,
-        "id": "SfB4go24yosL",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        },
-        "outputId": "8584501d-8152-4b94-c516-4c901683c7a4"
-      },
-      "execution_count": 101,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Coefficient for D via partialling-out using lasso -0.05378994"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "table<- matrix(0, 3, 2)\n",
-        "table[1,1]<- control.est\n",
-        "table[1,2]<- control.se.HC0\n",
-        "table[2,1]<- control.est\n",
-        "table[2,2]<- control.se.HC3\n",
-        "table[3,1]<-  partial.lasso.est\n",
-        "table[3,2]<- partial.lasso.se\n",
-        "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
-        "rownames(table)<- c(\"full reg, HC0\", \"full reg, HC3\", \"partial reg via lasso\")\n",
-        "tab<- xtable(table, digits=c(3, 3, 4))\n",
-        "tab\n",
-        "\n",
-        "print(tab, type=\"latex\")"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-12T17:00:17.226397Z",
-          "iopub.execute_input": "2021-07-12T17:00:17.227972Z",
-          "iopub.status.idle": "2021-07-12T17:00:17.260738Z"
-        },
-        "trusted": true,
-        "id": "X9z2zpVtyosL",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 442
-        },
-        "outputId": "e68c579d-e447-45fd-ce6f-ee15b04f3055"
-      },
-      "execution_count": 106,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<table class=\"dataframe\">\n",
-              "<caption>A xtable: 3 × 2</caption>\n",
-              "<thead>\n",
-              "\t<tr><th></th><th scope=col>Estimate</th><th scope=col>Std. Error</th></tr>\n",
-              "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
-              "</thead>\n",
-              "<tbody>\n",
-              "\t<tr><th scope=row>full reg, HC0</th><td>-0.06699231</td><td>0.03929531</td></tr>\n",
-              "\t<tr><th scope=row>full reg, HC3</th><td>-0.06699231</td><td>0.07252316</td></tr>\n",
-              "\t<tr><th scope=row>partial reg via lasso</th><td>-0.05378994</td><td>0.03436033</td></tr>\n",
-              "</tbody>\n",
-              "</table>\n"
-            ],
-            "text/markdown": "\nA xtable: 3 × 2\n\n| <!--/--> | Estimate &lt;dbl&gt; | Std. Error &lt;dbl&gt; |\n|---|---|---|\n| full reg, HC0 | -0.06699231 | 0.03929531 |\n| full reg, HC3 | -0.06699231 | 0.07252316 |\n| partial reg via lasso | -0.05378994 | 0.03436033 |\n\n",
-            "text/latex": "A xtable: 3 × 2\n\\begin{tabular}{r|ll}\n  & Estimate & Std. Error\\\\\n  & <dbl> & <dbl>\\\\\n\\hline\n\tfull reg, HC0 & -0.06699231 & 0.03929531\\\\\n\tfull reg, HC3 & -0.06699231 & 0.07252316\\\\\n\tpartial reg via lasso & -0.05378994 & 0.03436033\\\\\n\\end{tabular}\n",
-            "text/plain": [
-              "                      Estimate    Std. Error\n",
-              "full reg, HC0         -0.06699231 0.03929531\n",
-              "full reg, HC3         -0.06699231 0.07252316\n",
-              "partial reg via lasso -0.05378994 0.03436033"
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "% latex table generated in R 4.3.2 by xtable 1.8-4 package\n",
-            "% Wed Feb  7 19:15:54 2024\n",
-            "\\begin{table}[ht]\n",
-            "\\centering\n",
-            "\\begin{tabular}{rrr}\n",
-            "  \\hline\n",
-            " & Estimate & Std. Error \\\\ \n",
-            "  \\hline\n",
-            "full reg, HC0 & -0.067 & 0.0393 \\\\ \n",
-            "  full reg, HC3 & -0.067 & 0.0725 \\\\ \n",
-            "  partial reg via lasso & -0.054 & 0.0344 \\\\ \n",
-            "   \\hline\n",
-            "\\end{tabular}\n",
-            "\\end{table}\n"
-          ]
-        }
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "In this case $p/n \\approx 1$, that is $p/n$ is no longer small and we start seeing the differences between\n",
-        "unregularized partialling out and regularized partialling out with lasso (double lasso).  The results based on\n",
-        "double lasso have rigorous guarantees in this non-small p/n regime under approximate sparsity. The results based on OLS still\n",
-        "have guarantees in p/n< 1 regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate\n",
-        "sparsity, although other regularity conditions are needed.\n"
-      ],
-      "metadata": {
-        "id": "mBRBd2nJyosM"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [],
-      "metadata": {
-        "id": "ERTT0mdfdPrh"
-      },
-      "execution_count": null,
-      "outputs": []
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Installing package into ‘/usr/local/lib/R/site-library’\n",
+      "(as ‘lib’ is unspecified)\n",
+      "\n",
+      "Installing package into ‘/usr/local/lib/R/site-library’\n",
+      "(as ‘lib’ is unspecified)\n",
+      "\n",
+      "Installing package into ‘/usr/local/lib/R/site-library’\n",
+      "(as ‘lib’ is unspecified)\n",
+      "\n"
+     ]
     }
-  ]
+   ],
+   "source": [
+    "install.packages(\"xtable\")\n",
+    "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
+    "install.packages(\"sandwich\") # a package used to compute robust standard errors\n",
+    "\n",
+    "\n",
+    "library(hdm)\n",
+    "library(xtable)\n",
+    "library(sandwich)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "CP3Sd17dyorv"
+   },
+   "source": [
+    "## Data analysis"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "lNi1CwnGyorv"
+   },
+   "source": [
+    "We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 88,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 34
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.679042Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.67653Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.765537Z"
+    },
+    "id": "T46lur9zyorw",
+    "outputId": "bad9c980-6655-4027-f9dd-b07a2216ab0a"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style>\n",
+       ".list-inline {list-style: none; margin:0; padding: 0}\n",
+       ".list-inline>li {display: inline-block}\n",
+       ".list-inline>li:not(:last-child)::after {content: \"\\00b7\"; padding: 0 .5ex}\n",
+       "</style>\n",
+       "<ol class=list-inline><li>5150</li><li>20</li></ol>\n"
+      ],
+      "text/latex": [
+       "\\begin{enumerate*}\n",
+       "\\item 5150\n",
+       "\\item 20\n",
+       "\\end{enumerate*}\n"
+      ],
+      "text/markdown": [
+       "1. 5150\n",
+       "2. 20\n",
+       "\n",
+       "\n"
+      ],
+      "text/plain": [
+       "[1] 5150   20"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# load(\"../input/wage2015-inference/wage2015_subsample_inference.Rdata\")\n",
+    "# attach(data)\n",
+    "# dim(data)\n",
+    "\n",
+    "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
+    "data <- read.csv(file)\n",
+    "dim(data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "4wFySBolyory"
+   },
+   "source": [
+    "To start our (causal) analysis, we compare the sample means given gender:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 89,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 474
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.772745Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.770047Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.877413Z"
+    },
+    "id": "hsx7vuc2yor3",
+    "outputId": "2f3378b9-4534-40c0-98e4-36a4b135f1e9"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A xtable: 12 × 3</caption>\n",
+       "<thead>\n",
+       "\t<tr><th></th><th scope=col>All</th><th scope=col>Men</th><th scope=col>Women</th></tr>\n",
+       "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><th scope=row>Log Wage</th><td> 2.97078670</td><td> 2.98782963</td><td> 2.94948490</td></tr>\n",
+       "\t<tr><th scope=row>Sex</th><td> 0.44446602</td><td> 0.00000000</td><td> 1.00000000</td></tr>\n",
+       "\t<tr><th scope=row>Less then High School</th><td> 0.02330097</td><td> 0.03180706</td><td> 0.01266929</td></tr>\n",
+       "\t<tr><th scope=row>High School Graduate</th><td> 0.24388350</td><td> 0.29430269</td><td> 0.18086501</td></tr>\n",
+       "\t<tr><th scope=row>Some College</th><td> 0.27805825</td><td> 0.27333100</td><td> 0.28396680</td></tr>\n",
+       "\t<tr><th scope=row>College Graduate</th><td> 0.31766990</td><td> 0.29395316</td><td> 0.34731324</td></tr>\n",
+       "\t<tr><th scope=row>Advanced Degree</th><td> 0.13708738</td><td> 0.10660608</td><td> 0.17518567</td></tr>\n",
+       "\t<tr><th scope=row>Northeast</th><td> 0.25961165</td><td> 0.25900035</td><td> 0.26037571</td></tr>\n",
+       "\t<tr><th scope=row>Midwest</th><td> 0.29650485</td><td> 0.29814750</td><td> 0.29445173</td></tr>\n",
+       "\t<tr><th scope=row>South</th><td> 0.21611650</td><td> 0.22090178</td><td> 0.21013543</td></tr>\n",
+       "\t<tr><th scope=row>West</th><td> 0.22776699</td><td> 0.22195037</td><td> 0.23503713</td></tr>\n",
+       "\t<tr><th scope=row>Experience</th><td>13.76058252</td><td>13.78399161</td><td>13.73132372</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A xtable: 12 × 3\n",
+       "\\begin{tabular}{r|lll}\n",
+       "  & All & Men & Women\\\\\n",
+       "  & <dbl> & <dbl> & <dbl>\\\\\n",
+       "\\hline\n",
+       "\tLog Wage &  2.97078670 &  2.98782963 &  2.94948490\\\\\n",
+       "\tSex &  0.44446602 &  0.00000000 &  1.00000000\\\\\n",
+       "\tLess then High School &  0.02330097 &  0.03180706 &  0.01266929\\\\\n",
+       "\tHigh School Graduate &  0.24388350 &  0.29430269 &  0.18086501\\\\\n",
+       "\tSome College &  0.27805825 &  0.27333100 &  0.28396680\\\\\n",
+       "\tCollege Graduate &  0.31766990 &  0.29395316 &  0.34731324\\\\\n",
+       "\tAdvanced Degree &  0.13708738 &  0.10660608 &  0.17518567\\\\\n",
+       "\tNortheast &  0.25961165 &  0.25900035 &  0.26037571\\\\\n",
+       "\tMidwest &  0.29650485 &  0.29814750 &  0.29445173\\\\\n",
+       "\tSouth &  0.21611650 &  0.22090178 &  0.21013543\\\\\n",
+       "\tWest &  0.22776699 &  0.22195037 &  0.23503713\\\\\n",
+       "\tExperience & 13.76058252 & 13.78399161 & 13.73132372\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A xtable: 12 × 3\n",
+       "\n",
+       "| <!--/--> | All &lt;dbl&gt; | Men &lt;dbl&gt; | Women &lt;dbl&gt; |\n",
+       "|---|---|---|---|\n",
+       "| Log Wage |  2.97078670 |  2.98782963 |  2.94948490 |\n",
+       "| Sex |  0.44446602 |  0.00000000 |  1.00000000 |\n",
+       "| Less then High School |  0.02330097 |  0.03180706 |  0.01266929 |\n",
+       "| High School Graduate |  0.24388350 |  0.29430269 |  0.18086501 |\n",
+       "| Some College |  0.27805825 |  0.27333100 |  0.28396680 |\n",
+       "| College Graduate |  0.31766990 |  0.29395316 |  0.34731324 |\n",
+       "| Advanced Degree |  0.13708738 |  0.10660608 |  0.17518567 |\n",
+       "| Northeast |  0.25961165 |  0.25900035 |  0.26037571 |\n",
+       "| Midwest |  0.29650485 |  0.29814750 |  0.29445173 |\n",
+       "| South |  0.21611650 |  0.22090178 |  0.21013543 |\n",
+       "| West |  0.22776699 |  0.22195037 |  0.23503713 |\n",
+       "| Experience | 13.76058252 | 13.78399161 | 13.73132372 |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "                      All         Men         Women      \n",
+       "Log Wage               2.97078670  2.98782963  2.94948490\n",
+       "Sex                    0.44446602  0.00000000  1.00000000\n",
+       "Less then High School  0.02330097  0.03180706  0.01266929\n",
+       "High School Graduate   0.24388350  0.29430269  0.18086501\n",
+       "Some College           0.27805825  0.27333100  0.28396680\n",
+       "College Graduate       0.31766990  0.29395316  0.34731324\n",
+       "Advanced Degree        0.13708738  0.10660608  0.17518567\n",
+       "Northeast              0.25961165  0.25900035  0.26037571\n",
+       "Midwest                0.29650485  0.29814750  0.29445173\n",
+       "South                  0.21611650  0.22090178  0.21013543\n",
+       "West                   0.22776699  0.22195037  0.23503713\n",
+       "Experience            13.76058252 13.78399161 13.73132372"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "Z <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "data_female <- data[data$sex==1,]\n",
+    "Z_female <- data_female[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "data_male <- data[data$sex==0,]\n",
+    "Z_male <- data_male[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"ne\",\"mw\",\"so\",\"we\",\"exp1\"))]\n",
+    "\n",
+    "table <- matrix(0, 12, 3)\n",
+    "table[1:12,1]   <- as.numeric(lapply(Z,mean))\n",
+    "table[1:12,2]   <- as.numeric(lapply(Z_male,mean))\n",
+    "table[1:12,3]   <- as.numeric(lapply(Z_female,mean))\n",
+    "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Less then High School\",\"High School Graduate\",\"Some College\",\"College Graduate\",\"Advanced Degree\", \"Northeast\",\"Midwest\",\"South\",\"West\",\"Experience\")\n",
+    "colnames(table) <- c(\"All\",\"Men\",\"Women\")\n",
+    "tab<- xtable(table, digits = 4)\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 90,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.8861Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.882357Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.915279Z"
+    },
+    "id": "X81tdQRFyor4",
+    "outputId": "406ea0b4-4dda-4d81-d2a3-ef94505942c7"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<!-- html table generated in R 4.3.2 by xtable 1.8-4 package -->\n",
+      "<!-- Wed Feb  7 19:11:57 2024 -->\n",
+      "<table border=1>\n",
+      "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
+      "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> College Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n",
+      "   </table>\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(tab,type=\"html\") # set type=\"latex\" for printing table in LaTeX"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "zGq87hhPyor5"
+   },
+   "source": [
+    "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
+    "<!-- Mon Jan 18 10:41:44 2021 -->\n",
+    "<table border=1>\n",
+    "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
+    "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Gollage Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> South </td> <td align=\"right\"> 0.2161 </td> <td align=\"right\"> 0.2209 </td> <td align=\"right\"> 0.2101 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> West </td> <td align=\"right\"> 0.2278 </td> <td align=\"right\"> 0.2220 </td> <td align=\"right\"> 0.2350 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Experience </td> <td align=\"right\"> 13.7606 </td> <td align=\"right\"> 13.7840 </td> <td align=\"right\"> 13.7313 </td> </tr>\n",
+    "   </table>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "6AeYKnjuyor6"
+   },
+   "source": [
+    "In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 91,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 34
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.923496Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.920163Z",
+     "iopub.status.idle": "2021-07-12T16:59:32.950737Z"
+    },
+    "id": "r8B46bNgyor6",
+    "outputId": "b4d7a26d-fc67-4595-99d8-178ed1a872fe"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "-0.0383447336744149"
+      ],
+      "text/latex": [
+       "-0.0383447336744149"
+      ],
+      "text/markdown": [
+       "-0.0383447336744149"
+      ],
+      "text/plain": [
+       "[1] -0.03834473"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "mean(data_female$lwage)-mean(data_male$lwage)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "rHTtc671yor7"
+   },
+   "source": [
+    "Thus, the unconditional gender wage gap is about $3,8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "n3Bw_N6Jyor7"
+   },
+   "source": [
+    "This unconditional (predictive) effect of gender equals the coefficient $\\beta$ in the univariate ols regression of $Y$ on $D$:\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &=\\beta D + \\epsilon.\n",
+    "\\end{align}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "X76_SKi5yor8"
+   },
+   "source": [
+    "We verify this by running an ols regression in R."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 92,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:32.959171Z",
+     "iopub.status.busy": "2021-07-12T16:59:32.956083Z",
+     "iopub.status.idle": "2021-07-12T16:59:33.005653Z"
+    },
+    "id": "2kGIBjpYyor8",
+    "outputId": "bface8f9-2135-43bb-9e54-7ab2d5641b16"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The estimated coefficient on the dummy for gender is -0.03834473  and the corresponding robust standard error is 0.01590824"
+     ]
+    }
+   ],
+   "source": [
+    "nocontrol.fit <- lm(lwage ~ sex, data=data)\n",
+    "nocontrol.est <- summary(nocontrol.fit)$coef[\"sex\",1]\n",
+    "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3'); # HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
+    "nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
+    "\n",
+    "# print unconditional effect of gender and the corresponding standard error\n",
+    "cat (\"The estimated coefficient on the dummy for gender is\",nocontrol.est,\" and the corresponding robust standard error is\",nocontrol.se)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "UTiIT57Pyor8"
+   },
+   "source": [
+    "Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Uo8vOL0TyosB"
+   },
+   "source": [
+    "Next, we run an ols regression of $Y$ on $(D,W)$ to control for the effect of covariates summarized in $W$:\n",
+    "\n",
+    "\\begin{align}\n",
+    "\\log(Y) &=\\beta_1 D  + \\beta_2' W + \\epsilon.\n",
+    "\\end{align}\n",
+    "\n",
+    "Here, we are considering the flexible model from the previous lab. Hence, $W$ controls for experience, education, region, and occupation and industry indicators plus transformations and two-way interactions."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Q0phToJfyosB"
+   },
+   "source": [
+    "Let us run the ols regression with controls."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 93,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 1000
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:33.011754Z",
+     "iopub.status.busy": "2021-07-12T16:59:33.008621Z",
+     "iopub.status.idle": "2021-07-12T16:59:33.707831Z"
+    },
+    "id": "gemX0ZyTyosC",
+    "outputId": "e5255cb1-5bed-491b-98b9-f95c39aa13e6"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "\n",
+       "Call:\n",
+       "lm(formula = flex, data = data)\n",
+       "\n",
+       "Residuals:\n",
+       "    Min      1Q  Median      3Q     Max \n",
+       "-1.9384 -0.2782 -0.0041  0.2733  3.4934 \n",
+       "\n",
+       "Coefficients:\n",
+       "                 Estimate Std. Error t value Pr(>|t|)    \n",
+       "(Intercept)     3.8602606  0.4286188   9.006  < 2e-16 ***\n",
+       "sex            -0.0695532  0.0152180  -4.570 4.99e-06 ***\n",
+       "exp1           -0.0677247  0.1519756  -0.446 0.655885    \n",
+       "exp2            1.6362944  1.6909253   0.968 0.333246    \n",
+       "exp3           -0.9154735  0.6880249  -1.331 0.183388    \n",
+       "exp4            0.1429357  0.0907569   1.575 0.115337    \n",
+       "shs            -0.1233089  0.9068325  -0.136 0.891845    \n",
+       "hsg            -0.5289024  0.1977559  -2.675 0.007508 ** \n",
+       "scl            -0.2920581  0.1260155  -2.318 0.020510 *  \n",
+       "clg            -0.0411641  0.0703862  -0.585 0.558688    \n",
+       "C(occ2)2        0.1613397  0.1297243   1.244 0.213665    \n",
+       "C(occ2)3        0.2101514  0.1686774   1.246 0.212869    \n",
+       "C(occ2)4        0.0708570  0.1837167   0.386 0.699746    \n",
+       "C(occ2)5       -0.3960076  0.1885398  -2.100 0.035745 *  \n",
+       "C(occ2)6       -0.2310611  0.1869662  -1.236 0.216576    \n",
+       "C(occ2)7        0.3147249  0.1941519   1.621 0.105077    \n",
+       "C(occ2)8       -0.1875417  0.1692988  -1.108 0.268022    \n",
+       "C(occ2)9       -0.3390270  0.1672301  -2.027 0.042685 *  \n",
+       "C(occ2)10       0.0209545  0.1564982   0.134 0.893490    \n",
+       "C(occ2)11      -0.6424177  0.3090899  -2.078 0.037723 *  \n",
+       "C(occ2)12      -0.0674774  0.2520486  -0.268 0.788929    \n",
+       "C(occ2)13      -0.2329781  0.2315379  -1.006 0.314359    \n",
+       "C(occ2)14       0.2562009  0.3226729   0.794 0.427236    \n",
+       "C(occ2)15      -0.1938585  0.2595082  -0.747 0.455086    \n",
+       "C(occ2)16      -0.0551256  0.1470658  -0.375 0.707798    \n",
+       "C(occ2)17      -0.4156093  0.1361144  -3.053 0.002275 ** \n",
+       "C(occ2)18      -0.4822168  1.0443540  -0.462 0.644290    \n",
+       "C(occ2)19      -0.2579412  0.3325215  -0.776 0.437956    \n",
+       "C(occ2)20      -0.3010203  0.2341022  -1.286 0.198556    \n",
+       "C(occ2)21      -0.4271811  0.2206486  -1.936 0.052922 .  \n",
+       "C(occ2)22      -0.8694527  0.2975222  -2.922 0.003490 ** \n",
+       "C(ind2)3       -1.2473654  0.6454941  -1.932 0.053365 .  \n",
+       "C(ind2)4       -0.0948281  0.4636021  -0.205 0.837935    \n",
+       "C(ind2)5       -0.5293860  0.4345990  -1.218 0.223244    \n",
+       "C(ind2)6       -0.6221688  0.4347226  -1.431 0.152441    \n",
+       "C(ind2)7       -0.5047497  0.5024770  -1.005 0.315176    \n",
+       "C(ind2)8       -0.7295442  0.4674008  -1.561 0.118623    \n",
+       "C(ind2)9       -0.8025334  0.4252462  -1.887 0.059190 .  \n",
+       "C(ind2)10      -0.5805840  0.4808776  -1.207 0.227358    \n",
+       "C(ind2)11      -0.9852350  0.4481566  -2.198 0.027966 *  \n",
+       "C(ind2)12      -0.7375777  0.4243260  -1.738 0.082232 .  \n",
+       "C(ind2)13      -1.0183283  0.4826544  -2.110 0.034922 *  \n",
+       "C(ind2)14      -0.5860174  0.4159033  -1.409 0.158892    \n",
+       "C(ind2)15      -0.3801359  0.5908517  -0.643 0.520014    \n",
+       "C(ind2)16      -0.5703905  0.4386579  -1.300 0.193556    \n",
+       "C(ind2)17      -0.8201843  0.4259846  -1.925 0.054239 .  \n",
+       "C(ind2)18      -0.7613604  0.4238287  -1.796 0.072495 .  \n",
+       "C(ind2)19      -0.8812815  0.4565671  -1.930 0.053635 .  \n",
+       "C(ind2)20      -0.9099021  0.4484198  -2.029 0.042499 *  \n",
+       "C(ind2)21      -0.7586534  0.4405801  -1.722 0.085143 .  \n",
+       "C(ind2)22      -0.4040775  0.4328735  -0.933 0.350620    \n",
+       "mw              0.1106834  0.0814463   1.359 0.174218    \n",
+       "so              0.0224244  0.0743855   0.301 0.763075    \n",
+       "we             -0.0215659  0.0841591  -0.256 0.797767    \n",
+       "exp1:shs       -0.1919981  0.1955408  -0.982 0.326206    \n",
+       "exp1:hsg       -0.0173433  0.0572279  -0.303 0.761859    \n",
+       "exp1:scl       -0.0664505  0.0433730  -1.532 0.125570    \n",
+       "exp1:clg       -0.0550346  0.0310279  -1.774 0.076172 .  \n",
+       "exp1:C(occ2)2  -0.0736239  0.0501108  -1.469 0.141837    \n",
+       "exp1:C(occ2)3  -0.0714859  0.0637688  -1.121 0.262336    \n",
+       "exp1:C(occ2)4  -0.0723997  0.0747715  -0.968 0.332953    \n",
+       "exp1:C(occ2)5   0.0946732  0.0794005   1.192 0.233182    \n",
+       "exp1:C(occ2)6  -0.0348928  0.0712136  -0.490 0.624175    \n",
+       "exp1:C(occ2)7  -0.2279338  0.0784860  -2.904 0.003699 ** \n",
+       "exp1:C(occ2)8  -0.0727459  0.0645883  -1.126 0.260094    \n",
+       "exp1:C(occ2)9   0.0274143  0.0669517   0.409 0.682217    \n",
+       "exp1:C(occ2)10  0.0075628  0.0581715   0.130 0.896564    \n",
+       "exp1:C(occ2)11  0.1014221  0.1005094   1.009 0.312986    \n",
+       "exp1:C(occ2)12 -0.0862744  0.0874768  -0.986 0.324057    \n",
+       "exp1:C(occ2)13  0.0067149  0.0761825   0.088 0.929768    \n",
+       "exp1:C(occ2)14 -0.1369153  0.0974458  -1.405 0.160073    \n",
+       "exp1:C(occ2)15 -0.0400425  0.0898931  -0.445 0.656017    \n",
+       "exp1:C(occ2)16 -0.0539314  0.0520926  -1.035 0.300580    \n",
+       "exp1:C(occ2)17  0.0147277  0.0467903   0.315 0.752958    \n",
+       "exp1:C(occ2)18  0.1074099  0.4718440   0.228 0.819937    \n",
+       "exp1:C(occ2)19  0.0047165  0.1060745   0.044 0.964536    \n",
+       "exp1:C(occ2)20  0.0243156  0.0743274   0.327 0.743575    \n",
+       "exp1:C(occ2)21  0.0791776  0.0696947   1.136 0.255985    \n",
+       "exp1:C(occ2)22  0.1093246  0.0880828   1.241 0.214607    \n",
+       "exp1:C(ind2)3   0.4758891  0.2227484   2.136 0.032693 *  \n",
+       "exp1:C(ind2)4   0.0147304  0.1571102   0.094 0.925305    \n",
+       "exp1:C(ind2)5   0.1256987  0.1531626   0.821 0.411864    \n",
+       "exp1:C(ind2)6   0.1540275  0.1524289   1.010 0.312312    \n",
+       "exp1:C(ind2)7   0.1029245  0.1786939   0.576 0.564654    \n",
+       "exp1:C(ind2)8   0.2357669  0.1689203   1.396 0.162859    \n",
+       "exp1:C(ind2)9   0.1359079  0.1489486   0.912 0.361578    \n",
+       "exp1:C(ind2)10  0.1512578  0.1644341   0.920 0.357687    \n",
+       "exp1:C(ind2)11  0.3174885  0.1590023   1.997 0.045907 *  \n",
+       "exp1:C(ind2)12  0.2591089  0.1510588   1.715 0.086356 .  \n",
+       "exp1:C(ind2)13  0.3396094  0.1669241   2.035 0.041954 *  \n",
+       "exp1:C(ind2)14  0.1441411  0.1477994   0.975 0.329485    \n",
+       "exp1:C(ind2)15 -0.0568181  0.2349853  -0.242 0.808950    \n",
+       "exp1:C(ind2)16  0.0847295  0.1550425   0.546 0.584753    \n",
+       "exp1:C(ind2)17  0.1728867  0.1513280   1.142 0.253317    \n",
+       "exp1:C(ind2)18  0.1565399  0.1494171   1.048 0.294842    \n",
+       "exp1:C(ind2)19  0.1516103  0.1620851   0.935 0.349641    \n",
+       "exp1:C(ind2)20  0.1326629  0.1566883   0.847 0.397222    \n",
+       "exp1:C(ind2)21  0.2190905  0.1555052   1.409 0.158930    \n",
+       "exp1:C(ind2)22  0.1145814  0.1523427   0.752 0.452010    \n",
+       "exp1:mw        -0.0279931  0.0296572  -0.944 0.345274    \n",
+       "exp1:so        -0.0099678  0.0266868  -0.374 0.708786    \n",
+       "exp1:we         0.0063077  0.0301417   0.209 0.834248    \n",
+       "exp2:shs        1.9005060  1.4502480   1.310 0.190098    \n",
+       "exp2:hsg        0.1171642  0.5509729   0.213 0.831609    \n",
+       "exp2:scl        0.6217923  0.4629986   1.343 0.179344    \n",
+       "exp2:clg        0.4096746  0.3802171   1.077 0.281321    \n",
+       "exp2:C(occ2)2   0.6632173  0.5523220   1.201 0.229895    \n",
+       "exp2:C(occ2)3   0.6415456  0.7102783   0.903 0.366448    \n",
+       "exp2:C(occ2)4   0.9748422  0.8655351   1.126 0.260099    \n",
+       "exp2:C(occ2)5  -0.9778823  0.9737990  -1.004 0.315335    \n",
+       "exp2:C(occ2)6   0.1050860  0.8002267   0.131 0.895527    \n",
+       "exp2:C(occ2)7   3.1407119  0.9389423   3.345 0.000829 ***\n",
+       "exp2:C(occ2)8   0.6710877  0.7192077   0.933 0.350818    \n",
+       "exp2:C(occ2)9   0.0231977  0.7629142   0.030 0.975744    \n",
+       "exp2:C(occ2)10 -0.2692292  0.6405270  -0.420 0.674267    \n",
+       "exp2:C(occ2)11 -1.0816539  1.0057575  -1.075 0.282221    \n",
+       "exp2:C(occ2)12  0.8323737  0.9341245   0.891 0.372933    \n",
+       "exp2:C(occ2)13 -0.2209813  0.7728463  -0.286 0.774942    \n",
+       "exp2:C(occ2)14  0.7511163  0.9272548   0.810 0.417955    \n",
+       "exp2:C(occ2)15 -0.0326858  0.9409116  -0.035 0.972290    \n",
+       "exp2:C(occ2)16  0.3635814  0.5509550   0.660 0.509342    \n",
+       "exp2:C(occ2)17 -0.2659285  0.4861131  -0.547 0.584369    \n",
+       "exp2:C(occ2)18 -2.5608762  5.1700911  -0.495 0.620393    \n",
+       "exp2:C(occ2)19 -0.1291756  1.0616901  -0.122 0.903165    \n",
+       "exp2:C(occ2)20 -0.3323297  0.7229071  -0.460 0.645743    \n",
+       "exp2:C(occ2)21 -0.9099997  0.6854114  -1.328 0.184349    \n",
+       "exp2:C(occ2)22 -0.8550536  0.8279414  -1.033 0.301773    \n",
+       "exp2:C(ind2)3  -5.9368948  2.4067939  -2.467 0.013670 *  \n",
+       "exp2:C(ind2)4  -1.1053411  1.7101982  -0.646 0.518100    \n",
+       "exp2:C(ind2)5  -2.0149181  1.6919190  -1.191 0.233748    \n",
+       "exp2:C(ind2)6  -2.2277748  1.6816902  -1.325 0.185325    \n",
+       "exp2:C(ind2)7  -1.4648099  2.0137888  -0.727 0.467022    \n",
+       "exp2:C(ind2)8  -2.9479949  1.8595425  -1.585 0.112955    \n",
+       "exp2:C(ind2)9  -1.7796219  1.6471248  -1.080 0.279999    \n",
+       "exp2:C(ind2)10 -2.1973300  1.7738638  -1.239 0.215507    \n",
+       "exp2:C(ind2)11 -3.8776807  1.7637372  -2.199 0.027956 *  \n",
+       "exp2:C(ind2)12 -3.1690425  1.6819362  -1.884 0.059602 .  \n",
+       "exp2:C(ind2)13 -3.9651983  1.8130709  -2.187 0.028789 *  \n",
+       "exp2:C(ind2)14 -2.0783289  1.6490355  -1.260 0.207610    \n",
+       "exp2:C(ind2)15  0.1911692  2.6075396   0.073 0.941559    \n",
+       "exp2:C(ind2)16 -1.3265850  1.7185648  -0.772 0.440202    \n",
+       "exp2:C(ind2)17 -2.2002873  1.6837183  -1.307 0.191341    \n",
+       "exp2:C(ind2)18 -2.2006232  1.6566630  -1.328 0.184125    \n",
+       "exp2:C(ind2)19 -1.9308536  1.7876673  -1.080 0.280152    \n",
+       "exp2:C(ind2)20 -1.9467267  1.7244008  -1.129 0.258983    \n",
+       "exp2:C(ind2)21 -3.1127363  1.7237908  -1.806 0.071019 .  \n",
+       "exp2:C(ind2)22 -1.8578340  1.6849542  -1.103 0.270254    \n",
+       "exp2:mw         0.2005611  0.3172911   0.632 0.527348    \n",
+       "exp2:so         0.0544354  0.2815662   0.193 0.846708    \n",
+       "exp2:we         0.0012717  0.3207873   0.004 0.996837    \n",
+       "exp3:shs       -0.6721239  0.4426627  -1.518 0.128987    \n",
+       "exp3:hsg       -0.0179937  0.2083176  -0.086 0.931171    \n",
+       "exp3:scl       -0.1997877  0.1855189  -1.077 0.281572    \n",
+       "exp3:clg       -0.1025230  0.1643648  -0.624 0.532819    \n",
+       "exp3:C(occ2)2  -0.2039403  0.2211386  -0.922 0.356455    \n",
+       "exp3:C(occ2)3  -0.2369620  0.2870372  -0.826 0.409103    \n",
+       "exp3:C(occ2)4  -0.4366958  0.3520168  -1.241 0.214830    \n",
+       "exp3:C(occ2)5   0.3885298  0.4118861   0.943 0.345577    \n",
+       "exp3:C(occ2)6   0.0484737  0.3293525   0.147 0.882997    \n",
+       "exp3:C(occ2)7  -1.3949288  0.4050109  -3.444 0.000578 ***\n",
+       "exp3:C(occ2)8  -0.2053899  0.2895727  -0.709 0.478181    \n",
+       "exp3:C(occ2)9  -0.0909660  0.3143348  -0.289 0.772293    \n",
+       "exp3:C(occ2)10  0.1854753  0.2575565   0.720 0.471477    \n",
+       "exp3:C(occ2)11  0.3931553  0.3817758   1.030 0.303152    \n",
+       "exp3:C(occ2)12 -0.2202559  0.3660206  -0.602 0.547363    \n",
+       "exp3:C(occ2)13  0.0950356  0.2904370   0.327 0.743519    \n",
+       "exp3:C(occ2)14 -0.1443933  0.3341622  -0.432 0.665684    \n",
+       "exp3:C(occ2)15  0.1477077  0.3645191   0.405 0.685339    \n",
+       "exp3:C(occ2)16 -0.0378548  0.2151288  -0.176 0.860330    \n",
+       "exp3:C(occ2)17  0.1510497  0.1878081   0.804 0.421276    \n",
+       "exp3:C(occ2)18  1.4084443  1.8852467   0.747 0.455047    \n",
+       "exp3:C(occ2)19  0.0923425  0.4042308   0.228 0.819314    \n",
+       "exp3:C(occ2)20  0.1806994  0.2652079   0.681 0.495682    \n",
+       "exp3:C(occ2)21  0.3779083  0.2553031   1.480 0.138875    \n",
+       "exp3:C(occ2)22  0.2855058  0.2984206   0.957 0.338754    \n",
+       "exp3:C(ind2)3   2.6665808  0.9807497   2.719 0.006573 ** \n",
+       "exp3:C(ind2)4   0.7298431  0.6879811   1.061 0.288811    \n",
+       "exp3:C(ind2)5   0.9942250  0.6842435   1.453 0.146280    \n",
+       "exp3:C(ind2)6   1.0641428  0.6800948   1.565 0.117718    \n",
+       "exp3:C(ind2)7   0.7089089  0.8337963   0.850 0.395245    \n",
+       "exp3:C(ind2)8   1.2340948  0.7483474   1.649 0.099193 .  \n",
+       "exp3:C(ind2)9   0.8287315  0.6675904   1.241 0.214526    \n",
+       "exp3:C(ind2)10  1.0448162  0.7066717   1.479 0.139337    \n",
+       "exp3:C(ind2)11  1.6877578  0.7162155   2.356 0.018487 *  \n",
+       "exp3:C(ind2)12  1.3734455  0.6835570   2.009 0.044564 *  \n",
+       "exp3:C(ind2)13  1.6376669  0.7259301   2.256 0.024117 *  \n",
+       "exp3:C(ind2)14  1.0162910  0.6714525   1.514 0.130199    \n",
+       "exp3:C(ind2)15  0.1879483  1.0299675   0.182 0.855214    \n",
+       "exp3:C(ind2)16  0.6889680  0.6968028   0.989 0.322831    \n",
+       "exp3:C(ind2)17  1.0085540  0.6836992   1.475 0.140238    \n",
+       "exp3:C(ind2)18  1.0605598  0.6725232   1.577 0.114863    \n",
+       "exp3:C(ind2)19  0.8959865  0.7225602   1.240 0.215029    \n",
+       "exp3:C(ind2)20  0.9768944  0.6955822   1.404 0.160255    \n",
+       "exp3:C(ind2)21  1.4415215  0.6996480   2.060 0.039418 *  \n",
+       "exp3:C(ind2)22  0.9687884  0.6828498   1.419 0.156037    \n",
+       "exp3:mw        -0.0625771  0.1241291  -0.504 0.614194    \n",
+       "exp3:so        -0.0115842  0.1084217  -0.107 0.914917    \n",
+       "exp3:we        -0.0124875  0.1251376  -0.100 0.920515    \n",
+       "exp4:shs        0.0777418  0.0475427   1.635 0.102071    \n",
+       "exp4:hsg        0.0004913  0.0265964   0.018 0.985264    \n",
+       "exp4:scl        0.0210760  0.0245289   0.859 0.390256    \n",
+       "exp4:clg        0.0078695  0.0227528   0.346 0.729457    \n",
+       "exp4:C(occ2)2   0.0176389  0.0289257   0.610 0.542021    \n",
+       "exp4:C(occ2)3   0.0303057  0.0376552   0.805 0.420962    \n",
+       "exp4:C(occ2)4   0.0584146  0.0457704   1.276 0.201927    \n",
+       "exp4:C(occ2)5  -0.0515181  0.0549489  -0.938 0.348514    \n",
+       "exp4:C(occ2)6  -0.0170182  0.0440847  -0.386 0.699488    \n",
+       "exp4:C(occ2)7   0.1905353  0.0558757   3.410 0.000655 ***\n",
+       "exp4:C(occ2)8   0.0196522  0.0379084   0.518 0.604195    \n",
+       "exp4:C(occ2)9   0.0190014  0.0421099   0.451 0.651841    \n",
+       "exp4:C(occ2)10 -0.0333347  0.0338825  -0.984 0.325246    \n",
+       "exp4:C(occ2)11 -0.0465914  0.0479018  -0.973 0.330778    \n",
+       "exp4:C(occ2)12  0.0110212  0.0470536   0.234 0.814820    \n",
+       "exp4:C(occ2)13 -0.0136895  0.0358988  -0.381 0.702970    \n",
+       "exp4:C(occ2)14  0.0055582  0.0400331   0.139 0.889581    \n",
+       "exp4:C(occ2)15 -0.0327444  0.0462379  -0.708 0.478872    \n",
+       "exp4:C(occ2)16 -0.0089706  0.0275729  -0.325 0.744937    \n",
+       "exp4:C(occ2)17 -0.0256735  0.0239306  -1.073 0.283400    \n",
+       "exp4:C(occ2)18 -0.2121372  0.2204003  -0.963 0.335841    \n",
+       "exp4:C(occ2)19 -0.0169398  0.0513428  -0.330 0.741463    \n",
+       "exp4:C(occ2)20 -0.0296125  0.0323353  -0.916 0.359819    \n",
+       "exp4:C(occ2)21 -0.0524577  0.0317251  -1.654 0.098291 .  \n",
+       "exp4:C(occ2)22 -0.0350646  0.0360687  -0.972 0.331018    \n",
+       "exp4:C(ind2)3  -0.3851791  0.1329065  -2.898 0.003771 ** \n",
+       "exp4:C(ind2)4  -0.1209478  0.0899580  -1.344 0.178852    \n",
+       "exp4:C(ind2)5  -0.1441045  0.0897994  -1.605 0.108616    \n",
+       "exp4:C(ind2)6  -0.1526110  0.0892689  -1.710 0.087410 .  \n",
+       "exp4:C(ind2)7  -0.1001993  0.1119398  -0.895 0.370768    \n",
+       "exp4:C(ind2)8  -0.1609664  0.0979780  -1.643 0.100471    \n",
+       "exp4:C(ind2)9  -0.1178080  0.0877821  -1.342 0.179642    \n",
+       "exp4:C(ind2)10 -0.1482842  0.0918416  -1.615 0.106469    \n",
+       "exp4:C(ind2)11 -0.2322961  0.0944506  -2.459 0.013949 *  \n",
+       "exp4:C(ind2)12 -0.1872911  0.0899985  -2.081 0.037481 *  \n",
+       "exp4:C(ind2)13 -0.2155617  0.0946011  -2.279 0.022731 *  \n",
+       "exp4:C(ind2)14 -0.1483524  0.0884992  -1.676 0.093740 .  \n",
+       "exp4:C(ind2)15 -0.0532195  0.1313815  -0.405 0.685439    \n",
+       "exp4:C(ind2)16 -0.1044336  0.0916252  -1.140 0.254429    \n",
+       "exp4:C(ind2)17 -0.1427349  0.0899315  -1.587 0.112543    \n",
+       "exp4:C(ind2)18 -0.1546248  0.0885883  -1.745 0.080973 .  \n",
+       "exp4:C(ind2)19 -0.1269592  0.0948784  -1.338 0.180918    \n",
+       "exp4:C(ind2)20 -0.1468554  0.0911188  -1.612 0.107094    \n",
+       "exp4:C(ind2)21 -0.2032619  0.0920972  -2.207 0.027358 *  \n",
+       "exp4:C(ind2)22 -0.1480951  0.0897937  -1.649 0.099154 .  \n",
+       "exp4:mw         0.0062439  0.0158699   0.393 0.694007    \n",
+       "exp4:so         0.0003145  0.0136275   0.023 0.981591    \n",
+       "exp4:we         0.0017685  0.0159602   0.111 0.911776    \n",
+       "---\n",
+       "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1\n",
+       "\n",
+       "Residual standard error: 0.4708 on 4904 degrees of freedom\n",
+       "Multiple R-squared:  0.3511,\tAdjusted R-squared:  0.3187 \n",
+       "F-statistic: 10.83 on 245 and 4904 DF,  p-value: < 2.2e-16\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Coefficient for OLS with controls -0.0695532"
+     ]
+    }
+   ],
+   "source": [
+    "# ols regression with controls\n",
+    "\n",
+    "flex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
+    "\n",
+    "#   Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
+    "#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "#  This is not intuitive at all, but that's what it does.\n",
+    "\n",
+    "control.fit <- lm(flex, data=data)\n",
+    "control.est <- summary(control.fit)$coef[2,1]\n",
+    "\n",
+    "summary(control.fit)\n",
+    "\n",
+    "cat(\"Coefficient for OLS with controls\", control.est)\n",
+    "\n",
+    "HCV.coefs <- vcovHC(control.fit, type = 'HC3');\n",
+    "control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "oVs_jmB1yosC"
+   },
+   "source": [
+    "The estimated regression coefficient $\\beta_1\\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.\n",
+    "We can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\\% for women increases to about $7$\\% after controlling for worker characteristics.  \n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We now show how the conditional gap and the remainder decompose the marginal wage gap into the parts explained and unexplained by the additional controls. (Note that this does *not* explain why there is a difference in the controls to begin with in the two groups.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
+    "\n",
+    "cat(\"The unexplained difference: \",control.est)\n",
+    "\n",
+    "XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==0,])\n",
+    "y0  = data[data$sex==0,]$lwage\n",
+    "XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==1,])\n",
+    "y1  = data[data$sex==1,]$lwage\n",
+    "mu1 = colMeans(XX1)\n",
+    "mu0 = colMeans(XX0)\n",
+    "betarest = summary(control.fit)$coef[3:246,1] # the coefficients excluding intercept and \"sex\"\n",
+    "cat(\"The explained difference:\",sum(betarest*(mu1[2:245]-mu0[2:245])))\n",
+    "\n",
+    "cat(\"The sum of these differences:\",control.est + sum(betarest*(mu1[2:245]-mu0[2:245])))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "library(MASS)\n",
+    "beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0\n",
+    "beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1\n",
+    "\n",
+    "cat(\"The marginal gap:\",mean(data_female$lwage)-mean(data_male$lwage))\n",
+    "cat(\"The unexplained difference:\",beta1[1]-beta0[1])\n",
+    "cat(\"The difference explained by endowment:\",sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])))\n",
+    "cat(\"The difference explained by coefficient:\",sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))\n",
+    "cat(\"The sum of these differences:\",beta1[1]-beta0[1] + sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])) + sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "rzsU_0dsyosD"
+   },
+   "source": [
+    "Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 94,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 52
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:33.713947Z",
+     "iopub.status.busy": "2021-07-12T16:59:33.710612Z",
+     "iopub.status.idle": "2021-07-12T16:59:34.077195Z"
+    },
+    "id": "iYSsI8ZEyosD",
+    "outputId": "a11b3ec7-f1ec-4488-9350-69a28481d342"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Coefficient for D via partialling-out -0.0695532"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<style>\n",
+       ".dl-inline {width: auto; margin:0; padding: 0}\n",
+       ".dl-inline>dt, .dl-inline>dd {float: none; width: auto; display: inline-block}\n",
+       ".dl-inline>dt::after {content: \":\\0020\"; padding-right: .5ex}\n",
+       ".dl-inline>dt:not(:first-of-type) {padding-left: .5ex}\n",
+       "</style><dl class=dl-inline><dt>2.5 %</dt><dd>-0.098671423574863</dd><dt>97.5 %</dt><dd>-0.0404349830188283</dd></dl>\n"
+      ],
+      "text/latex": [
+       "\\begin{description*}\n",
+       "\\item[2.5 \\textbackslash{}\\%] -0.098671423574863\n",
+       "\\item[97.5 \\textbackslash{}\\%] -0.0404349830188283\n",
+       "\\end{description*}\n"
+      ],
+      "text/markdown": [
+       "2.5 %\n",
+       ":   -0.09867142357486397.5 %\n",
+       ":   -0.0404349830188283\n",
+       "\n"
+      ],
+      "text/plain": [
+       "      2.5 %      97.5 % \n",
+       "-0.09867142 -0.04043498 "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Partialling-out using ols\n",
+    "\n",
+    "# models\n",
+    "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y\n",
+    "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- lm(flex.y, data=data)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- lm(flex.d, data=data)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.fit <- lm(t.Y~t.D)\n",
+    "partial.est <- summary(partial.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out\", partial.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.fit, type = 'HC3')\n",
+    "partial.se <- sqrt(diag(HCV.coefs))[2]\n",
+    "\n",
+    "# confidence interval\n",
+    "confint(partial.fit)[2,]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "K58yKR0qyosH"
+   },
+   "source": [
+    "Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "IpWd1dISyosH"
+   },
+   "source": [
+    "We know that the partialling-out approach works well when the dimension of $W$ is low\n",
+    "in relation to the sample size $n$. When the dimension of $W$ is relatively high, we need to use variable selection\n",
+    "or penalization for regularization purposes.\n",
+    "\n",
+    "In the following, we illustrate the partialling-out approach using lasso instead of ols."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 95,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:34.081773Z",
+     "iopub.status.busy": "2021-07-12T16:59:34.080233Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.470399Z"
+    },
+    "id": "Pd-5O1U8yosH",
+    "outputId": "ffc5adbe-b367-422c-9421-112485563b6e"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Coefficient for D via partialling-out using lasso -0.07193551"
+     ]
+    }
+   ],
+   "source": [
+    "# Partialling-out using lasso\n",
+    "\n",
+    "# models\n",
+    "flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y\n",
+    "flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- rlasso(flex.y, data=data)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- rlasso(flex.d, data=data)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.lasso.fit <- lm(t.Y~t.D)\n",
+    "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
+    "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "cNuW404SyosI"
+   },
+   "source": [
+    "Using lasso for partialling-out here provides similar results as using ols."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "k1c-QjpFyosI"
+   },
+   "source": [
+    "Next, we summarize the results."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 96,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 224
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.47687Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.473312Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.536069Z"
+    },
+    "id": "IpU4gNZayosI",
+    "outputId": "fdb05e51-0596-4804-bad2-50c729ddd0aa"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A xtable: 4 × 2</caption>\n",
+       "<thead>\n",
+       "\t<tr><th></th><th scope=col>Estimate</th><th scope=col>Std. Error</th></tr>\n",
+       "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><th scope=row>Without controls</th><td>-0.03834473</td><td>0.01590824</td></tr>\n",
+       "\t<tr><th scope=row>full reg</th><td>-0.06955320</td><td>0.01569920</td></tr>\n",
+       "\t<tr><th scope=row>partial reg</th><td>-0.06955320</td><td>0.01500873</td></tr>\n",
+       "\t<tr><th scope=row>partial reg via lasso</th><td>-0.07193551</td><td>0.01539897</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A xtable: 4 × 2\n",
+       "\\begin{tabular}{r|ll}\n",
+       "  & Estimate & Std. Error\\\\\n",
+       "  & <dbl> & <dbl>\\\\\n",
+       "\\hline\n",
+       "\tWithout controls & -0.03834473 & 0.01590824\\\\\n",
+       "\tfull reg & -0.06955320 & 0.01569920\\\\\n",
+       "\tpartial reg & -0.06955320 & 0.01500873\\\\\n",
+       "\tpartial reg via lasso & -0.07193551 & 0.01539897\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A xtable: 4 × 2\n",
+       "\n",
+       "| <!--/--> | Estimate &lt;dbl&gt; | Std. Error &lt;dbl&gt; |\n",
+       "|---|---|---|\n",
+       "| Without controls | -0.03834473 | 0.01590824 |\n",
+       "| full reg | -0.06955320 | 0.01569920 |\n",
+       "| partial reg | -0.06955320 | 0.01500873 |\n",
+       "| partial reg via lasso | -0.07193551 | 0.01539897 |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "                      Estimate    Std. Error\n",
+       "Without controls      -0.03834473 0.01590824\n",
+       "full reg              -0.06955320 0.01569920\n",
+       "partial reg           -0.06955320 0.01500873\n",
+       "partial reg via lasso -0.07193551 0.01539897"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "table<- matrix(0, 4, 2)\n",
+    "table[1,1]<- nocontrol.est\n",
+    "table[1,2]<- nocontrol.se\n",
+    "table[2,1]<- control.est\n",
+    "table[2,2]<- control.se\n",
+    "table[3,1]<- partial.est\n",
+    "table[3,2]<- partial.se\n",
+    "table[4,1]<-  partial.lasso.est\n",
+    "table[4,2]<- partial.lasso.se\n",
+    "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
+    "rownames(table)<- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\n",
+    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.539348Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.538094Z",
+     "iopub.status.idle": "2021-07-12T16:59:37.552624Z"
+    },
+    "id": "wGa29D7NyosJ",
+    "outputId": "36b56e8c-3853-48e6-8740-16db8a5eab9e"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<!-- html table generated in R 4.3.2 by xtable 1.8-4 package -->\n",
+      "<!-- Wed Feb  7 19:12:24 2024 -->\n",
+      "<table border=1>\n",
+      "<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n",
+      "  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0157 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
+      "  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n",
+      "   </table>\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(tab, type=\"html\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "TJwfLANWyosK"
+   },
+   "source": [
+    "<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->\n",
+    "<!-- Mon Jan 18 11:56:24 2021 -->\n",
+    "<table border=1>\n",
+    "<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>\n",
+    "  <tr> <td align=\"right\"> Without controls </td> <td align=\"right\"> -0.038 </td> <td align=\"right\"> 0.0159 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> full reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> partial reg </td> <td align=\"right\"> -0.070 </td> <td align=\"right\"> 0.0150 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> partial reg via lasso </td> <td align=\"right\"> -0.072 </td> <td align=\"right\"> 0.0154 </td> </tr>\n",
+    "   </table>\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "unil0UcWyosK"
+   },
+   "source": [
+    "It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n",
+    "\n",
+    "Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect\n",
+    "selection effects of unobserved differences in covariates between men and women in our sample.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "v-PlTq6xQ889"
+   },
+   "source": [
+    "## OLS Overfitting"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "9xPz2qcVyosK"
+   },
+   "source": [
+    "Next we motivate the usage of lasso. We try an \"extra\" flexible model, where we take interactions of all controls, giving us about 1000 controls. To highlight the potential impact of overfitting on inference, we subset to the first 1000 observations so that $p \\approx n$."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "metadata": {
+    "id": "hjSPZpef1Mfc"
+   },
+   "outputs": [],
+   "source": [
+    "set.seed(2724)\n",
+    "subset_size <- 1000\n",
+    "random <- sample(1:nrow(data), subset_size)\n",
+    "subset <- data[random,]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "n8rHd4_Q-64D"
+   },
+   "source": [
+    "For a linear model, the covariance matrix of the estimated $\\hat{\\beta}$ coefficients is given by $$\\Sigma_{\\hat{\\beta}} = (X'X)^{-1} X' \\Omega X (X'X)^{-1}$$ Under homoskedasticity, $\\Omega = \\sigma^2 I$ so $\\Sigma_{\\hat{\\beta}}$ reduces to $\\sigma^2(X'X)^{-1}$ with $\\sigma^2$ estimated with the mean squared residuals. Under heteroskedasticity, $\\Omega \\neq \\sigma^2 I$, so we must use an approach that yields valid standard errors. Under heteroskedasticity, there exists a variety of consistent \"sandwich\" estimators proposed for $\\Sigma_{\\hat{\\beta}}$. With $e_i$ denoting the residual of observation $i:\n",
+    "\n",
+    "$ HC0 = (X'X)^{-1} X' \\text{diag} [e_i^2] X(X'X)^{-1}$\n",
+    "\n",
+    "$ HC1 = \\frac{n}{n-p-1} (X'X)^{-1} X' \\text{diag} [e_i^2] X(X'X)^{-1}$\n",
+    "\n",
+    "$ HC2 = (X'X)^{-1} X' \\text{diag} \\left[\\frac{e_i^2}{1-h_{ii}} \\right] X(X'X)^{-1}$\n",
+    "\n",
+    "$ HC3 = (X'X)^{-1} X' \\text{diag}  \\left[\\frac{e_i^2}{(1-h_{ii})^2} \\right] X(X'X)^{-1}$\n",
+    "\n",
+    "\n",
+    "For small sample sizes, the errors from HC0 are biased (usually downward). HC1 is a simple degree-of-freedom adjustment. HC2 is inspired by the insight that HC0's bias in finite samples results from points of high leverage in the design matrix $X$ (intuitively, outliers with respect to the independent variables). Thus, HC2 weights the $i$th squared residual by the reciprocal of $(1-h_{ii})$, with leverage values $h_{ii}$ as the $i$th diagonal element of the \"hat\" matrix $H = X(X'X)^{-1}X'$ to adjust for the finite-sample bias present in HC0.\n",
+    "\n",
+    "HC3 is similar to HC2, weighting by the squared $(1-h_{ii})^2$ in the denominator instead. HC3 is also equivalent to jackknife standard errors. HC3 has been shown to perform well regardless of the absence/presence of homoskedasticity and remains valid, in the sense of being biased upward under regularity conditions, in high dimensional settings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 105,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:37.555574Z",
+     "iopub.status.busy": "2021-07-12T16:59:37.554654Z",
+     "iopub.status.idle": "2021-07-12T16:59:43.753096Z"
+    },
+    "id": "vZ84pYQVyosL",
+    "outputId": "f73bb150-a229-43b5-e052-7ab8390cc851"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Number of Extra-Flex Controls 979 \n",
+      "Coefficient for OLS with extra flex controls -0.06699231"
+     ]
+    }
+   ],
+   "source": [
+    "# extra flexible model\n",
+    "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\n",
+    "\n",
+    "control.fit <- lm(extraflex, data=subset)\n",
+    "#summary(control.fit)\n",
+    "control.est <- summary(control.fit)$coef[2,1]\n",
+    "cat(\"Number of Extra-Flex Controls\", length(control.fit$coef)-1, \"\\n\")\n",
+    "cat(\"Coefficient for OLS with extra flex controls\", control.est)\n",
+    "\n",
+    "\n",
+    "n=subset_size; p=length(control.fit$coef);\n",
+    "\n",
+    "# HC0 SE\n",
+    "HCV.coefs_HC0 <- vcovHC(control.fit, type = 'HC0')\n",
+    "control.se.HC0 <- sqrt(diag(HCV.coefs_HC0))[2]\n",
+    "\n",
+    "# For a more correct approach, we\n",
+    "# would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure.\n",
+    "\n",
+    "# Jackknife. Need to trim some leverages or otherwise regularize. Theory shouldn't\n",
+    "# really work here.\n",
+    "# HC3 SE\n",
+    "# estimates\n",
+    "coefs = hatvalues(control.fit)\n",
+    "trim = 0.99999999999\n",
+    "coefs_trimmed = coefs*(coefs < trim) + trim*(coefs >= trim)\n",
+    "omega = (control.fit$residuals^2)/((1-coefs_trimmed)^2)\n",
+    "HCV.coefs <- vcovHC(control.fit, omega = as.vector(omega), type = 'HC3')\n",
+    "control.se.HC3 <- sqrt(diag(HCV.coefs))[2]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 101,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T16:59:43.758359Z",
+     "iopub.status.busy": "2021-07-12T16:59:43.756261Z",
+     "iopub.status.idle": "2021-07-12T17:00:17.223523Z"
+    },
+    "id": "SfB4go24yosL",
+    "outputId": "8584501d-8152-4b94-c516-4c901683c7a4"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Coefficient for D via partialling-out using lasso -0.05378994"
+     ]
+    }
+   ],
+   "source": [
+    "# models\n",
+    "extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for Y\n",
+    "extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for D\n",
+    "\n",
+    "# partialling-out the linear effect of W from Y\n",
+    "t.Y <- rlasso(extraflex.y, data=subset)$res\n",
+    "# partialling-out the linear effect of W from D\n",
+    "t.D <- rlasso(extraflex.d, data=subset)$res\n",
+    "\n",
+    "# regression of Y on D after partialling-out the effect of W\n",
+    "partial.lasso.fit <- lm(t.Y~t.D)\n",
+    "partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]\n",
+    "\n",
+    "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
+    "\n",
+    "# standard error\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
+    "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 106,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 442
+    },
+    "execution": {
+     "iopub.execute_input": "2021-07-12T17:00:17.227972Z",
+     "iopub.status.busy": "2021-07-12T17:00:17.226397Z",
+     "iopub.status.idle": "2021-07-12T17:00:17.260738Z"
+    },
+    "id": "X9z2zpVtyosL",
+    "outputId": "e68c579d-e447-45fd-ce6f-ee15b04f3055"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A xtable: 3 × 2</caption>\n",
+       "<thead>\n",
+       "\t<tr><th></th><th scope=col>Estimate</th><th scope=col>Std. Error</th></tr>\n",
+       "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><th scope=row>full reg, HC0</th><td>-0.06699231</td><td>0.03929531</td></tr>\n",
+       "\t<tr><th scope=row>full reg, HC3</th><td>-0.06699231</td><td>0.07252316</td></tr>\n",
+       "\t<tr><th scope=row>partial reg via lasso</th><td>-0.05378994</td><td>0.03436033</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A xtable: 3 × 2\n",
+       "\\begin{tabular}{r|ll}\n",
+       "  & Estimate & Std. Error\\\\\n",
+       "  & <dbl> & <dbl>\\\\\n",
+       "\\hline\n",
+       "\tfull reg, HC0 & -0.06699231 & 0.03929531\\\\\n",
+       "\tfull reg, HC3 & -0.06699231 & 0.07252316\\\\\n",
+       "\tpartial reg via lasso & -0.05378994 & 0.03436033\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A xtable: 3 × 2\n",
+       "\n",
+       "| <!--/--> | Estimate &lt;dbl&gt; | Std. Error &lt;dbl&gt; |\n",
+       "|---|---|---|\n",
+       "| full reg, HC0 | -0.06699231 | 0.03929531 |\n",
+       "| full reg, HC3 | -0.06699231 | 0.07252316 |\n",
+       "| partial reg via lasso | -0.05378994 | 0.03436033 |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "                      Estimate    Std. Error\n",
+       "full reg, HC0         -0.06699231 0.03929531\n",
+       "full reg, HC3         -0.06699231 0.07252316\n",
+       "partial reg via lasso -0.05378994 0.03436033"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "% latex table generated in R 4.3.2 by xtable 1.8-4 package\n",
+      "% Wed Feb  7 19:15:54 2024\n",
+      "\\begin{table}[ht]\n",
+      "\\centering\n",
+      "\\begin{tabular}{rrr}\n",
+      "  \\hline\n",
+      " & Estimate & Std. Error \\\\ \n",
+      "  \\hline\n",
+      "full reg, HC0 & -0.067 & 0.0393 \\\\ \n",
+      "  full reg, HC3 & -0.067 & 0.0725 \\\\ \n",
+      "  partial reg via lasso & -0.054 & 0.0344 \\\\ \n",
+      "   \\hline\n",
+      "\\end{tabular}\n",
+      "\\end{table}\n"
+     ]
+    }
+   ],
+   "source": [
+    "table<- matrix(0, 3, 2)\n",
+    "table[1,1]<- control.est\n",
+    "table[1,2]<- control.se.HC0\n",
+    "table[2,1]<- control.est\n",
+    "table[2,2]<- control.se.HC3\n",
+    "table[3,1]<-  partial.lasso.est\n",
+    "table[3,2]<- partial.lasso.se\n",
+    "colnames(table)<- c(\"Estimate\",\"Std. Error\")\n",
+    "rownames(table)<- c(\"full reg, HC0\", \"full reg, HC3\", \"partial reg via lasso\")\n",
+    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab\n",
+    "\n",
+    "print(tab, type=\"latex\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "mBRBd2nJyosM"
+   },
+   "source": [
+    "In this case $p/n \\approx 1$, that is $p/n$ is no longer small and we start seeing the differences between\n",
+    "unregularized partialling out and regularized partialling out with lasso (double lasso).  The results based on\n",
+    "double lasso have rigorous guarantees in this non-small p/n regime under approximate sparsity. The results based on OLS still\n",
+    "have guarantees in p/n< 1 regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate\n",
+    "sparsity, although other regularity conditions are needed.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "ERTT0mdfdPrh"
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.3.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
 }
