@@ -3,25 +3,6 @@
     {
       "cell_type": "markdown",
       "metadata": {
-        "papermill": {
-          "duration": 0.03819,
-          "end_time": "2021-02-13T18:19:43.324200",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:43.286010",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "sYmx_b9YNGOf"
-      },
-      "source": [
-        "\n",
-        "\n",
-        "This notebook contains an example for teaching.\n"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
         "_execution_state": "idle",
         "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
         "papermill": {
@@ -52,8 +33,7 @@
         "id": "LCKYnHWrNGOn"
       },
       "source": [
-        "We illustrate how to predict an outcome variable Y in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. So far we have used linear prediction rules, e.g. Lasso regression, for estimation.\n",
-        "Now, we also consider nonlinear prediction rules including tree-based methods."
+        "We illustrate how to predict an outcome variable $Y$ in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. So far we have used simple linear prediction rules, e.g. OLS and Lasso regression, for estimation. Now we introduce the other linear penalized methods we've studied. Later, we will also consider nonlinear prediction rules including tree-based methods."
       ]
     },
     {
@@ -272,16 +252,18 @@
         "id": "pNLS-C_7NGOt"
       },
       "source": [
-        "We will estimate the two sets of prediction rules: Linear and Nonlinear Models.\n",
-        "In linear models, we estimate the prediction rule of the form\n",
+        "In this notebook, we will evaluate *linear* prediction rules. In later notebooks, we will also utilize nonlinear prediction methods. In linear models, we estimate the prediction rule of the form\n",
         "\n",
         "$$\\hat g(Z) = \\hat \\beta'X.$$\n",
-        "Again, we generate $X$ in two ways:\n",
+        "\n",
+        "Again, we generate $X$ in three ways:\n",
         "\n",
         "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, regional indicators).\n",
         "\n",
         "\n",
-        "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions.\n"
+        "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., $\\operatorname{exp}^2$ and $\\operatorname{exp}^3$) and additional two-way interactions.\n",
+        "\n",
+        "3. Extra Flexible Model: $X$ takes the flexible model and takes all pairwise interactions."
       ]
     },
     {
@@ -325,52 +307,6 @@
       ]
     },
     {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.038774,
-          "end_time": "2021-02-13T18:19:45.217757",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:45.178983",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "5-CCjJnbNGOt"
-      },
-      "source": [
-        "We construct the two different model matrices $X_{basic}$ and $X_{flex}$ for both the training and the test sample:"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.094135,
-          "end_time": "2021-02-13T18:19:45.347955",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:45.253820",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "WD7tshOlNGOt"
-      },
-      "outputs": [],
-      "source": [
-        "X_basic <-  \"sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)\"\n",
-        "X_flex <- \"sex + exp1 + shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\"\n",
-        "formula_basic <- as.formula(paste(\"lwage\", \"~\", X_basic))\n",
-        "formula_flex <- as.formula(paste(\"lwage\", \"~\", X_flex))\n",
-        "\n",
-        "model_X_basic_train <- model.matrix(formula_basic,data_train)\n",
-        "model_X_basic_test <- model.matrix(formula_basic,data_test)\n",
-        "p_basic <- dim(model_X_basic_train)[2]\n",
-        "model_X_flex_train <- model.matrix(formula_flex,data_train)\n",
-        "model_X_flex_test <- model.matrix(formula_flex,data_test)\n",
-        "p_flex <- dim(model_X_flex_train)[2]"
-      ]
-    },
-    {
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
@@ -391,23 +327,20 @@
       ]
     },
     {
-      "cell_type": "code",
-      "execution_count": null,
+      "cell_type": "markdown",
       "metadata": {
         "papermill": {
-          "duration": 0.062723,
-          "end_time": "2021-02-13T18:19:45.545189",
+          "duration": 0.038774,
+          "end_time": "2021-02-13T18:19:45.217757",
           "exception": false,
-          "start_time": "2021-02-13T18:19:45.482466",
+          "start_time": "2021-02-13T18:19:45.178983",
           "status": "completed"
         },
         "tags": [],
-        "id": "Od5KYawDNGOu"
+        "id": "5-CCjJnbNGOt"
       },
-      "outputs": [],
       "source": [
-        "p_basic\n",
-        "p_flex"
+        "We are starting by running a simple OLS regression. We fit the basic and flexible model to our training data by running an ols regression and compute the R-squared on the test sample"
       ]
     },
     {
@@ -424,41 +357,40 @@
         "id": "qbummAR-NGOu"
       },
       "source": [
-        "As known from our first lab, the basic model consists of $51$ regressors and the flexible model of $246$ regressors. Let us fit our models to the training sample using the two different model specifications. We are starting by running a simple ols regression."
+        "As known from our first lab, the basic model consists of $51$ regressors and the flexible model of $246$ regressors. Let us fit our models to the training sample using the two different model specifications. We are starting by running a simple ols regression and computing the mean squared error and $R^2$ on the test sample."
       ]
     },
     {
       "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.038763,
-          "end_time": "2021-02-13T18:19:45.699126",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:45.660363",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "rE7xRRceNGOu"
-      },
       "source": [
-        "### OLS"
-      ]
+        "### Low dimensional specification (basic)"
+      ],
+      "metadata": {
+        "id": "4LNs__OcfmFV"
+      }
     },
     {
-      "cell_type": "markdown",
+      "cell_type": "code",
+      "execution_count": null,
       "metadata": {
         "papermill": {
-          "duration": 0.039458,
-          "end_time": "2021-02-13T18:19:45.779460",
+          "duration": 0.094135,
+          "end_time": "2021-02-13T18:19:45.347955",
           "exception": false,
-          "start_time": "2021-02-13T18:19:45.740002",
+          "start_time": "2021-02-13T18:19:45.253820",
           "status": "completed"
         },
         "tags": [],
-        "id": "dNh39s6iNGOv"
+        "id": "WD7tshOlNGOt"
       },
+      "outputs": [],
       "source": [
-        "We fit the basic model to our training data by running an ols regression and compute the mean squared error on the test sample."
+        "X_basic <-  \"sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)\"\n",
+        "formula_basic <- as.formula(paste(\"lwage\", \"~\", X_basic))\n",
+        "model_X_basic_train <- model.matrix(formula_basic,data_train)\n",
+        "model_X_basic_test <- model.matrix(formula_basic,data_test)\n",
+        "p_basic <- dim(model_X_basic_train)[2]\n",
+        "p_basic"
       ]
     },
     {
@@ -478,28 +410,10 @@
       "outputs": [],
       "source": [
         "# ols (basic model)\n",
-        "fit.lm.basic <- lm(formula_basic, data_train)"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.074423,
-          "end_time": "2021-02-13T18:19:45.999870",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:45.925447",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "y6A7LhamNGOw"
-      },
-      "outputs": [],
-      "source": [
+        "fit.lm.basic <- lm(formula_basic, data_train)\n",
         "# Compute the Out-Of-Sample Performance\n",
         "yhat.lm.basic <- predict(fit.lm.basic, newdata=data_test)\n",
-        "cat(\"The mean squared error (MSE) using the basic model is equal to\" , mean((Y_test-yhat.lm.basic)^2)) # MSE OLS (basic model)"
+        "cat(\"Basic model MSE (OLS): \", mean((Y_test-yhat.lm.basic)^2)) # MSE OLS (basic model)"
       ]
     },
     {
@@ -573,8 +487,33 @@
       "outputs": [],
       "source": [
         "R2.lm.basic <- 1-MSE.lm.basic[1]/var(Y_test)\n",
-        "cat(\"The R^2 using the basic model is equal to\",R2.lm.basic) # MSE OLS (basic model)"
+        "cat(\"Basic model R^2 (OLS): \",R2.lm.basic) # MSE OLS (basic model)"
       ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### High-dimensional specification (flexible)"
+      ],
+      "metadata": {
+        "id": "tTZyELgyf51J"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "X_flex <- \"sex + exp1 + shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\"\n",
+        "formula_flex <- as.formula(paste(\"lwage\", \"~\", X_flex))\n",
+        "model_X_flex_train <- model.matrix(formula_flex,data_train)\n",
+        "model_X_flex_test <- model.matrix(formula_flex,data_test)\n",
+        "p_flex <- dim(model_X_flex_train)[2]\n",
+        "p_flex"
+      ],
+      "metadata": {
+        "id": "J8Rffx0ef3nM"
+      },
+      "execution_count": null,
+      "outputs": []
     },
     {
       "cell_type": "markdown",
@@ -616,24 +555,7 @@
         "yhat.lm.flex <- predict(fit.lm.flex, newdata=data_test)\n",
         "MSE.lm.flex <- summary(lm((Y_test-yhat.lm.flex)^2~1))$coef[1:2]\n",
         "R2.lm.flex <- 1-MSE.lm.flex[1]/var(Y_test)\n",
-        "cat(\"The R^2 using the flexible model is equal to\",R2.lm.flex) # MSE OLS (flexible model)"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.051953,
-          "end_time": "2021-02-13T18:19:46.853182",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:46.801229",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "5wgFVRkkNGOx"
-      },
-      "source": [
-        "We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We are proceeding by running lasso regressions and its versions."
+        "cat(\"Flexible model R^2 (OLS): \",R2.lm.flex) # MSE OLS (flexible model)"
       ]
     },
     {
@@ -650,8 +572,58 @@
         "id": "sShiB-i9NGOx"
       },
       "source": [
-        "### Lasso, Ridge and Elastic Net\n"
+        "### Penalized regressions (flexible model)\n",
+        "\n",
+        "\n",
+        "\n"
       ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "papermill": {
+          "duration": 0.051953,
+          "end_time": "2021-02-13T18:19:46.853182",
+          "exception": false,
+          "start_time": "2021-02-13T18:19:46.801229",
+          "status": "completed"
+        },
+        "tags": [],
+        "id": "5wgFVRkkNGOx"
+      },
+      "source": [
+        "We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We proceed by running penalized regressions first for the flexible model, tuned via cross-validation."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "fit.lasso.cv.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=1)\n",
+        "fit.ridge.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=0)\n",
+        "fit.elnet.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=.5)\n",
+        "\n",
+        "yhat.lasso.cv.flex    <- predict(fit.lasso.cv.flex , newx = model_X_flex_test)\n",
+        "yhat.ridge.flex    <- predict(fit.ridge.flex , newx = model_X_flex_test)\n",
+        "yhat.elnet.flex    <- predict(fit.elnet.flex , newx = model_X_flex_test)\n",
+        "\n",
+        "MSE.lasso.cv.flex  <- summary(lm((Y_test-yhat.lasso.cv.flex )^2~1))$coef[1:2]\n",
+        "MSE.ridge.flex  <- summary(lm((Y_test-yhat.ridge.flex )^2~1))$coef[1:2]\n",
+        "MSE.elnet.flex  <- summary(lm((Y_test-yhat.elnet.flex )^2~1))$coef[1:2]\n",
+        "\n",
+        "R2.lasso.cv.flex  <- 1-MSE.lasso.cv.flex [1]/var(Y_test)\n",
+        "R2.ridge.flex  <- 1-MSE.ridge.flex [1]/var(Y_test)\n",
+        "R2.elnet.flex  <- 1-MSE.elnet.flex [1]/var(Y_test)\n",
+        "\n",
+        "# R^2 using cross-validation (flexible model)\n",
+        "cat('Flexible model R^2 (Lasso): ', R2.lasso.cv.flex)\n",
+        "cat('\\nFlexible model R^2 (Ridge): ', R2.ridge.flex)\n",
+        "cat('\\nFlexible model R^2 (Elastic Net): ', R2.elnet.flex)"
+      ],
+      "metadata": {
+        "id": "n3jvO5HQmzbf"
+      },
+      "execution_count": null,
+      "outputs": []
     },
     {
       "cell_type": "markdown",
@@ -667,38 +639,19 @@
         "id": "ZytMS-aCNGOx"
       },
       "source": [
-        "Considering the basic model, we run a lasso/post-lasso regression first and then we compute the measures for the out-of-sample performance. Note that applying the package *hdm* and the function *rlasso* we rely on a theoretical based choice of the penalty level $\\lambda$ in the lasso regression."
+        "We can also try a variant of the `l1` penalty, where the weight is chosen based on theoretical derivations. We use package *hdm* and the function *rlasso*, relying on a theoretical based choice of the penalty level $\\lambda$ in the lasso regression."
       ]
     },
     {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.577781,
-          "end_time": "2021-02-13T18:19:47.634269",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:47.056488",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "BRrwbji2NGOy"
-      },
-      "outputs": [],
+      "cell_type": "markdown",
       "source": [
-        "# lasso and versions\n",
-        "fit.rlasso  <- rlasso(formula_basic, data_train, post=FALSE)\n",
-        "fit.rlasso.post <- rlasso(formula_basic, data_train, post=TRUE)\n",
-        "yhat.rlasso   <- predict(fit.rlasso, newdata=data_test)\n",
-        "yhat.rlasso.post   <- predict(fit.rlasso.post, newdata=data_test)\n",
+        "Specifically, we use \"plug-in\" tuning with a theoretically valid choice of penalty $\\lambda = 2 \\cdot c \\hat{\\sigma} \\sqrt{n} \\Phi^{-1}(1-\\alpha/2p)$, where $c>1$ and $1-\\alpha$ is a confidence level, $\\Phi^{-1}$ denotes the quantile function, and $\\hat{\\sigma}$ is estimated in an iterative manner (see corresponding notes in book). Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\\epsilon$ and $X$ in the regression equation decay quickly at the tails.\n",
         "\n",
-        "MSE.lasso <- summary(lm((Y_test-yhat.rlasso)^2~1))$coef[1:2]\n",
-        "MSE.lasso.post <- summary(lm((Y_test-yhat.rlasso.post)^2~1))$coef[1:2]\n",
-        "\n",
-        "R2.lasso <- 1-MSE.lasso[1]/var(Y_test)\n",
-        "R2.lasso.post <- 1-MSE.lasso.post[1]/var(Y_test)\n",
-        "cat(\"The R^2 using the basic model is equal to\",R2.lasso,\"for lasso and\",R2.lasso.post,\"for post-lasso\") # R^2 lasso/post-lasso (basic model)"
-      ]
+        "In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks."
+      ],
+      "metadata": {
+        "id": "n-D_fRJBnkEH"
+      }
     },
     {
       "cell_type": "markdown",
@@ -743,148 +696,9 @@
         "\n",
         "R2.lasso.flex <- 1-MSE.lasso.flex[1]/var(Y_test)\n",
         "R2.lasso.post.flex <- 1-MSE.lasso.post.flex[1]/var(Y_test)\n",
-        "cat(\"The R^2 using the flexible model is equal to\",R2.lasso.flex,\"for lasso and\",R2.lasso.post.flex,\"for post-lasso\") # R^2 lasso/post-lasso (flexible model)"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.04206,
-          "end_time": "2021-02-13T18:19:51.353816",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:51.311756",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "xzEMlXdTNGOy"
-      },
-      "source": [
-        "It is worth to notice that lasso regression works better for the more complex model."
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.041452,
-          "end_time": "2021-02-13T18:19:51.436401",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:51.394949",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "M_ixSjNjNGOz"
-      },
-      "source": [
-        "In contrast to a theoretical based choice of the tuning parameter $\\lambda$ in the lasso regression, we can also use cross-validation to determine the penalty level by applying the package *glmnet* and the function cv.glmnet. In this context, we also run a ridge and a elastic net regression by adjusting the parameter *alpha*."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 2.248453,
-          "end_time": "2021-02-13T18:19:53.725885",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:51.477432",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "Sfywmn6JNGOz"
-      },
-      "outputs": [],
-      "source": [
-        "library(glmnet)\n",
-        "fit.lasso.cv   <- cv.glmnet(model_X_basic_train, Y_train, family=\"gaussian\", alpha=1)\n",
-        "fit.ridge   <- cv.glmnet(model_X_basic_train, Y_train, family=\"gaussian\", alpha=0)\n",
-        "fit.elnet   <- cv.glmnet(model_X_basic_train, Y_train, family=\"gaussian\", alpha=.5)\n",
-        "\n",
-        "yhat.lasso.cv    <- predict(fit.lasso.cv, newx = model_X_basic_test)\n",
-        "yhat.ridge   <- predict(fit.ridge, newx = model_X_basic_test)\n",
-        "yhat.elnet   <- predict(fit.elnet, newx = model_X_basic_test)\n",
-        "\n",
-        "MSE.lasso.cv <- summary(lm((Y_test-yhat.lasso.cv)^2~1))$coef[1:2]\n",
-        "MSE.ridge <- summary(lm((Y_test-yhat.ridge)^2~1))$coef[1:2]\n",
-        "MSE.elnet <- summary(lm((Y_test-yhat.elnet)^2~1))$coef[1:2]\n",
-        "\n",
-        "R2.lasso.cv <- 1-MSE.lasso.cv[1]/var(Y_test)\n",
-        "R2.ridge <- 1-MSE.ridge[1]/var(Y_test)\n",
-        "R2.elnet <- 1-MSE.elnet[1]/var(Y_test)\n",
-        "\n",
-        "# R^2 using cross-validation (basic model)\n",
-        "cat(\"R^2 using cross-validation for lasso, ridge and elastic net in the basic model:\",R2.lasso.cv,R2.ridge,R2.elnet)"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.042613,
-          "end_time": "2021-02-13T18:19:53.812553",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:53.769940",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "gK6SPXPSNGO0"
-      },
-      "source": [
-        "Note that the following calculations for the flexible model need some computation time."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 13.588391,
-          "end_time": "2021-02-13T18:20:07.443188",
-          "exception": false,
-          "start_time": "2021-02-13T18:19:53.854797",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "cdFAFYucNGO0"
-      },
-      "outputs": [],
-      "source": [
-        "fit.lasso.cv.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=1)\n",
-        "fit.ridge.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=0)\n",
-        "fit.elnet.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=.5)\n",
-        "\n",
-        "yhat.lasso.cv.flex    <- predict(fit.lasso.cv.flex , newx = model_X_flex_test)\n",
-        "yhat.ridge.flex    <- predict(fit.ridge.flex , newx = model_X_flex_test)\n",
-        "yhat.elnet.flex    <- predict(fit.elnet.flex , newx = model_X_flex_test)\n",
-        "\n",
-        "MSE.lasso.cv.flex  <- summary(lm((Y_test-yhat.lasso.cv.flex )^2~1))$coef[1:2]\n",
-        "MSE.ridge.flex  <- summary(lm((Y_test-yhat.ridge.flex )^2~1))$coef[1:2]\n",
-        "MSE.elnet.flex  <- summary(lm((Y_test-yhat.elnet.flex )^2~1))$coef[1:2]\n",
-        "\n",
-        "R2.lasso.cv.flex  <- 1-MSE.lasso.cv.flex [1]/var(Y_test)\n",
-        "R2.ridge.flex  <- 1-MSE.ridge.flex [1]/var(Y_test)\n",
-        "R2.elnet.flex  <- 1-MSE.elnet.flex [1]/var(Y_test)\n",
-        "\n",
-        "# R^2 using cross-validation (flexible model)\n",
-        "cat(\"R^2 using cross-validation for lasso, ridge and elastic net in the flexible model:\",R2.lasso.cv.flex,R2.ridge.flex,R2.elnet.flex)"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.04263,
-          "end_time": "2021-02-13T18:20:07.529566",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:07.486936",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "QKZoPcRyNGO0"
-      },
-      "source": [
-        "The performance of the lasso regression with cross-validated penalty is quite similar to the performance of lasso using a theoretical based choice of the tuning parameter."
+        "# R^2 theoretically chosen penalty (flexible model)\n",
+        "cat('Flexible model R^2 (RLasso): ', R2.lasso.flex)\n",
+        "cat('\\nFlexible model R^2 (RLasso post): ', R2.lasso.post.flex)"
       ]
     },
     {
@@ -899,29 +713,32 @@
     {
       "cell_type": "code",
       "source": [
-        "lava.predict <- function(X,Y, iter=5){\n",
+        "# Define function to compute lava estimator. Doing an iterative scheme with fixed\n",
+        "# number of iteration. Could iterate until a convergence criterion is met.\n",
+        "lava.predict <- function(X, Y, newX, lambda1, lambda2, iter=5){\n",
         "\n",
-        "g1 = predict(rlasso(X, Y, post=F), newdata = model_X_flex_test)  #lasso step fits \"sparse part\"\n",
-        "m1 =  predict(glmnet(X, as.vector(Y-g1), family=\"gaussian\", alpha=0, lambda =20),newdata = model_X_flex_test ) #ridge step fits the \"dense\" part\n",
+        "  # Need to demean internally\n",
+        "  dy = Y - mean(Y)\n",
+        "  dx = scale(X, scale = FALSE)\n",
         "\n",
+        "  sp1 = glmnet(dx, dy, lambda = lambda1)  #lasso step fits \"sparse part\"\n",
+        "  de1 = glmnet(dx, dy-predict(sp1, newx = dx), alpha = 0, lambda = lambda2)\n",
         "\n",
-        "i=1\n",
-        "while(i<= iter) {\n",
-        "g1 = predict(rlasso(X, Y, post=F), newdata = model_X_flex_test)   #lasso step fits \"sparse part\"\n",
-        "m1 = predict(glmnet(X, as.vector(Y-g1), family=\"gaussian\",  alpha=0, lambda =20),newdata = model_X_flex_test );  #ridge step fits the \"dense\" part\n",
-        "i = i+1 }\n",
+        "  i=1\n",
+        "  while(i<= iter) {\n",
+        "    sp1 = glmnet(dx, dy-predict(de1, newx = dx, s=\"lambda.min\"), lambda = lambda1)\n",
+        "    de1 = glmnet(dx, dy-predict(sp1, newx = dx, s=\"lambda.min\"), alpha = 0, lambda = lambda2)\n",
+        "    i = i+1 }\n",
         "\n",
-        "return(g1+m1);\n",
-        "    }\n",
+        "  bhat = sp1$beta+de1$beta\n",
+        "  a0 = mean(Y)-sum(colMeans(X)*bhat)\n",
         "\n",
+        "  # Need to add intercept to output\n",
         "\n",
-        "yhat.lava = lava.predict(model_X_flex_train, Y_train)\n",
-        "MSE.lava <- summary(lm((Y_test-yhat.lava)^2~1))$coef[1:2]       # report MSE and standard error for MSE for approximating g(X)\n",
+        "  yhat = newX%*%bhat + a0\n",
         "\n",
-        "R2.lava <- 1-MSE.lava[1]/var(Y_test)\n",
-        "\n",
-        "# R^2 using lava\n",
-        "cat(\"R^2 using lava in the flexible model:\", R2.lava)"
+        "  return(yhat)\n",
+        "}"
       ],
       "metadata": {
         "id": "WgBPFQ72ftBz"
@@ -932,8 +749,154 @@
     {
       "cell_type": "code",
       "source": [
-        "g1<-predict(rlasso(model_X_flex_train, Y_train, post=F), newdata = model_X_flex_test)\n",
-        "m1<-predict(glmnet(model_X_flex_train, as.vector(Y_train-g1), family=\"gaussian\", alpha=0, lambda =20),newdata = model_X_flex_test ) #ridge step fits the \"dense\" part\n"
+        "# define function to get predictions and r2 scores for lava estimator\n",
+        "lava_yhat_r2 <- function(xtr.mod, xte.mod, ytr, yte, num_folds = 5){\n",
+        "\n",
+        "    # 5-fold CV. glmnet does cross-validation internally and\n",
+        "    # relatively efficiently. We're going to write out all the steps to make sure\n",
+        "    # we're using the same CV folds across all procedures in a transparent way and\n",
+        "    # to keep the overall structure clear as well.\n",
+        "\n",
+        "    # Setup for brute force K-Fold CV\n",
+        "    n = length(ytr)\n",
+        "    Kf = num_folds  # Number of folds\n",
+        "    sampleframe <- rep(1:Kf, ceiling( n/Kf ) )\n",
+        "    cvgroup <- sample( sampleframe , size=n ,  replace=FALSE )  # CV groups\n",
+        "\n",
+        "\n",
+        "    ##------------------------------------------------------------\n",
+        "    # We're going to take a shortcut and use the range of lambda values that come out\n",
+        "    # of the default implementation in glmnet for everything. Could do better here - maybe\n",
+        "\n",
+        "    ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.\n",
+        "    ridge.mod = glmnet(xtr.mod,ytr,alpha=0)  # alpha = 0 gives ridge\n",
+        "    ridge.lambda = ridge.mod$lambda # values of penalty parameter\n",
+        "\n",
+        "    ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.\n",
+        "    lasso.mod = glmnet(xtr.mod,ytr)  # default is lasso (equivalent to alpha = 1)\n",
+        "    lasso.lambda = lasso.mod$lambda # values of penalty parameter\n",
+        "\n",
+        "    ##------------------------------------------------------------\n",
+        "\n",
+        "\n",
+        "    # Lava - Using a double loop over candidate penalty parameter values.\n",
+        "\n",
+        "    lambda1.lava.mod = lasso.mod$lambda[seq(5,length(lasso.mod$lambda),10)]\n",
+        "    lambda2.lava.mod = ridge.mod$lambda[seq(5,length(ridge.mod$lambda),10)]\n",
+        "\n",
+        "    CV.mod.lava = matrix(0,length(lambda1.lava.mod),length(lambda2.lava.mod))\n",
+        "\n",
+        "    for(k in 1:Kf) {\n",
+        "      indk = cvgroup == k\n",
+        "\n",
+        "      K.xtr.mod = xtr.mod[!indk,]\n",
+        "      K.ytr = ytr[!indk]\n",
+        "      K.xte.mod = xtr.mod[indk,]\n",
+        "      K.yte = ytr[indk]\n",
+        "\n",
+        "      for(ii in 1:length(lambda1.lava.mod)) {\n",
+        "        for(jj in 1:length(lambda2.lava.mod)) {\n",
+        "          CV.mod.lava[ii,jj] = CV.mod.lava[ii,jj] +\n",
+        "            sum((K.yte - lava.predict(K.xtr.mod, K.ytr, newX = K.xte.mod ,\n",
+        "                                      lambda1 = lambda1.lava.mod[ii],\n",
+        "                                      lambda2 = lambda2.lava.mod[jj]))^2)\n",
+        "        }\n",
+        "      }\n",
+        "\n",
+        "    }\n",
+        "\n",
+        "    # Get CV min values of tuning parameters\n",
+        "    cvmin.lava.mod = which(CV.mod.lava == min(CV.mod.lava) , arr.ind = TRUE)\n",
+        "    cvlambda1.lava.mod = lambda1.lava.mod[cvmin.lava.mod[1]]\n",
+        "    cvlambda2.lava.mod = lambda2.lava.mod[cvmin.lava.mod[2]]\n",
+        "\n",
+        "    # cat(\"Min Lava Lasso CV Penalty: \", cvlambda1.lava.mod)\n",
+        "    # cat(\"\\nMin Lava Ridge CV Penalty: \", cvlambda2.lava.mod)\n",
+        "\n",
+        "\n",
+        "    #### Look at performance on test sample\n",
+        "\n",
+        "    # Calculate R^2 in training data and in validation data as measures\n",
+        "    # Refit on entire training sample\n",
+        "\n",
+        "\n",
+        "    #### CV-min model\n",
+        "\n",
+        "    # In sample fit\n",
+        "    cvmin.yhat.lava.tr <- lava.predict(xtr.mod, ytr, newX = xtr.mod,\n",
+        "                                            lambda1 = cvlambda1.lava.mod,\n",
+        "                                            lambda2 = cvlambda2.lava.mod)\n",
+        "    r2.lava.mod = 1-sum((ytr-cvmin.yhat.lava.tr)^2)/sum((ytr-mean(ytr))^2)\n",
+        "\n",
+        "    # Out of sample fit\n",
+        "    cvmin.yhat.lava.test <- lava.predict(xtr.mod, ytr, newX = xte.mod,\n",
+        "                                            lambda1 = cvlambda1.lava.mod,\n",
+        "                                            lambda2 = cvlambda2.lava.mod)\n",
+        "    r2V.lava.mod = 1-sum((yte-cvmin.yhat.lava.test)^2)/sum((yte-mean(ytr))^2)\n",
+        "\n",
+        "\n",
+        "    # cat(\"\\nIn sample R2 (CV-min): \", r2.lava.mod)\n",
+        "    # cat(\"\\nOut of Sample R2 (CV-min): \", r2V.lava.mod)\n",
+        "\n",
+        "\n",
+        "    #### Use average model across cv-folds and refit model using all training data\n",
+        "    ###### we won't report these results.\n",
+        "    ###### Averaging is theoretically more solid, but cv-min is more practical.\n",
+        "    n.tr = length(ytr)\n",
+        "    n.te = length(yte)\n",
+        "    yhat.tr.lava.mod = matrix(0,n.tr,Kf)\n",
+        "    yhat.te.lava.mod = matrix(0,n.te,Kf)\n",
+        "\n",
+        "\n",
+        "    for(k in 1:Kf) {\n",
+        "      indk = cvgroup == k\n",
+        "\n",
+        "      K.xtr.mod = xtr.mod[!indk,]\n",
+        "      K.ytr = ytr[!indk]\n",
+        "\n",
+        "      # Lava\n",
+        "      yhat.tr.lava.mod[,k] = as.vector(lava.predict(K.xtr.mod, K.ytr, newX = xtr.mod ,\n",
+        "                                            lambda1 = cvlambda1.lava.mod,\n",
+        "                                            lambda2 = cvlambda2.lava.mod))\n",
+        "      yhat.te.lava.mod[,k] = as.vector(lava.predict(K.xtr.mod, K.ytr, newX = xte.mod ,\n",
+        "                                            lambda1 = cvlambda1.lava.mod,\n",
+        "                                            lambda2 = cvlambda2.lava.mod))\n",
+        "    }\n",
+        "\n",
+        "    avg.yhat.lava.tr <- rowMeans(yhat.tr.lava.mod)\n",
+        "    avg.yhat.lava.test <- rowMeans(yhat.te.lava.mod)\n",
+        "\n",
+        "    r2.CVave.lava.mod = 1-sum((ytr-avg.yhat.lava.tr)^2)/sum((ytr-mean(ytr))^2)\n",
+        "    r2V.CVave.lava.mod = 1-sum((yte-avg.yhat.lava.test)^2)/sum((yte-mean(ytr))^2)\n",
+        "\n",
+        "    # cat(\"\\nIn sample R2 (Average Across Folds): \", r2.CVave.lava.mod)\n",
+        "    # cat(\"\\nOut of Sample R2 (Average Across Folds): \", r2V.CVave.lava.mod)\n",
+        "\n",
+        "    return(c(cvlambda1.lava.mod,\n",
+        "             cvlambda2.lava.mod,\n",
+        "             cvmin.yhat.lava.tr, # CV_min\n",
+        "             cvmin.yhat.lava.test, # CV_min\n",
+        "             r2.lava.mod,  # CV_min\n",
+        "             r2V.lava.mod, # CV_min\n",
+        "             avg.yhat.lava.tr, # Average across Folds\n",
+        "             avg.yhat.lava.test, # Average across Folds\n",
+        "             r2.CVave.lava.mod, # Average across Folds\n",
+        "             r2V.CVave.lava.mod  # Average across Folds\n",
+        "             )\n",
+        "          )\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "2HFE2EbdkMjj"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "fit.lava.flex <- lava_yhat_r2(model_X_flex_train, model_X_flex_test, Y_train, Y_test)\n",
+        "cat('Flexible model R^2 (LAVA): ', fit.lava.flex[[6]]) # using CV_min"
       ],
       "metadata": {
         "id": "Uw3LMCiskJzV"
@@ -944,7 +907,9 @@
     {
       "cell_type": "markdown",
       "source": [
-        "We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase the explainability power of the outcome.\n"
+        "<!-- We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase the explainability power of the outcome. -->\n",
+        "\n",
+        "We find that for this dataset the low dimensional OLS is sufficient. The high-dimensional approaches did not manage to substantively increase the explainability power of the outcome."
       ],
       "metadata": {
         "id": "f8lYhGaWfpYR"
@@ -952,586 +917,127 @@
     },
     {
       "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.042859,
-          "end_time": "2021-02-13T18:20:07.614751",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:07.571892",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "Tef4oHbyNGO1"
-      },
       "source": [
-        "## Non-linear models"
-      ]
-    },
-    {
-      "cell_type": "markdown",
+        "### Extra high-dimensional specification (extra flexible)\n",
+        "\n",
+        "We repeat the same procedure for the extra flexible model.\n",
+        "\n",
+        "<!-- Given the results above, it is not immediately clear why one would choose to use Lasso as results are fairly similar. To motivate, we consider an extra flexible model to show how OLS can overfit significantly to the in-sample train data and perform poorly on the out-of-sample testing data. -->\n",
+        "\n",
+        "\n",
+        "\n"
+      ],
       "metadata": {
-        "papermill": {
-          "duration": 0.042125,
-          "end_time": "2021-02-13T18:20:07.699092",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:07.656967",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "hFTdsECoNGO1"
-      },
-      "source": [
-        "Besides linear regression models, we consider nonlinear regression models to build a predictive model. We are applying regression trees, random forests, boosted trees and neural nets to estimate the regression function $g(X)$."
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.043267,
-          "end_time": "2021-02-13T18:20:08.261600",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:08.218333",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "seHUVvisNGO2"
-      },
-      "source": [
-        "### Regression Trees"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.043445,
-          "end_time": "2021-02-13T18:20:08.348402",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:08.304957",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "ae0iPIJGNGO2"
-      },
-      "source": [
-        "We fit a regression tree to the training data using the basic model. The variable *cp* controls the complexity of the regression tree, i.e. how deep we build the tree."
-      ]
+        "id": "bxuPZI4Zx0Vm"
+      }
     },
     {
       "cell_type": "code",
+      "source": [
+        "X_extra <- \" sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\"\n",
+        "formula_extra <- as.formula(paste(\"lwage\", \"~\", X_extra))\n",
+        "model_X_extra_train <- model.matrix(formula_extra,data_train)\n",
+        "model_X_extra_test <- model.matrix(formula_extra,data_test)\n",
+        "p_extra <- dim(model_X_extra_train)[2]\n",
+        "p_extra"
+      ],
+      "metadata": {
+        "id": "JsFhSsM_rGjN"
+      },
       "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 1.843972,
-          "end_time": "2021-02-13T18:20:10.235503",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:08.391531",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "YM0GlLDWNGO2"
-      },
-      "outputs": [],
-      "source": [
-        "# tree\n",
-        "fit.trees   <- rpart(formula_basic, data_train,cp = 0.001)\n",
-        "prp(fit.trees,leaf.round=1, space=2, yspace=2,split.space=2,shadow.col = \"gray\",trace = 1) # plotting the tree"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.046456,
-          "end_time": "2021-02-13T18:20:10.328795",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:10.282339",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "Js8LapLrNGO3"
-      },
-      "source": [
-        "An important method to improve predictive performance is called \"Pruning the Tree\". This\n",
-        "means the process of cutting down the branches of a tree. We apply pruning to the complex tree above to reduce the depth. Initially, we determine the optimal complexity of the regression tree."
-      ]
+      "outputs": []
     },
     {
       "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.070106,
-          "end_time": "2021-02-13T18:20:10.445828",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:10.375722",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "Z4njLU2DNGO3"
-      },
-      "outputs": [],
       "source": [
-        "bestcp<- fit.trees$cptable[which.min(fit.trees$cptable[,\"xerror\"]),\"CP\"]\n",
-        "bestcp"
-      ]
+        "# ols (extra flexible model)\n",
+        "fit.lm.extra <- lm(formula_extra, data_train)\n",
+        "options(warn=-1)\n",
+        "yhat.lm.extra <- predict(fit.lm.extra, newdata=data_test)\n",
+        "MSE.lm.extra <- summary(lm((Y_test-yhat.lm.extra)^2~1))$coef[1:2]\n",
+        "R2.lm.extra <- 1-MSE.lm.extra[1]/var(Y_test)\n",
+        "cat(\"Extra flexible model R^2 (OLS): \",R2.lm.extra)"
+      ],
+      "metadata": {
+        "id": "eheA1UPBsHfL"
+      },
+      "execution_count": null,
+      "outputs": []
     },
     {
       "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.047157,
-          "end_time": "2021-02-13T18:20:10.540327",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:10.493170",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "cI2LU8PCNGO3"
-      },
       "source": [
-        "Now, we can prune the tree and visualize the prediction rule."
-      ]
+        "As we can see, a simple OLS overfits when the dimensionality of covariates is high, as the out-of-sample performance suffers dramatically in comparison to the in-sample performance.\n"
+      ],
+      "metadata": {
+        "id": "AiYv2nNorG2E"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Penalized regressions (extra flexible model)\n",
+        "\n",
+        "Now let's repeat our penalized regression analysis for the extra flexible model. Note this block takes a while ~ 1 hour 15 minutes. To reduce time substantially, reduce the number of folds in LAVA."
+      ],
+      "metadata": {
+        "id": "Scm5monOrJu5"
+      }
     },
     {
       "cell_type": "code",
+      "source": [
+        "# penalized regressions\n",
+        "fit.lasso.cv.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=1)\n",
+        "fit.ridge.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=0)\n",
+        "fit.elnet.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=.5)\n",
+        "fit.rlasso.extra  <- rlasso(formula_extra, data_train, post=FALSE)\n",
+        "fit.rlasso.post.extra <- rlasso(formula_extra, data_train, post=TRUE)\n",
+        "fit.lava.extra <- lava_yhat_r2(model_X_extra_train, model_X_extra_test, Y_train, Y_test)\n",
+        "\n",
+        "yhat.lasso.cv.extra    <- predict(fit.lasso.cv.extra , newx = model_X_extra_test)\n",
+        "yhat.ridge.extra    <- predict(fit.ridge.extra , newx = model_X_extra_test)\n",
+        "yhat.elnet.extra    <- predict(fit.elnet.extra , newx = model_X_extra_test)\n",
+        "yhat.rlasso.extra   <- predict(fit.rlasso.extra, newdata=data_test)\n",
+        "yhat.rlasso.post.extra   <- predict(fit.rlasso.post.extra, newdata=data_test)\n",
+        "yhat.lava.extra <- fit.lava.extra[[4]]\n",
+        "\n",
+        "MSE.lasso.cv.extra  <- summary(lm((Y_test-yhat.lasso.cv.extra )^2~1))$coef[1:2]\n",
+        "MSE.ridge.extra  <- summary(lm((Y_test-yhat.ridge.extra )^2~1))$coef[1:2]\n",
+        "MSE.elnet.extra  <- summary(lm((Y_test-yhat.elnet.extra )^2~1))$coef[1:2]\n",
+        "MSE.lasso.extra <- summary(lm((Y_test-yhat.rlasso.extra)^2~1))$coef[1:2]\n",
+        "MSE.lasso.post.extra <- summary(lm((Y_test-yhat.rlasso.post.extra)^2~1))$coef[1:2]\n",
+        "MSE.lava.extra <- summary(lm(as.vector(Y_test-yhat.lava.extra)^2~1))$coef[1:2]\n",
+        "\n",
+        "R2.lasso.cv.extra  <- 1-MSE.lasso.cv.extra [1]/var(Y_test)\n",
+        "R2.ridge.extra  <- 1-MSE.ridge.extra [1]/var(Y_test)\n",
+        "R2.elnet.extra  <- 1-MSE.elnet.extra [1]/var(Y_test)\n",
+        "R2.lasso.extra <- 1-MSE.lasso.extra[1]/var(Y_test)\n",
+        "R2.lasso.post.extra <- 1-MSE.lasso.post.extra[1]/var(Y_test)\n",
+        "R2.lava.extra <- 1-MSE.lava.extra[1]/var(Y_test) # R2.lava.extra <- fit.lava.extra[[6]]\n",
+        "\n",
+        "# R^2 (extra flexible)\n",
+        "cat('\\nExtra flexible model R^2 (Lasso): ', R2.lasso.cv.extra)\n",
+        "cat('\\nExtra flexible model R^2 (Ridge): ', R2.ridge.extra)\n",
+        "cat('\\nExtra flexible model R^2 (Elastic Net): ', R2.elnet.extra)\n",
+        "cat('\\nExtra flexible model R^2 (RLasso): ', R2.lasso.extra)\n",
+        "cat('\\nExtra flexible model R^2 (RLasso post): ', R2.lasso.post.extra)\n",
+        "cat('\\nExtra flexible model R^2 (LAVA): ', R2.lava.extra) #using CV_min"
+      ],
+      "metadata": {
+        "id": "tOKoNLKFovrI"
+      },
       "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.543483,
-          "end_time": "2021-02-13T18:20:11.131455",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:10.587972",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "3RDs3B4jNGO3"
-      },
-      "outputs": [],
-      "source": [
-        "fit.prunedtree <- prune(fit.trees,cp=bestcp)\n",
-        "prp(fit.prunedtree,leaf.round=1, space=3, yspace=3, split.space=7, shadow.col = \"gray\",trace = 1,yesno=1)"
-      ]
+      "outputs": []
     },
     {
       "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.052169,
-          "end_time": "2021-02-13T18:20:11.234467",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.182298",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "ObjL_KV3NGO4"
-      },
       "source": [
-        "E.g., in the pruned tree the predicted hourly log wage for high-school graduates with more than $9.5$ years of experience is $2.8$, and otherwise is $2.6$."
-      ]
-    },
-    {
-      "cell_type": "markdown",
+        "<!-- As shown above, the overfitting effect is mitigated with the penalized regression model. -->"
+      ],
       "metadata": {
-        "papermill": {
-          "duration": 0.04994,
-          "end_time": "2021-02-13T18:20:11.334448",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.284508",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "x0oCVsiUNGO4"
-      },
-      "source": [
-        "Finally, we calculate the mean-squared error and the $R^2$ on the test sample to evaluate the out-of-sample performance of the pruned tree."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.079534,
-          "end_time": "2021-02-13T18:20:11.463701",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.384167",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "9OmyuwWONGO4"
-      },
-      "outputs": [],
-      "source": [
-        "yhat.pt <- predict(fit.prunedtree,newdata=data_test)\n",
-        "MSE.pt <- summary(lm((Y_test-yhat.pt)^2~1))$coef[1:2]\n",
-        "R2.pt  <- 1-MSE.pt[1]/var(Y_test)\n",
-        "\n",
-        "# R^2 of the pruned tree\n",
-        "cat(\"R^2 of the pruned tree:\",R2.pt)"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.052287,
-          "end_time": "2021-02-13T18:20:11.566330",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.514043",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "xzRfm-1CNGO4"
-      },
-      "source": [
-        "### Random Forest and Boosted Trees"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.050794,
-          "end_time": "2021-02-13T18:20:11.667980",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.617186",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "_2uLQMejNGO4"
-      },
-      "source": [
-        "In the next step, we apply the more advanced tree-based methods random forest and boosted trees."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 56.677891,
-          "end_time": "2021-02-13T18:21:08.396363",
-          "exception": false,
-          "start_time": "2021-02-13T18:20:11.718472",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "n9jd7m-RNGO5"
-      },
-      "outputs": [],
-      "source": [
-        "## Applying the methods\n",
-        "# random forest\n",
-        "fit.rf       <- randomForest(formula_basic, ntree=2000, nodesize=5, data=data_train)\n",
-        "# for tuning: adjust input \"mtry\" to change the number of variables randomly sampled as candidates at each split\n",
-        "\n",
-        "# boosting\n",
-        "fit.boost   <- gbm(formula_basic, data=data_train, distribution= \"gaussian\", bag.fraction = .5, interaction.depth=2, n.trees=1000, shrinkage=.01)\n",
-        "best.boost  <- gbm.perf(fit.boost, plot.it = FALSE) # cross-validation to determine when to stop\n",
-        "\n",
-        "## Evaluating the methods\n",
-        "yhat.rf       <- predict(fit.rf, newdata=data_test) # prediction\n",
-        "yhat.boost    <- predict(fit.boost, newdata=data_test, n.trees=best.boost)\n",
-        "\n",
-        "MSE.rf       = summary(lm((Y_test-yhat.rf)^2~1))$coef[1:2]\n",
-        "MSE.boost    = summary(lm((Y_test-yhat.boost)^2~1))$coef[1:2]\n",
-        "R2.rf  <- 1-MSE.rf[1]/var(Y_test)\n",
-        "R2.boost  <- 1-MSE.boost[1]/var(Y_test)\n",
-        "\n",
-        "# printing R^2\n",
-        "cat(\"R^2 of the random forest and boosted trees:\",R2.rf,R2.boost)\n"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.051225,
-          "end_time": "2021-02-13T18:21:08.500313",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:08.449088",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "qZuYLuSwNGO5"
-      },
-      "source": [
-        "To conclude, let us have a look at our results."
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.052403,
-          "end_time": "2021-02-13T18:21:08.603976",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:08.551573",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "WMsfdcQ4NGO5"
-      },
-      "source": [
-        "## Results"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.167847,
-          "end_time": "2021-02-13T18:21:08.823485",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:08.655638",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "NZ9KBrhdNGO5"
-      },
-      "outputs": [],
-      "source": [
-        "library(xtable)\n",
-        "table<- matrix(0, 15, 3)\n",
-        "table[1,1:2]   <- MSE.lm.basic\n",
-        "table[2,1:2]   <- MSE.lm.flex\n",
-        "table[3,1:2]   <- MSE.lasso\n",
-        "table[4,1:2]   <- MSE.lasso.post\n",
-        "table[5,1:2]   <- MSE.lasso.flex\n",
-        "table[6,1:2]   <- MSE.lasso.post.flex\n",
-        "table[7,1:2]   <- MSE.lasso.cv\n",
-        "table[8,1:2]   <- MSE.ridge\n",
-        "table[9,1:2]   <- MSE.elnet\n",
-        "table[10,1:2]   <- MSE.lasso.cv.flex\n",
-        "table[11,1:2]  <- MSE.ridge.flex\n",
-        "table[12,1:2]  <- MSE.elnet.flex\n",
-        "table[13,1:2]  <- MSE.rf\n",
-        "table[14,1:2]  <- MSE.boost\n",
-        "table[15,1:2]  <- MSE.pt\n",
-        "\n",
-        "\n",
-        "\n",
-        "table[1,3]   <- R2.lm.basic\n",
-        "table[2,3]   <- R2.lm.flex\n",
-        "table[3,3]   <- R2.lasso\n",
-        "table[4,3]   <- R2.lasso.post\n",
-        "table[5,3]   <- R2.lasso.flex\n",
-        "table[6,3]   <- R2.lasso.post.flex\n",
-        "table[7,3]   <- R2.lasso.cv\n",
-        "table[8,3]   <- R2.ridge\n",
-        "table[9,3]   <- R2.elnet\n",
-        "table[10,3]   <- R2.lasso.cv.flex\n",
-        "table[11,3]  <- R2.ridge.flex\n",
-        "table[12,3]  <- R2.elnet.flex\n",
-        "table[13,3]  <- R2.rf\n",
-        "table[14,3]  <- R2.boost\n",
-        "table[15,3]  <- R2.pt\n",
-        "\n",
-        "\n",
-        "\n",
-        "\n",
-        "colnames(table)<- c(\"MSE\", \"S.E. for MSE\", \"R-squared\")\n",
-        "rownames(table)<- c(\"Least Squares (basic)\",\"Least Squares (flexible)\", \"Lasso\", \"Post-Lasso\",\"Lasso (flexible)\",\"Post-Lasso (flexible)\",\n",
-        "                    \"Cross-Validated lasso\", \"Cross-Validated ridge\",\"Cross-Validated elnet\",\"Cross-Validated lasso (flexible)\",\"Cross-Validated ridge (flexible)\",\"Cross-Validated elnet (flexible)\",\n",
-        "                    \"Random Forest\",\"Boosted Trees\", \"Pruned Tree\")\n",
-        "tab <- xtable(table, digits =3)\n",
-        "print(tab,type=\"latex\") # set type=\"latex\" for printing table in LaTeX\n",
-        "tab"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.052897,
-          "end_time": "2021-02-13T18:21:08.930888",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:08.877991",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "sT2WT_TZNGO5"
-      },
-      "source": [
-        "Above, we displayed the results for a single split of data into the training and testing part. The table shows the test MSE in column 1 as well as the standard error in column 2 and the test $R^2$\n",
-        "in column 3. We see that the prediction rule produced by Elastic Net using the flexible model performs the best here, giving the lowest test MSE. Cross-Validated Lasso and Ridge, perform nearly as well. For any two of these methods, their testing MSEs are within one standard error of each other. Remarkably, OLS on a simple model performs extremely well, almost as well as best tree based method Random Forest. On the other hand, OLS on a flexible model with many regressors performs very poorly giving the highest test MSE. It is worth to notice that the nonlinear models, e.g. Random Forest, are not tuned. Thus, there is a lot of potential to improve the performance of the nonlinear methods we used in the analysis."
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.052594,
-          "end_time": "2021-02-13T18:21:09.036009",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:08.983415",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "mp3s4mzsNGO6"
-      },
-      "source": [
-        "### Ensemble learning"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.053134,
-          "end_time": "2021-02-13T18:21:09.146558",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.093424",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "0xYtnXGgNGO6"
-      },
-      "source": [
-        "In the final step, we can build a prediction model by combing the strengths of the models we considered so far. This ensemble method is of the form\n",
-        "\t$$ f(x) = \\sum_{k=1}^K \\alpha_k f_k(x) $$\n",
-        "where the $f_k$'s denote our prediction rules from the table above and the $\\alpha_k$'s are the corresponding weights."
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.053696,
-          "end_time": "2021-02-13T18:21:09.254342",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.200646",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "jDuC1TlQNGO6"
-      },
-      "source": [
-        "We focus on the prediction rules based on OLS, Post-Lasso, Elastic Net, Pruned Tree, Random Forest, Boosted Trees, and Neural Network and combine these methods into an ensemble method. The weights can be determined by a simple ols regression:"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.079851,
-          "end_time": "2021-02-13T18:21:09.388686",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.308835",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "E6Sp1JlRNGO6"
-      },
-      "outputs": [],
-      "source": [
-        "ensemble.ols <- summary(lm(Y_test~ yhat.lm.basic + yhat.rlasso.post.flex + yhat.elnet.flex+ yhat.pt+ yhat.rf + yhat.boost))\n",
-        "ensemble.ols"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.054822,
-          "end_time": "2021-02-13T18:21:09.498067",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.443245",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "8K1r_4m8NGO6"
-      },
-      "source": [
-        "Alternatively, we can determine the weights via lasso regression."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.175196,
-          "end_time": "2021-02-13T18:21:09.727077",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.551881",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "-ltbXUwHNGO6"
-      },
-      "outputs": [],
-      "source": [
-        "ensemble.lasso <- summary(rlasso(Y_test~ yhat.lm.basic + yhat.rlasso.post.flex + yhat.elnet.flex+ yhat.pt+ yhat.rf + yhat.boost))\n",
-        "ensemble.lasso"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.055874,
-          "end_time": "2021-02-13T18:21:09.838636",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.782762",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "8p0w0sQeNGO7"
-      },
-      "source": [
-        "The estimated weights are shown in the following table."
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.094431,
-          "end_time": "2021-02-13T18:21:09.988946",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:09.894515",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "oGqagJJMNGO7"
-      },
-      "outputs": [],
-      "source": [
-        "table<- matrix(0, 7, 2)\n",
-        "table[1:7,1]   <- ensemble.ols$coef[1:7]\n",
-        "table[1:7,2]   <- ensemble.lasso$coef[1:7]\n",
-        "\n",
-        "\n",
-        "colnames(table)<- c(\"Weight OLS\", \"Weight Lasso\")\n",
-        "rownames(table)<- c(\"Constant\",\"Least Squares (basic)\",\"Post-Lasso (flexible)\", \"Cross-Validated elnet (flexible)\", \"Pruned Tree\",\n",
-        "                    \"Random Forest\",\"Boosted Trees\")\n",
-        "tab <- xtable(table, digits =3)\n",
-        "print(tab,type=\"latex\") # set type=\"latex\" for printing table in LaTeX\n",
-        "tab"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "papermill": {
-          "duration": 0.056002,
-          "end_time": "2021-02-13T18:21:10.101284",
-          "exception": false,
-          "start_time": "2021-02-13T18:21:10.045282",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "_4hnI_x4NGO7"
-      },
-      "source": [
-        "Further, the $R^2$ for the test sample gets improved from $30\\%$ obtained by OLS to about $31\\%$ obtained by the ensemble method. We see that it is very powerful to aggregate prediction rules into an ensemble rule. Nevertheless, it is worth to notice that we should compare the ensemble method and the single rules on an additional validation set to ensure a fair comparison."
-      ]
+        "id": "Btez-AI8yE7S"
+      }
     }
   ],
   "metadata": {
