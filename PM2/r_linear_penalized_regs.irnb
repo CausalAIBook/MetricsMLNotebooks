@@ -186,13 +186,7 @@
       "source": [
         "We use glmnet's penalized estimators, which choose the penalty parameter via cross-validation (by default 10-fold cross-validation). These methods search over an adaptively chosen grid of hyperparameters. The parameter `alpha` controls what penalty (or allows for a convex combination of `l1` and `l2` penalty). Set `alpha=0.5` for elastic net.\n",
         "\n",
-        "Features will be standardized (by glmnet) so that penalization does not favor.different features asymmetrically. If one wishes to standardize before passing it into glmnet, you can use R's `scale()` function:\n",
-        "\n",
-        "```\n",
-        "X_scaled <- scale(poly(X_train))\n",
-        "Xtest_scaled <- scale(poly(X_test), center = attr(X_scaled, \"scaled:center\"), scale = attr(X_scaled, \"scaled:scale\"))\n",
-        "Xpop_scaled <- scale(poly(Xpop), center = attr(X_scaled, \"scaled:center\"), scale = attr(X_scaled, \"scaled:scale\"))\n",
-        "```\n"
+        "Features will be standardized (by glmnet) so that penalization does not favor different features asymmetrically."
       ],
       "metadata": {
         "id": "aRWiO93SUw1G"
@@ -769,8 +763,8 @@
         "  gXtest = gXtest,\n",
         "  Ridge = predict(fit.ridge, newx = Xtest, s=\"lambda.min\"),\n",
         "  ENet = predict(fit.elnet, newx = Xtest, s=\"lambda.min\"),\n",
-        "  RLasso = predict(fit.rlasso, newdata = Xtest, s=\"lambda.min\"),\n",
-        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest, s=\"lambda.min\"),\n",
+        "  RLasso = predict(fit.rlasso, newdata = Xtest),\n",
+        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest),\n",
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(R2.lava.traintest[[4]])\n",
         ")\n",
@@ -788,7 +782,7 @@
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
         "       y = \"Predictions\") +\n",
-        "  guides(shape = FALSE)  # Remove the shape legend"
+        "  guides(shape = \"none\")  # Remove the shape legend"
       ],
       "metadata": {
         "id": "r74dEPSyA0_4"
@@ -860,9 +854,10 @@
       "cell_type": "code",
       "source": [
         "fit.lasso.cv   <- cv.glmnet(X, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
-        "lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
-        "l_seq = 2 / nrow(X) * lambdas_sklearn\n",
-        "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
+        "#lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
+        "#l_seq = 2 / nrow(X) * lambdas_sklearn\n",
+        "#fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
+        "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
         "fit.elnet   <- cv.glmnet(X, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
         "fit.rlasso  <- rlasso(y~X, post=FALSE)      # lasso with plug-in penalty level\n",
         "fit.rlasso.post <- rlasso(y~X, post=TRUE)    # post-lasso with plug-in penalty level\n",
@@ -870,8 +865,8 @@
         "R2.lasso.cv <- r2_score(predict(fit.lasso.cv,newx=Xpop, s=\"lambda.min\"), ypop)\n",
         "R2.ridge <- r2_score(predict(fit.ridge,newx=Xpop, s=\"lambda.min\"), ypop)\n",
         "R2.elnet <- r2_score(predict(fit.elnet,newx=Xpop, s=\"lambda.min\"), ypop)\n",
-        "R2.rlasso <- r2_score(predict(fit.rlasso,newdata=Xpop, s=\"lambda.min\"), ypop)\n",
-        "R2.rlasso.post <- r2_score(predict(fit.rlasso.post,newdata=Xpop, s=\"lambda.min\"), ypop)\n",
+        "R2.rlasso <- r2_score(predict(fit.rlasso,newdata=Xpop), ypop)\n",
+        "R2.rlasso.post <- r2_score(predict(fit.rlasso.post,newdata=Xpop), ypop)\n",
         "R2.lava <- lava_yhat_r2(X, Xpop, y, ypop)[[6]]"
       ],
       "metadata": {
@@ -924,8 +919,8 @@
         "  gXtest = gXtest,\n",
         "  Ridge = predict(fit.ridge, newx = Xtest, s=\"lambda.min\"),\n",
         "  ENet = predict(fit.elnet, newx = Xtest, s=\"lambda.min\"),\n",
-        "  RLasso = predict(fit.rlasso, newdata = Xtest, s=\"lambda.min\"),\n",
-        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest, s=\"lambda.min\"),\n",
+        "  RLasso = predict(fit.rlasso, newdata = Xtest),\n",
+        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest),\n",
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(lava.yhat)\n",
         ")\n",
@@ -943,7 +938,7 @@
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
         "       y = \"Predictions\") +\n",
-        "  guides(shape = FALSE)  # Remove the shape legend"
+        "  guides(shape = \"none\")  # Remove the shape legend"
       ],
       "metadata": {
         "id": "e-BHu2VbCS_D"
@@ -1044,9 +1039,10 @@
       "outputs": [],
       "source": [
         "fit.lasso.cv   <- cv.glmnet(X, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
-        "lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
-        "l_seq = 2 / nrow(X) * lambdas_sklearn\n",
-        "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
+        "#lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
+        "#l_seq = 2 / nrow(X) * lambdas_sklearn\n",
+        "#fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
+        "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
         "fit.elnet   <- cv.glmnet(X, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
         "fit.rlasso  <- rlasso(y~X,  post=FALSE)      # lasso with plug-in penalty level\n",
         "fit.rlasso.post <- rlasso(y~X, post=TRUE)    # post-lasso with plug-in penalty level\n",
@@ -1054,8 +1050,8 @@
         "R2.lasso.cv <- r2_score(predict(fit.lasso.cv,newx=Xpop, s=\"lambda.min\"), ypop)\n",
         "R2.ridge <- r2_score(predict(fit.ridge,newx=Xpop, s=\"lambda.min\"), ypop)\n",
         "R2.elnet <- r2_score(predict(fit.elnet,newx=Xpop, s=\"lambda.min\"), ypop)\n",
-        "R2.rlasso <- r2_score(predict(fit.rlasso,newdata=Xpop, s=\"lambda.min\"), ypop)\n",
-        "R2.rlasso.post <- r2_score(predict(fit.rlasso.post,newdata=Xpop, s=\"lambda.min\"), ypop)\n",
+        "R2.rlasso <- r2_score(predict(fit.rlasso,newdata=Xpop), ypop)\n",
+        "R2.rlasso.post <- r2_score(predict(fit.rlasso.post,newdata=Xpop), ypop)\n",
         "R2.lava <- lava_yhat_r2(X, Xpop, y, ypop)[[6]]"
       ]
     },
@@ -1124,8 +1120,8 @@
         "  gXtest = gXtest,\n",
         "  Ridge = predict(fit.ridge, newx = Xtest, s=\"lambda.min\"),\n",
         "  ENet = predict(fit.elnet, newx = Xtest, s=\"lambda.min\"),\n",
-        "  RLasso = predict(fit.rlasso, newdata = Xtest, s=\"lambda.min\"),\n",
-        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest, s=\"lambda.min\"),\n",
+        "  RLasso = predict(fit.rlasso, newdata = Xtest),\n",
+        "  RLassoPost = predict(fit.rlasso.post, newdata = Xtest),\n",
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(lava.yhat)\n",
         ")\n",
@@ -1143,7 +1139,7 @@
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
         "       y = \"Predictions\") +\n",
-        "  guides(shape = FALSE)  # Remove the shape legend"
+        "  guides(shape = \"none\")  # Remove the shape legend"
       ]
     }
   ],
