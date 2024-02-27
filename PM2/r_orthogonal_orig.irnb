@@ -160,17 +160,6 @@
       "outputs": []
     },
     {
-      "cell_type": "code",
-      "source": [
-        "ggsave(\"ortho_learning_sim_NEW.pdf\",width = img_width, height = img_height, dpi = 300)"
-      ],
-      "metadata": {
-        "id": "I1M0EIJfWoyd"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
       "cell_type": "markdown",
       "source": [
         "As we can see from the above bias plots (estimates minus the ground truth effect of 1), the double lasso procedure concentrates around zero whereas the naive estimator does not."
