@@ -45,16 +45,18 @@
       },
       "cell_type": "code",
       "source": [
-        "set.seed(1)\n",
-        "\n",
         "# Initialize constants\n",
-        "B <- 1000  # Number of iterations\n",
+        "B <- 10000  # Number of iterations\n",
         "n <- 100  # Sample size\n",
         "p <- 100  # Number of features\n",
         "\n",
         "# Initialize arrays to store results\n",
         "Naive <- rep(0, B)\n",
         "Orthogonal <- rep(0, B)\n",
+        "\n",
+        "\n",
+        "lambdaYs <- rep(0,B)\n",
+        "lambdaDs <- rep(0,B)\n",
         "\n",
         "for (i in 1:B) {\n",
         "  # Generate parameters\n",
@@ -80,11 +82,40 @@
         "  }\n",
         "\n",
         "  # Partialling out / Double Lasso\n",
-        "  resY <- rlasso(Y ~ X, Post = FALSE)$res\n",
-        "  resD <- rlasso(D ~ X, Post = FALSE)$res\n",
+        "\n",
+        "  fitY <- rlasso(Y ~ X, post = TRUE)\n",
+        "  resY <- fitY$res\n",
+        "  #cat(\"lambda Y mean: \", mean(fitY$lambda))\n",
+        "\n",
+        "  fitD <- rlasso(D ~ X, post = TRUE)\n",
+        "  resD <- fitD$res\n",
+        "  #cat(\"\\nlambda D mean: \", mean(fitD$lambda))\n",
+        "\n",
         "  Orthogonal[i] <- lm(resY ~ resD)$coef[2]  # Fit linear regression for residuals\n",
         "}\n"
       ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Make a Nice Plot"
+      ],
+      "metadata": {
+        "id": "Bj174QuEaPb5"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Specify ratio\n",
+        "img_width = 15\n",
+        "img_height = img_width/2"
+      ],
+      "metadata": {
+        "id": "MjB3qbGEaRnl"
+      },
       "execution_count": null,
       "outputs": []
     },
@@ -101,24 +132,41 @@
         "# Create the histogram using ggplot2\n",
         "hist_plot <- ggplot(df, aes(x = Value, fill = Method)) +\n",
         "  geom_histogram(binwidth = 0.1, color = \"black\", alpha = 0.7) +\n",
-        "  facet_wrap(~Method, scales = \"free\") +\n",
+        "  facet_wrap(~Method, scales = \"fixed\") +\n",
         "  labs(\n",
         "    title = \"Distribution of Estimates (Centered around Ground Truth)\",\n",
         "    x = \"Bias\",\n",
         "    y = \"Frequency\"\n",
         "  ) +\n",
+        "  scale_x_continuous(breaks = seq(-2, 1.5, 0.5)) +\n",
         "  theme_minimal() +\n",
         "  theme(\n",
         "    plot.title = element_text(hjust = 0.5),  # Center the plot title\n",
-        "    strip.text = element_text(size = 10)  # Increase text size in facet labels\n",
-        "  )\n",
+        "    strip.text = element_text(size = 10),  # Increase text size in facet labels\n",
+        "    legend.position = \"none\", # Remove the legend\n",
+        "    panel.grid.major = element_blank(),  # Make major grid lines invisible\n",
+        "    # panel.grid.minor = element_blank(),  # Make minor grid lines invisible\n",
+        "    strip.background = element_blank()  # Make the strip background transparent\n",
+        "  ) +\n",
+        "  theme(panel.spacing = unit(2, \"lines\"))  # Adjust the ratio to separate subplots wider\n",
         "\n",
         "# Set a wider plot size\n",
-        "options(repr.plot.width = 10, repr.plot.height = 5)\n",
+        "options(repr.plot.width = img_width, repr.plot.height = img_height)\n",
         "\n",
         "# Display the histogram\n",
         "print(hist_plot)\n"
       ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "ggsave(\"ortho_learning_sim_NEW.pdf\",width = img_width, height = img_height, dpi = 300)"
+      ],
+      "metadata": {
+        "id": "I1M0EIJfWoyd"
+      },
       "execution_count": null,
       "outputs": []
     },
