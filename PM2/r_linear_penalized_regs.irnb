@@ -768,6 +768,7 @@
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(R2.lava.traintest[[4]])\n",
         ")\n",
+        "colnames(data) = c(\"gXtest\",\"Ridge\",\"ENet\",\"RLasso\",\"RlassoPost\",\"LassoCV\",\"Lava\")\n",
         "\n",
         "# Reshaping data into longer format for ggplot\n",
         "data_long <- tidyr::gather(data, Model, Predicted, -gXtest)\n",
@@ -776,8 +777,7 @@
         "ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +\n",
         "  geom_point(aes(shape = Model)) +\n",
         "  geom_abline(slope = 1, intercept = 0, linetype = \"dashed\", color = \"black\") +  # gX by gX\n",
-        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\"),\n",
-        "                     labels = c(\"Ridge\", \"ENet\", \"RLasso\", \"RLassoOLS\", \"LassoCV\", \"Lava\")) +\n",
+        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\")) +\n",
         "  theme_minimal() +\n",
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
@@ -785,7 +785,7 @@
         "  guides(shape = \"none\")  # Remove the shape legend"
       ],
       "metadata": {
-        "id": "r74dEPSyA0_4"
+        "id": "npU6rAHRUs_s"
       },
       "execution_count": null,
       "outputs": []
@@ -854,9 +854,6 @@
       "cell_type": "code",
       "source": [
         "fit.lasso.cv   <- cv.glmnet(X, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
-        "#lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
-        "#l_seq = 2 / nrow(X) * lambdas_sklearn\n",
-        "#fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
         "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
         "fit.elnet   <- cv.glmnet(X, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
         "fit.rlasso  <- rlasso(y~X, post=FALSE)      # lasso with plug-in penalty level\n",
@@ -924,6 +921,7 @@
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(lava.yhat)\n",
         ")\n",
+        "colnames(data) = c(\"gXtest\",\"Ridge\",\"ENet\",\"RLasso\",\"RlassoPost\",\"LassoCV\",\"Lava\")\n",
         "\n",
         "# Reshaping data into longer format for ggplot\n",
         "data_long <- tidyr::gather(data, Model, Predicted, -gXtest)\n",
@@ -932,8 +930,7 @@
         "ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +\n",
         "  geom_point(aes(shape = Model)) +\n",
         "  geom_abline(slope = 1, intercept = 0, linetype = \"dashed\", color = \"black\") +  # gX by gX\n",
-        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\"),\n",
-        "                     labels = c(\"Ridge\", \"ENet\", \"RLasso\", \"RLassoOLS\", \"LassoCV\", \"Lava\")) +\n",
+        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\")) +\n",
         "  theme_minimal() +\n",
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
@@ -941,7 +938,7 @@
         "  guides(shape = \"none\")  # Remove the shape legend"
       ],
       "metadata": {
-        "id": "e-BHu2VbCS_D"
+        "id": "uiDd9oxhVcnc"
       },
       "execution_count": null,
       "outputs": []
@@ -1039,9 +1036,6 @@
       "outputs": [],
       "source": [
         "fit.lasso.cv   <- cv.glmnet(X, y, family=\"gaussian\", alpha=1, nfolds=5)  # family gaussian means that we'll be using square loss\n",
-        "#lambdas_sklearn = c(0.1,1,10) # # sklearn lambdas (penalty) defaults\n",
-        "#l_seq = 2 / nrow(X) * lambdas_sklearn\n",
-        "#fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5, lambda = l_seq)     # family gaussian means that we'll be using square loss\n",
         "fit.ridge   <- cv.glmnet(X, y, family=\"gaussian\", alpha=0, nfolds=5)     # family gaussian means that we'll be using square loss\n",
         "fit.elnet   <- cv.glmnet(X, y, family=\"gaussian\", alpha=.5, nfolds=5)    # family gaussian means that we'll be using square loss\n",
         "fit.rlasso  <- rlasso(y~X,  post=FALSE)      # lasso with plug-in penalty level\n",
@@ -1101,19 +1095,6 @@
     },
     {
       "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "papermill": {
-          "duration": 0.147036,
-          "end_time": "2021-02-15T11:04:15.205679",
-          "exception": false,
-          "start_time": "2021-02-15T11:04:15.058643",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "VMwR9sbKONaD"
-      },
-      "outputs": [],
       "source": [
         "# Creating a data frame with the predicted values for test\n",
         "data <- data.frame(\n",
@@ -1125,6 +1106,7 @@
         "  LassoCV = predict(fit.lasso.cv, newx = Xtest, s=\"lambda.min\"),\n",
         "  Lava = as.vector(lava.yhat)\n",
         ")\n",
+        "colnames(data) = c(\"gXtest\",\"Ridge\",\"ENet\",\"RLasso\",\"RlassoPost\",\"LassoCV\",\"Lava\")\n",
         "\n",
         "# Reshaping data into longer format for ggplot\n",
         "data_long <- tidyr::gather(data, Model, Predicted, -gXtest)\n",
@@ -1133,14 +1115,18 @@
         "ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +\n",
         "  geom_point(aes(shape = Model)) +\n",
         "  geom_abline(slope = 1, intercept = 0, linetype = \"dashed\", color = \"black\") +  # gX by gX\n",
-        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\"),\n",
-        "                     labels = c(\"Ridge\", \"ENet\", \"RLasso\", \"RLassoOLS\", \"LassoCV\", \"Lava\")) +\n",
+        "  scale_color_manual(values = c('brown', 'yellow', 'red', \"green\", 'blue', 'magenta'), guide = guide_legend(title = \"Model\")) +\n",
         "  theme_minimal() +\n",
         "  labs(title = \"Comparison of Methods on Predicting gX\",\n",
         "       x = \"gXtest\",\n",
         "       y = \"Predictions\") +\n",
         "  guides(shape = \"none\")  # Remove the shape legend"
-      ]
+      ],
+      "metadata": {
+        "id": "1sYLd-O0V2IC"
+      },
+      "execution_count": null,
+      "outputs": []
     }
   ],
   "metadata": {
