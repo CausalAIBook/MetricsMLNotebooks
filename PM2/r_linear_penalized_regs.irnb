@@ -162,7 +162,7 @@
       "cell_type": "code",
       "source": [
         "# Plot betas\n",
-        "plot(1:length(betas), betas, log = \"y\", pch = 20, col = \"blue\",\n",
+        "plot(1:length(betas), abs(betas), log = \"y\", pch = 20, col = \"blue\",\n",
         "     xlab = expression(beta), ylab = \"Magnitude (log scale)\",\n",
         "     main = expression(paste(\"Beta Magnitude\")))"
       ],
@@ -286,7 +286,7 @@
         "\n",
         "**Note**: Ridge regression performs worse relatively to the Ridge in the correponding [Python notebook](https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/main/PM2/python_linear_penalized_regs.ipynb). Even if one were to control for the randomness in the data and use the same data for both, R's glmnet fails.\n",
         "\n",
-        "To understand why, look at the cross-validated MSE curve with different $\\lambda$ (log)."
+        "To understand why, look at the cross-validated MSE curve with different $\\lambda$ ()."
       ],
       "metadata": {
         "id": "QECIRikt3j5y"
@@ -419,7 +419,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "We pull an analogue of R's rlasso. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\\\n",
+        "We pull an anaue of R's rlasso. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\\\n",
         "The post lasso function makes OLS with the selected ***T*** regressors.\n",
         "To select those parameters, they use $\\lambda$ as variable to penalize\\\n",
         "**Funny thing: the function rlasso was named like that because it is the \"rigorous\" Lasso.**"
@@ -840,7 +840,7 @@
       "cell_type": "code",
       "source": [
         "# plot betas\n",
-        "plot(1:length(betas), betas, log = \"y\", pch = 20, col = \"blue\",\n",
+        "plot(1:length(betas), abs(betas), log = \"y\", pch = 20, col = \"blue\",\n",
         "     xlab = expression(beta), ylab = \"Magnitude (log scale)\",\n",
         "     main = expression(paste(\"Beta Magnitude\")))"
       ],
@@ -1009,7 +1009,7 @@
       "cell_type": "code",
       "source": [
         "# plot betas\n",
-        "plot(1:length(betas), betas, log = \"y\", pch = 20, col = \"blue\",\n",
+        "plot(1:length(betas), abs(betas), log = \"y\", pch = 20, col = \"blue\",\n",
         "     xlab = expression(beta), ylab = \"Magnitude (log scale)\",\n",
         "     main = expression(paste(\"Beta Magnitude\")))"
       ],
