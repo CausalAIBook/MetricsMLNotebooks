@@ -310,7 +310,7 @@
       },
       "outputs": [],
       "source": [
-        "set.seed(1)\n",
+        "set.seed(1234)\n",
         "training <- sample(nrow(data), nrow(data)*(3/4), replace=FALSE)\n",
         "\n",
         "data_train <- data[training,]\n",
