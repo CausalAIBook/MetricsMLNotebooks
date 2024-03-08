@@ -33,7 +33,7 @@
         "id": "LCKYnHWrNGOn"
       },
       "source": [
-        "We illustrate how to predict an outcome variable $Y$ in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. So far we have used simple linear prediction rules, e.g. OLS and Lasso regression, for estimation. Now we introduce the other linear penalized methods we've studied. Later, we will also consider nonlinear prediction rules including tree-based methods."
+        "We illustrate how to predict an outcome variable $Y$ in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. We use linear prediction rules for estimation, including OLS and the penalized linear methods we've studied. Later, we will also consider nonlinear prediction rules including tree-based methods and neural nets."
       ]
     },
     {
@@ -907,9 +907,9 @@
     {
       "cell_type": "markdown",
       "source": [
-        "<!-- We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase the explainability power of the outcome. -->\n",
+        "<!-- We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase predictive power. -->\n",
         "\n",
-        "We find that for this dataset the low dimensional OLS is sufficient. The high-dimensional approaches did not manage to substantively increase the explainability power of the outcome."
+        "We find that for this dataset the low dimensional OLS is sufficient. The high-dimensional approaches did not manage to substantively increase predictive power."
       ],
       "metadata": {
         "id": "f8lYhGaWfpYR"
@@ -963,15 +963,6 @@
       },
       "execution_count": null,
       "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "As we can see, a simple OLS overfits when the dimensionality of covariates is high, as the out-of-sample performance suffers dramatically in comparison to the in-sample performance.\n"
-      ],
-      "metadata": {
-        "id": "AiYv2nNorG2E"
-      }
     },
     {
       "cell_type": "markdown",
