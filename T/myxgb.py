@@ -38,7 +38,8 @@ class RegWrapper(BaseEstimator):
     def __init__(self, model):
         self.model = model
     def fit(self, X, y):
-        self.model_ = clone(self.model).fit(X, y)
+        self.model_ = clone(self.model)
+        self.model_.fit(X, y)
         return self
     def predict(self, X):
         return self.model_.predict_proba(X)[:, 1]
