@@ -4,7 +4,7 @@ import xgboost as xgb
 import numpy as np
 import xgboost as xgb
 from typing import Tuple
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, clone
 from econml.sklearn_extensions.model_selection import WeightedKFold
 from sklearn.utils import check_X_y
 
@@ -33,6 +33,15 @@ def weighted_metric(predt: np.ndarray, dtrain: xgb.DMatrix) -> Tuple[str, float]
     w = dtrain.get_weight()
     elements = w.flatten() * np.power((predt.flatten() - y.flatten()), 2)
     return 'WeightedRMSE', float(np.sqrt(np.mean(elements)))
+
+class RegWrapper(BaseEstimator):
+    def __init__(self, model):
+        self.model = model
+    def fit(self, X, y):
+        self.model_ = clone(self.model).fit(X, y)
+        return self
+    def predict(self, X):
+        return self.model_.predict_proba(X)[:, 1]
 
 class MyXGBRegressor(XGBRegressor):
     
