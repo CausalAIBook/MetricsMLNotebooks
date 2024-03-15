@@ -35,7 +35,7 @@
       "source": [
         "## Impact of 401(k) on  Financial Wealth\n",
         "\n",
-        "As a practical illustration of the DML method, we consider estimation of the effect of 401(k) eligibility and participation\n",
+        "As a practical illustration of the methods developed in this lecture, we consider estimation of the effect of 401(k) eligibility and participation\n",
         "on accumulated assets. 401(k) plans are pension accounts sponsored by employers. The key problem in determining the effect of participation in 401(k) plans on accumulated assets is saver heterogeneity coupled with the fact that the decision to enroll in a 401(k) is non-random. It is generally recognized that some people have a higher preference for saving than others. It also seems likely that those individuals with high unobserved preference for saving would be most likely to choose to participate in tax-advantaged retirement savings plans and would tend to have otherwise high amounts of accumulated assets. The presence of unobserved savings preferences with these properties then implies that conventional estimates that do not account for saver heterogeneity and endogeneity of participation will be biased upward, tending to overstate the savings effects of 401(k) participation.\n",
         "\n",
         "One can argue that eligibility for enrolling in a 401(k) plan in this data can be taken as exogenous after conditioning on a few observables of which the most important for their argument is income. The basic idea is that, at least around the time 401(k)’s initially became available, people were unlikely to be basing their employment decisions on whether an employer offered a 401(k) but would instead focus on income and other aspects of the job."
@@ -61,9 +61,7 @@
         "library(data.table)\n",
         "library(glmnet)\n",
         "library(rpart)\n",
-        "library(gbm)\n",
-        "\n",
-        "set.seed(123)"
+        "library(gbm)"
       ],
       "metadata": {
         "id": "KmAkbDiVE7wm"
@@ -181,7 +179,7 @@
         "id": "24b41e4a"
       },
       "source": [
-        "The data consist of 9,915 observations at the household level drawn from the 1991 Survey of Income and Program Participation (SIPP). We use net financial assets (*net\\_tfa*) as the outcome variable, $Y$,  in our analysis. The net financial assets are computed as the sum of IRA balances, 401(k) balances, checking accounts, saving bonds, other interest-earning accounts, other interest-earning assets, stocks, and mutual funds less non mortgage debts."
+        "The data consist of 9,915 observations at the household level drawn from the 1991 Survey of Income and Program Participation (SIPP).  All the variables are referred to 1990. We use net financial assets (*net\\_tfa*) as the outcome variable, $Y$,  in our analysis. The net financial assets are computed as the sum of IRA balances, 401(k) balances, checking accounts, saving bonds, other interest-earning accounts, other interest-earning assets, stocks, and mutual funds less non mortgage debts."
       ]
     },
     {
@@ -442,7 +440,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "We are interested in valid estimators of the average treatment effect of `e401` on `net_tfa`. We start using ML approaches to estimate the function $g_0$ and $m_0$ in the following PLR model:"
+        "We are interested in valid estimators of the average treatment effect of `e401` and `p401` on `net_tfa`. We start using ML approaches to estimate the function $g_0$ and $m_0$ in the following PLR model:"
       ],
       "metadata": {
         "id": "UuYqY89D0pvs"
@@ -461,55 +459,6 @@
         "id": "vEAeB2ih0r8B"
       },
       "id": "vEAeB2ih0r8B"
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "### Double Lasso without Sample Splitting"
-      ],
-      "metadata": {
-        "id": "3h-sBjDA0eHd"
-      },
-      "id": "3h-sBjDA0eHd"
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We first look at the treatment effect of e401 on net total financial assets. We give estimates of the ATE and ATT that corresponds to the linear model\n",
-        "\n",
-        "\\begin{equation*}\n",
-        "Y = D \\alpha + f(X)'\\beta+ \\epsilon,\n",
-        "\\end{equation*}\n",
-        "\n",
-        "where $f(X)$ includes indicators of marital status, two-earner status, defined benefit pension status, IRA participation status, and home ownership status, and  orthogonal polynomials of degrees 2, 4, 6 and 8 in family size, education, age and  income, respectively. The dimensions of $f(X)$ is 25.\n",
-        "\n",
-        "In the first step, we report estimates of the average treatment effect (ATE) of 401(k) eligibility on net financial assets both in the partially linear regression (PLR) model and in the interactive regression model (IRM) allowing for heterogeneous treatment effects.\n"
-      ],
-      "metadata": {
-        "id": "dIHseyjNJ5rp"
-      },
-      "id": "dIHseyjNJ5rp"
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "yfit.lasso.cv   <- cv.glmnet(as.matrix(X), y, family=\"gaussian\", alpha=1, nfold=5)  # family gaussian means that we'll be using square loss\n",
-        "yhat.lasso.cv   <- predict(yfit.lasso.cv, newx = as.matrix(X))       # predictions\n",
-        "Dfit.lasso.cv   <- cv.glmnet(as.matrix(X), D, family=\"gaussian\", alpha=1, nfold=5)\n",
-        "Dhat.lasso.cv   <- predict(Dfit.lasso.cv, newx = as.matrix(X))\n",
-        "\n",
-        "resy <- y-yhat.lasso.cv\n",
-        "resD <- D-Dhat.lasso.cv\n",
-        "\n",
-        "# Estimate\n",
-        "mean(resy * resD) / mean(resD^2)"
-      ],
-      "metadata": {
-        "id": "_97_0vVL0wnf"
-      },
-      "id": "_97_0vVL0wnf",
-      "execution_count": null,
-      "outputs": []
     },
     {
       "cell_type": "markdown",
@@ -571,7 +520,7 @@
     {
       "cell_type": "code",
       "source": [
-        "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=2, method = \"regression\") {\n",
+        "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=3, method = \"regression\") {\n",
         "  nobs <- nrow(x) #number of observations\n",
         "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices\n",
         "  I <- split(1:nobs, foldid)  #split observation indices into folds\n",
@@ -600,9 +549,7 @@
         "        yhat <- predict(yfit, x[I[[b]],]) #predict the left-out fold\n",
         "        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
         "        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
-        "\n",
         "    } else if (method == \"boostedtrees\") {\n",
-        "\n",
         "        dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out\n",
         "        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out\n",
         "        dhat <- predict(dfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
@@ -668,10 +615,10 @@
         "set.seed(123)\n",
         "cat(sprintf(\"\\nDML with Lasso CV \\n\"))\n",
         "\n",
-        "dreg.lasso.cv <- function(x,d){ cv.glmnet(x, d, family=\"gaussian\", alpha=1, nfolds=3)}\n",
-        "yreg.lasso.cv <- function(x,y){ cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=3)}\n",
+        "dreg.lasso.cv <- function(x,d){ cv.glmnet(x, d, family=\"gaussian\", alpha=1, nfolds=5)}\n",
+        "yreg.lasso.cv <- function(x,y){ cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "\n",
-        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.lasso.cv, yreg.lasso.cv, nfold=3)\n",
+        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.lasso.cv, yreg.lasso.cv, nfold=5)\n",
         "\n",
         "sum.lasso.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV')\n",
         "tableplr <- data.frame()\n",
@@ -688,7 +635,9 @@
     {
       "cell_type": "markdown",
       "source": [
-        "#### Using a $\\ell_2$ Penalized Logistic Regression for D"
+        "#### Using a $\\ell_2$ Penalized Logistic Regression for D\n",
+        "\n",
+        "Note we are using the $\\ell_2$ penalty here. You can use the $\\ell_1$ penalty as well, but computation will take longer."
       ],
       "metadata": {
         "id": "4wvLEj12SpDf"
@@ -705,7 +654,7 @@
         "dreg.logistic.cv <- function(x,d){cv.glmnet(x, d, family=\"binomial\", alpha=0, nfolds=5)}\n",
         "yreg.lasso.cv <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "\n",
-        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.logistic.cv, yreg.lasso.cv, nfold=3)\n",
+        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.logistic.cv, yreg.lasso.cv, nfold=5)\n",
         "sum.lasso_logistic.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV/LogisticCV')\n",
         "tableplr <- rbind(tableplr, sum.lasso_logistic.cv)\n",
         "tableplr"
@@ -737,7 +686,7 @@
         "dreg.rf <- function(x,d){randomForest(x, d, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "yreg.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "\n",
-        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.rf, yreg.rf, nfold=3, method = \"randomforest\")\n",
+        "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.rf, yreg.rf, nfold=5, method = \"randomforest\")\n",
         "sum.rf <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Random Forest')\n",
         "tableplr <- rbind(tableplr, sum.rf)\n",
         "tableplr"
@@ -769,7 +718,7 @@
         "dreg.tr <- function(x,d){rpart(as.formula(\"D~.\"), cbind(data.frame(D=d),x), method = \"class\", minbucket=10, cp = 0.001)}\n",
         "yreg.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
         "\n",
-        "DML2.results <- DML2.for.PLM(X, D, y, dreg.tr, yreg.tr, nfold=3, method = \"decisiontrees\") # decision tree takes in X as dataframe, not matrix/array\n",
+        "DML2.results <- DML2.for.PLM(X, D, y, dreg.tr, yreg.tr, nfold=5, method = \"decisiontrees\") # decision tree takes in X as dataframe, not matrix/array\n",
         "sum.tr <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Decision Trees')\n",
         "tableplr <- rbind(tableplr, sum.tr)\n",
         "tableplr"
@@ -815,7 +764,7 @@
         "yreg.boost  <- function(x,y){gbm(as.formula(\"y~.\"), cbind(data.frame(y=y),x), distribution= \"gaussian\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
         "\n",
         "# passing these through regression as type=\"response\", and D should not be factor!\n",
-        "DML2.results = DML2.for.PLM(X, D, y, dreg.boost, yreg.boost, nfold=3, method = \"boostedtrees\")\n",
+        "DML2.results = DML2.for.PLM(X, D, y, dreg.boost, yreg.boost, nfold=5, method = \"boostedtrees\")\n",
         "sum.boost <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Boosted Trees')\n",
         "tableplr <- rbind(tableplr, sum.boost)\n",
         "tableplr"
@@ -899,8 +848,8 @@
         "id": "9e5ec32b"
       },
       "source": [
-        "To reduce the disproportionate impact of extreme propensity score weights in the interactive model,\n",
-        "we trim the propensity scores that are below .01 or above .99."
+        "To reduce the disproportionate impact of extreme propensity score weights in the interactive model\n",
+        "we trim the propensity scores which are close to the bounds."
       ]
     },
     {
@@ -1064,7 +1013,7 @@
         "yreg1.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "\n",
         "\n",
-        "DML2.results <- DML2.for.IRM(as.matrix(X), D, y, dreg.rf, yreg0.rf, yreg1.rf, nfold=3, method = \"randomforest\")\n",
+        "DML2.results <- DML2.for.IRM(as.matrix(X), D, y, dreg.rf, yreg0.rf, yreg1.rf, nfold=5, method = \"randomforest\")\n",
         "sum.rf <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Random Forest')\n",
         "tableirm <- rbind(tableirm, sum.rf)\n",
         "tableirm"
@@ -1087,7 +1036,7 @@
         "yreg0.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
         "yreg1.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
         "\n",
-        "DML2.results <- DML2.for.IRM(X, D, y, dreg.tr, yreg0.tr, yreg1.tr, nfold=3, method = \"decisiontrees\")\n",
+        "DML2.results <- DML2.for.IRM(X, D, y, dreg.tr, yreg0.tr, yreg1.tr, nfold=5, method = \"decisiontrees\")\n",
         "sum.tr <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Decision Trees')\n",
         "tableirm <- rbind(tableirm, sum.tr)\n",
         "tableirm"
@@ -1113,7 +1062,7 @@
         "yreg1.boost  <- function(x,y){gbm(as.formula(\"y~.\"), cbind(data.frame(y=y),x), distribution= \"gaussian\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
         "\n",
         "# passing these through regression as type=\"response\", and D should not be factor!\n",
-        "DML2.results = DML2.for.IRM(X, D, y, dreg.boost, yreg0.boost, yreg1.boost, nfold=3, method = \"boostedtrees\")\n",
+        "DML2.results = DML2.for.IRM(X, D, y, dreg.boost, yreg0.boost, yreg1.boost, nfold=5, method = \"boostedtrees\")\n",
         "sum.boost <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Boosted Trees')\n",
         "tableirm <- rbind(tableirm, sum.boost)\n",
         "tableirm"
@@ -1158,7 +1107,7 @@
         "id": "6cdc366f"
       },
       "source": [
-        "We are interested in valid estimators of the average treatment effect of `e401` on `net_tfa`. There exist nice packages out there that can help us do our estimation with the simple call of a function. Such packages include `EconML` (Python), `DoubleML` (Python and R), and `ddml` (Stata and R).\n",
+        "We are interested in valid estimators of the average treatment effect of `e401` and `p401` on `net_tfa`. There exist nice packages out there that can help us do our estimation with the simple call of a function. Such packages include `EconML` (Python) and `DoubleML` (Python and R).\n",
         "\n",
         "We run through PLR and IRM using `DoubleML` below to illustrate. The `DoubleML` package internally builds on `mlr3`. We use the meta package `mlr3` to generate predictions with machine learning methods. A comprehensive introduction and description of the `mlr3` package is provided in the [mlr3book](https://mlr3book.mlr-org.com/). A list of all learners that you can use in `mlr3` can be found [here](https://mlr3extralearners.mlr-org.com/articles/learners/list_learners.html). The entry in the columns *mlr3 Package* and *Packages* indicate which packages must be installed/loaded in your R session.\n",
         "\n",
@@ -1296,7 +1245,7 @@
         "lasso <- lrn(\"regr.cv_glmnet\",nfolds = 5, s = \"lambda.min\")\n",
         "lasso_class <- lrn(\"classif.cv_glmnet\", nfolds = 5, s = \"lambda.min\")\n",
         "\n",
-        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds=3)\n",
+        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds=5)\n",
         "dml_plr$fit(store_predictions=TRUE)\n",
         "dml_plr$summary()\n",
         "lasso_plr <- dml_plr$coef\n",
@@ -1459,7 +1408,7 @@
         "randomForest <- lrn(\"regr.ranger\")\n",
         "randomForest_class <- lrn(\"classif.ranger\")\n",
         "\n",
-        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = randomForest_class, n_folds=3)\n",
+        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = randomForest_class, n_folds=5)\n",
         "dml_plr$fit(store_predictions=TRUE) # set store_predictions=TRUE to evaluate the model\n",
         "dml_plr$summary()\n",
         "forest_plr <- dml_plr$coef\n",
@@ -1552,7 +1501,7 @@
         "trees <- lrn(\"regr.rpart\")\n",
         "trees_class <- lrn(\"classif.rpart\")\n",
         "\n",
-        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds=3)\n",
+        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds=5)\n",
         "dml_plr$fit(store_predictions=TRUE)\n",
         "dml_plr$summary()\n",
         "tree_plr <- dml_plr$coef\n",
@@ -1632,7 +1581,7 @@
         "boost<- lrn(\"regr.glmboost\")\n",
         "boost_class <- lrn(\"classif.glmboost\")\n",
         "\n",
-        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds=3)\n",
+        "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds=5)\n",
         "dml_plr$fit(store_predictions=TRUE)\n",
         "dml_plr$summary()\n",
         "boost_plr <- dml_plr$coef\n",
@@ -1786,7 +1735,7 @@
         "lgr::get_logger(\"mlr3\")$set_threshold(\"warn\")\n",
         "dml_irm = DoubleMLIRM$new(data_ml, ml_g = lasso,\n",
         "                          ml_m = lasso_class,\n",
-        "                          trimming_threshold = 0.01, n_folds=3)\n",
+        "                          trimming_threshold = 0.01, n_folds=5)\n",
         "dml_irm$fit(store_predictions=TRUE)\n",
         "dml_irm$summary()\n",
         "lasso_irm <- dml_irm$coef\n",
@@ -1865,7 +1814,7 @@
         "\n",
         "dml_irm = DoubleMLIRM$new(data_ml, ml_g = randomForest,\n",
         "                          ml_m = randomForest_class,\n",
-        "                          trimming_threshold = 0.01, n_folds=3)\n",
+        "                          trimming_threshold = 0.01, n_folds=5)\n",
         "dml_irm$fit(store_predictions=TRUE)\n",
         "dml_irm$summary()\n",
         "forest_irm <- dml_irm$coef\n",
@@ -1893,7 +1842,7 @@
         "##### trees #####\n",
         "\n",
         "dml_irm <- DoubleMLIRM$new(data_ml, ml_g = trees, ml_m = trees_class,\n",
-        "                           trimming_threshold = 0.01, n_folds=3)\n",
+        "                           trimming_threshold = 0.01, n_folds=5)\n",
         "dml_irm$fit(store_predictions=TRUE)\n",
         "dml_irm$summary()\n",
         "tree_irm <- dml_irm$coef\n",
@@ -1922,7 +1871,7 @@
         "##### boosting #####\n",
         "\n",
         "dml_irm <- DoubleMLIRM$new(data_ml, ml_g = boost, ml_m = boost_class,\n",
-        "                           trimming_threshold = 0.01, n_folds=3)\n",
+        "                           trimming_threshold = 0.01, n_folds=5)\n",
         "dml_irm$fit(store_predictions=TRUE)\n",
         "dml_irm$summary()\n",
         "boost_irm <- dml_irm$coef\n",
@@ -1997,7 +1946,7 @@
         "id": "cddc45ff"
       },
       "source": [
-        "Here, Random Forest gives the best prediction rule for $g_0$ and Lasso the best prediction rule for $m_0$, respectively. Note that the Lasso prediction for $Y$ is terrible, and the estimates based purely on Lasso differ substantially from those of the other, better-performing methods. Let us fit the IRM model using the best ML method for each equation to get a final estimate for the treatment effect of eligibility."
+        "Here, Random Forest gives the best prediction rule for $g_0$ and Lasso the best prediction rule for $m_0$, respectively. Let us fit the IRM model using the best ML method for each equation to get a final estimate for the treatment effect of eligibility."
       ]
     },
     {
