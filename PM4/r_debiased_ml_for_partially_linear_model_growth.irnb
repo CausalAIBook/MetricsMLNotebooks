@@ -29,15 +29,6 @@
     },
     {
       "cell_type": "code",
-      "source": [],
-      "metadata": {
-        "id": "aFdfwVRSGb-X"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
       "execution_count": null,
       "metadata": {
         "collapsed": true,
@@ -63,11 +54,13 @@
         "install.packages(\"hdm\")\n",
         "install.packages(\"randomForest\")\n",
         "install.packages(\"glmnet\")\n",
+        "install.packages(\"sandwich\")\n",
         "\n",
         "library(xtable)\n",
         "library(randomForest)\n",
         "library(hdm)\n",
         "library(glmnet)\n",
+        "library(sandwich)\n",
         "\n",
         "set.seed(1)"
       ]
@@ -86,15 +79,6 @@
       },
       "execution_count": null,
       "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "|"
-      ],
-      "metadata": {
-        "id": "i9_Ep1Cu9BHf"
-      }
     },
     {
       "cell_type": "code",
