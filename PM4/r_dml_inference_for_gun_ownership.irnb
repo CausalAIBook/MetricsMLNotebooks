@@ -279,7 +279,7 @@
         "county.vars <- as.matrix(county.vars)\n",
         "for(i in 1:length(varlistJ)){\n",
         "  usedata[, paste(varlistJ[i],\"J\" , sep=\"\")] <-\n",
-        "    county.vars%*%qr.solve(county.vars,as.matrix(usedata[,varlistJ[i]]))t\n",
+        "    county.vars%*%qr.solve(county.vars,as.matrix(usedata[,varlistJ[i]]))\n",
         "}\n",
         "\n",
         "# Time means\n",
@@ -380,17 +380,6 @@
     {
       "cell_type": "markdown",
       "source": [
-        "***NB***: In the background, `lm()` is dropping variables based on collinearity diagnostics. These depend on system linear algebra routines and can lead to large differences in high-dimensional or other ill-conditioned settings when using otherwise identical code across languages and/or machines.\n",
-        "\n",
-        ""
-      ],
-      "metadata": {
-        "id": "4BTCxUwxMzUr"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
         "Next we estimate with the baseline set of controls."
       ],
       "metadata": {
@@ -448,7 +437,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we now include all controls. We report both the jackknife (HC3, default in `vcovHC` from R `sandwich` package) and heteroskedastic (HC0) standard errors for comparison."
+        "Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we now include all controls."
       ],
       "metadata": {
         "id": "EdhH_81itPev"
@@ -460,11 +449,7 @@
         "# Regression on all controls\n",
         "lmA <- lm(logghomr ~ ., data = usedata)\n",
         "vcA <- vcovHC(lmA)\n",
-        "cat(\"OLS All:\",lmA$coefficients[\"logfssl\"],\" (\",sqrt(vcA[\"logfssl\",\"logfssl\"]),\")\\n\")\n",
-        "\n",
-        "# vanilla white s.e. (not jackknife)\n",
-        "vcA0 <- vcovHC(lmA, type = \"HC0\")\n",
-        "cat(\"OLS All (HC0):\",lmA$coefficients[\"logfssl\"],\" (\",sqrt(vcA0[\"logfssl\",\"logfssl\"]),\")\\n\")"
+        "cat(\"OLS All:\",lmA$coefficients[\"logfssl\"],\" (\",sqrt(vcA[\"logfssl\",\"logfssl\"]),\")\\n\")"
       ],
       "metadata": {
         "id": "wBMWYpbBtKzy"
@@ -476,6 +461,8 @@
       "cell_type": "markdown",
       "source": [
         "After controlling for a rich set of characteristics, the point estimate of gun ownership attenuates to 0.179.\n",
+        "\n",
+        "***NB***: In the background, `lm()` is dropping variables based on collinearity diagnostics. These depend on system linear algebra routines and can lead to large differences in high-dimensional or other ill-conditioned settings when using otherwise identical code across languages and/or machines.\n",
         "\n",
         "Now we turn to our double machine learning framework, employing linear and flexible estimation methods with cross-fitting."
       ],
