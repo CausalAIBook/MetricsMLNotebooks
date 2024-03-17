@@ -479,45 +479,6 @@
       ]
     },
     {
-      "cell_type": "markdown",
-      "id": "72623508",
-      "metadata": {
-        "papermill": {
-          "duration": 0.011462,
-          "end_time": "2022-04-19T09:07:12.139918",
-          "exception": false,
-          "start_time": "2022-04-19T09:07:12.128456",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "72623508"
-      },
-      "source": [
-        "We start using lasso to estimate the function $g_0$ and $m_0$ in the following PLR model:"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "id": "03173792",
-      "metadata": {
-        "papermill": {
-          "duration": 0.011104,
-          "end_time": "2022-04-19T09:07:12.162346",
-          "exception": false,
-          "start_time": "2022-04-19T09:07:12.151242",
-          "status": "completed"
-        },
-        "tags": [],
-        "id": "03173792"
-      },
-      "source": [
-        "\\begin{eqnarray}\n",
-        " &  Y = D\\theta_0 + g_0(X) + \\zeta,  &  E[\\zeta \\mid D,X]= 0,\\\\\n",
-        " & D = m_0(X) +  V,   &  E[V \\mid X] = 0.\n",
-        "\\end{eqnarray}"
-      ]
-    },
-    {
       "cell_type": "code",
       "source": [
         "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=3, method = \"regression\") {\n",
@@ -633,6 +594,20 @@
       "outputs": []
     },
     {
+      "cell_type": "code",
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat.lasso <- D - DML2.results$dtil\n",
+        "yhat.lasso <- y - DML2.results$ytil"
+      ],
+      "metadata": {
+        "id": "KatOw36Z0ghO"
+      },
+      "id": "KatOw36Z0ghO",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
       "cell_type": "markdown",
       "source": [
         "#### Using a $\\ell_2$ Penalized Logistic Regression for D\n",
@@ -663,6 +638,20 @@
         "id": "b9Nvp5ZlSuwB"
       },
       "id": "b9Nvp5ZlSuwB",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat.lasso_logistic <- D - DML2.results$dtil\n",
+        "yhat.lasso_logistic <- y - DML2.results$ytil"
+      ],
+      "metadata": {
+        "id": "hJqMdcZV05lr"
+      },
+      "id": "hJqMdcZV05lr",
       "execution_count": null,
       "outputs": []
     },
@@ -699,6 +688,20 @@
       "outputs": []
     },
     {
+      "cell_type": "code",
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat.rf <- D - DML2.results$dtil\n",
+        "yhat.rf <- y - DML2.results$ytil"
+      ],
+      "metadata": {
+        "id": "TG476dPX1BI_"
+      },
+      "id": "TG476dPX1BI_",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
       "cell_type": "markdown",
       "source": [
         "#### Decision Trees"
@@ -727,6 +730,20 @@
         "id": "3Nu4daQRSyRb"
       },
       "id": "3Nu4daQRSyRb",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat.tr <- D - DML2.results$dtil\n",
+        "yhat.tr <- y - DML2.results$ytil"
+      ],
+      "metadata": {
+        "id": "RnCGwVbN1KJJ"
+      },
+      "id": "RnCGwVbN1KJJ",
       "execution_count": null,
       "outputs": []
     },
@@ -773,6 +790,89 @@
         "id": "Ekg5qeEOSxep"
       },
       "id": "Ekg5qeEOSxep",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat.boost <- D - DML2.results$dtil\n",
+        "yhat.boost <- y - DML2.results$ytil"
+      ],
+      "metadata": {
+        "id": "WSyqSd5Z1hne"
+      },
+      "id": "WSyqSd5Z1hne",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Ensembles"
+      ],
+      "metadata": {
+        "id": "7UZphpPS10Hz"
+      },
+      "id": "7UZphpPS10Hz"
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Boosted trees give the best RMSE for both Y and D, so the ensemble based on choosing the best performing prediction rule is identical to boosting in this case."
+      ],
+      "metadata": {
+        "id": "Hqsqpgs6C4fJ"
+      },
+      "id": "Hqsqpgs6C4fJ"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Best fit is boosted trees for both D and Y\n",
+        "\n",
+        "sum.best <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Best')\n",
+        "tableplr <- rbind(tableplr, sum.best)\n",
+        "tableplr"
+      ],
+      "metadata": {
+        "id": "gDrZqZXR12hA"
+      },
+      "id": "gDrZqZXR12hA",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We'll form a model average with unconstrained least squares weights."
+      ],
+      "metadata": {
+        "id": "pG8mmrQw2GRC"
+      },
+      "id": "pG8mmrQw2GRC"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Least squares model average\n",
+        "\n",
+        "ma.dtil <- lm(D~dhat.lasso+dhat.lasso_logistic+dhat.rf+dhat.tr+dhat.boost)$residuals\n",
+        "ma.ytil <- lm(y~yhat.lasso+yhat.lasso_logistic+yhat.rf+yhat.tr+yhat.boost)$residuals\n",
+        "\n",
+        "rfit <- lm(ma.ytil ~ ma.dtil)    #estimate the main parameter by regressing one residual on the other\n",
+        "coef.est <- coef(rfit)[2]  #extract coefficient\n",
+        "se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error\n",
+        "\n",
+        "sum.ma <- summaryPLR(coef.est, se, ma.dtil, ma.ytil, name = 'Model Average')\n",
+        "tableplr <- rbind(tableplr, sum.ma)\n",
+        "tableplr\n"
+      ],
+      "metadata": {
+        "id": "Pkg7pw5h2N0z"
+      },
+      "id": "Pkg7pw5h2N0z",
       "execution_count": null,
       "outputs": []
     },
@@ -934,7 +1034,7 @@
         "  se <- sqrt(vari/nrow(X))\n",
         "  cat(\"point\", coef.est)\n",
         "  cat(\"se\", se)\n",
-        "  return(list(coef.est = coef.est, se = se, ytil = ytil, dtil = dtil, drhat = drhat))\n",
+        "  return(list(coef.est = coef.est, se = se, ytil = ytil, dtil = dtil, drhat = drhat, yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))\n",
         "}"
       ],
       "metadata": {
@@ -992,7 +1092,12 @@
         "sum.lasso.cv <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'LassoCVLogistic')\n",
         "tableirm <- data.frame()\n",
         "tableirm <- rbind(sum.lasso.cv)\n",
-        "tableirm"
+        "tableirm\n",
+        "\n",
+        "yhat0.lasso <- DML2.results$yhat0\n",
+        "yhat1.lasso <- DML2.results$yhat1\n",
+        "dhat.lasso <- DML2.results$dhat\n",
+        "yhat.lasso <- DML2.results$yhat"
       ],
       "metadata": {
         "id": "AUiHMoNTvo-m"
@@ -1016,7 +1121,12 @@
         "DML2.results <- DML2.for.IRM(as.matrix(X), D, y, dreg.rf, yreg0.rf, yreg1.rf, nfold=5, method = \"randomforest\")\n",
         "sum.rf <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Random Forest')\n",
         "tableirm <- rbind(tableirm, sum.rf)\n",
-        "tableirm"
+        "tableirm\n",
+        "\n",
+        "yhat0.rf <- DML2.results$yhat0\n",
+        "yhat1.rf <- DML2.results$yhat1\n",
+        "dhat.rf <- DML2.results$dhat\n",
+        "yhat.rf <- DML2.results$yhat"
       ],
       "metadata": {
         "id": "JPABXLYyvyqy"
@@ -1039,7 +1149,12 @@
         "DML2.results <- DML2.for.IRM(X, D, y, dreg.tr, yreg0.tr, yreg1.tr, nfold=5, method = \"decisiontrees\")\n",
         "sum.tr <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Decision Trees')\n",
         "tableirm <- rbind(tableirm, sum.tr)\n",
-        "tableirm"
+        "tableirm\n",
+        "\n",
+        "yhat0.tr <- DML2.results$yhat0\n",
+        "yhat1.tr <- DML2.results$yhat1\n",
+        "dhat.tr <- DML2.results$dhat\n",
+        "yhat.tr <- DML2.results$yhat"
       ],
       "metadata": {
         "id": "SukZCfEbvyzC"
@@ -1065,12 +1180,85 @@
         "DML2.results = DML2.for.IRM(X, D, y, dreg.boost, yreg0.boost, yreg1.boost, nfold=5, method = \"boostedtrees\")\n",
         "sum.boost <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Boosted Trees')\n",
         "tableirm <- rbind(tableirm, sum.boost)\n",
-        "tableirm"
+        "tableirm\n",
+        "\n",
+        "yhat0.boost <- DML2.results$yhat0\n",
+        "yhat1.boost <- DML2.results$yhat1\n",
+        "dhat.boost <- DML2.results$dhat\n",
+        "yhat.boost <- DML2.results$yhat"
       ],
       "metadata": {
         "id": "bTfgiCabvy6f"
       },
       "id": "bTfgiCabvy6f",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Ensembles\n",
+        "\n",
+        "# Best\n",
+        "# We'll look at model that does best for Y overall. Could also use different model for Y0 and Y1\n",
+        "# Here, the best performance for Y is the random forest and for D the boosted tree\n",
+        "\n",
+        "# residuals\n",
+        "ytil <- y-yhat.rf\n",
+        "dtil <- D-dhat.boost\n",
+        "# doubly robust quantity for every sample\n",
+        "drhat <- yhat1.rf - yhat0.rf + (y-yhat.rf)* (D/dhat.boost - (1 - D)/(1 - dhat.boost))\n",
+        "coef.est <- mean(drhat)\n",
+        "vari <- var(drhat)\n",
+        "se <- sqrt(vari/nrow(X))\n",
+        "\n",
+        "sum.best <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Best')\n",
+        "tableirm <- rbind(tableirm, sum.best)\n",
+        "tableirm"
+      ],
+      "metadata": {
+        "id": "7rxqwK-R4Z2q"
+      },
+      "id": "7rxqwK-R4Z2q",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Least squares model average\n",
+        "# We'll look at weights that do best job for Y overall. Could also use different weights for Y0 and Y1\n",
+        "\n",
+        "ma.dw <- lm(D~dhat.lasso+dhat.rf+dhat.tr+dhat.boost)$coef\n",
+        "ma.yw <- lm(y~yhat.lasso+yhat.rf+yhat.tr+yhat.boost)$coef\n",
+        "\n",
+        "Dhats <- cbind(as.matrix(rep(1,nrow(X))),dhat.lasso,dhat.rf,dhat.tr,dhat.boost)\n",
+        "Y0s <- cbind(as.matrix(rep(1,nrow(X))),yhat0.lasso,yhat0.rf,yhat0.tr,yhat0.boost)\n",
+        "Y1s <- cbind(as.matrix(rep(1,nrow(X))),yhat1.lasso,yhat1.rf,yhat1.tr,yhat1.boost)\n",
+        "\n",
+        "dhat <- Dhats%*%as.matrix(ma.dw)\n",
+        "yhat0 <- Y0s%*%as.matrix(ma.yw)\n",
+        "yhat1 <- Y1s%*%as.matrix(ma.yw)\n",
+        "\n",
+        "# Prediction of treatment and outcome for observed instrument\n",
+        "yhat <- yhat0 * (1 - D) + yhat1 * D\n",
+        "# residuals\n",
+        "ytil <- y-yhat\n",
+        "dtil <- D-dhat\n",
+        "# doubly robust quantity for every sample\n",
+        "drhat <- yhat1 - yhat0 + (y-yhat)* (D/dhat - (1 - D)/(1 - dhat))\n",
+        "coef.est <- mean(drhat)\n",
+        "vari <- var(drhat)\n",
+        "se <- sqrt(vari/nrow(X))\n",
+        "\n",
+        "sum.ma <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Model Average')\n",
+        "tableirm <- rbind(tableirm, sum.ma)\n",
+        "tableirm\n"
+      ],
+      "metadata": {
+        "id": "0-c3NI0fCfqg"
+      },
+      "id": "0-c3NI0fCfqg",
       "execution_count": null,
       "outputs": []
     },
