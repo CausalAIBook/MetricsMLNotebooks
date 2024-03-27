@@ -254,6 +254,41 @@
     },
     {
       "cell_type": "markdown",
+      "source": [
+        "For benchmarking, we want to understand the \"partial $R^2$\" of the controls on the outcome after partialling out the variable of interest."
+      ],
+      "metadata": {
+        "id": "dpvDjIKNw7Nk"
+      },
+      "id": "dpvDjIKNw7Nk"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#partial out variable of interest\n",
+        "peacefactorR2 <- lm(peacefactorR~directlyharmedR)$res\n",
+        "femaleR2 <- lm(femaleR~directlyharmedR)$res\n",
+        "ageR2 <- lm(ageR~directlyharmedR)$res\n",
+        "farmerR2 <- lm(farmerR~directlyharmedR)$res\n",
+        "herderR2 <- lm(herderR~directlyharmedR)$res\n",
+        "pastvotedR2 <- lm(pastvotedR~directlyharmedR)$res\n",
+        "hhsizeR2 <- lm(hhsizeR~directlyharmedR)$res\n",
+        "\n",
+        "\n",
+        "# R^2 of controls after partialling out variable of interest\n",
+        "summary(lm(peacefactorR2 ~ femaleR2 +\n",
+        "                     ageR2 + farmerR2 + herderR2 + pastvotedR2 + hhsizeR2))\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "ck8nzqQbv8dz"
+      },
+      "id": "ck8nzqQbv8dz",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
       "id": "careful-dollar",
       "metadata": {
         "papermill": {
@@ -342,7 +377,7 @@
         "beta = dml.darfur.model$coef[2]\n",
         "\n",
         "# Hypothetical values of partial R2s\n",
-        "R2.YC = .16; R2.DC = .01\n",
+        "R2.YC = .13; R2.DC = .01\n",
         "\n",
         "# Elements of the bias equation\n",
         "kappa<-  (R2.YC * R2.DC)/(1- R2.DC)\n",
@@ -359,9 +394,9 @@
         "gridR2.YC<- kappa*(1 - gridR2.DC)/gridR2.DC\n",
         "gridR2.YC<- ifelse(gridR2.YC> 1, 1, gridR2.YC);\n",
         "\n",
-        "plot(gridR2.DC, gridR2.YC, type=\"l\", col=4, xlab=\"Partial R2 of Treatment with Confounder\",\n",
-        "     ylab=\"Partial R2 of Outcome with Confounder\",\n",
-        "    main= c(\"Combo of R2 such that |Bias|< \", round(sqrt(BiasSq), digits=4))\n",
+        "plot(gridR2.DC, gridR2.YC, type=\"l\", col=4, xlab = \"Partial R2 of Treatment with Confounder\",\n",
+        "     ylab = \"Partial R2 of Outcome with Confounder\",\n",
+        "     main = paste(\"Combination of R2 such that |Bias| < \", round(sqrt(BiasSq), digits=4))\n",
         ")\n"
       ]
     },
