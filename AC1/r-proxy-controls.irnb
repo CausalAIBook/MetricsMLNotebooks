@@ -191,14 +191,6 @@
         "    qfit <- qreg(x[-I[[b]],], q[-I[[b]]])  #take a fold out\n",
         "    yfit <- yreg(x[-I[[b]],], y[-I[[b]]])  #take a fold out\n",
         "    sfit <- sreg(x[-I[[b]],], s[-I[[b]]])  #take a fold out\n",
-        "#    dhat <- predict(dfit, x[I[[b]],], type=\"response\")  #predict the fold out\n",
-        "#    qhat <- predict(qfit, x[I[[b]],], type=\"response\")  #predict the fold out\n",
-        "#    yhat <- predict(yfit, x[I[[b]],], type=\"response\")  #predict the fold out\n",
-        "#    shat <- predict(sfit, x[I[[b]],], type=\"response\")  #predict the fold out\n",
-        "#    dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual\n",
-        "#    qtil[I[[b]]] <- (q[I[[b]]] - qhat) #record residual\n",
-        "#    ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial\n",
-        "#    stil[I[[b]]] <- (s[I[[b]]] - shat) #record residual\n",
         "    dtil[I[[b]]] <- (d[I[[b]]] - x[I[[b]],]%*%as.matrix(dfit$coefficients)) #record residual\n",
         "    qtil[I[[b]]] <- (q[I[[b]]] - x[I[[b]],]%*%as.matrix(qfit$coefficients)) #record residual\n",
         "    ytil[I[[b]]] <- (y[I[[b]]] - x[I[[b]],]%*%as.matrix(yfit$coefficients)) #record residial\n",
@@ -209,7 +201,7 @@
         "  coef.est <-  ivfit$coef[1]          #extract coefficient\n",
         "  se <-  ivfit$se[1]                  #record standard error\n",
         "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))\n",
-        "  return( list(coef.est =coef.est , se=se, dtil=dtil, qtil = qtil, ytil=ytil, stil=stil) )\n",
+        "  return( list(coef.est =coef.est , se=se, dtil=dtil, qtil = qtil, ytil=ytil, stil=stil, foldid=foldid, spI = I) )\n",
         "}"
       ],
       "metadata": {
@@ -231,14 +223,113 @@
       "cell_type": "code",
       "source": [
         "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
-        "qreg<-  function(x,q){ lm.fit(x, q)}  #ML method=ols\n",
+        "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
         "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
-        "sreg<-  function(x,s){ lm.fit(x, s)}  #ML method=ols\n",
+        "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
         "\n",
         "DML.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)\n"
       ],
       "metadata": {
         "id": "oYx9OoxnmAYq"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Real Data - Effects of Smoking on Birth Weight"
+      ],
+      "metadata": {
+        "id": "23OIAhYa84ng"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "In this study, we will be studying the effects of smoking on baby weight. We will consider the following stylized setup:\n",
+        "\n",
+        "Outcome ($Y$): baby weight\n",
+        "\n",
+        "Treatment ($D$): smoking\n",
+        "\n",
+        "Unobserved confounding ($A$): family income\n",
+        "\n",
+        "The observed covariates are put in to 3 groups:\n",
+        "\n",
+        "\n",
+        "*   Proxy treatment control ($Q$): mother's education\n",
+        "*   Proxy outcome control ($S$): parity (total number of previous pregnancies)\n",
+        "*   Other observed covariates ($X$): mother's race and age and infant sex\n",
+        "\n",
+        "\n",
+        "Education serves as a proxy treatment control $Q$ because it reflects unobserved confounding due to household income $A$ but has no direct medical effect on birth weight $Y$. Parity and sex serve as a proxy outcome control $S$ because family size reflects household income $A$ but is not directly caused by smoking $D$ or education $Q$.\n",
+        "\n",
+        "A description of the data used can be found [here](https://www.stat.berkeley.edu/users/statlabs/data/babies.readme)."
+      ],
+      "metadata": {
+        "id": "qFG-RtmR85rv"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "data <- read.table(\"https://www.stat.berkeley.edu/users/statlabs/data/babies23.data\", header = TRUE)\n",
+        "summary(data)"
+      ],
+      "metadata": {
+        "id": "6FjiuPrt8_rk"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Filter data to exclude entries where income, number of cigarettes smoked,\n",
+        "# race, age are not asked or not known\n",
+        "data = data[data$race != 99, ]\n",
+        "data = data[!(data$number %in% c(98,99)), ]\n",
+        "data = data[!(data$inc %in% c(98,99)), ]\n",
+        "data = data[data$age != 99, ]\n",
+        "dim(data)"
+      ],
+      "metadata": {
+        "id": "ooZVwo0y-H9E"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Create matrices for X, D, Q, S, A, Y\n",
+        "X <- model.matrix(~0 + C(race) + age, data)\n",
+        "D <- model.matrix(~0 + number, data)\n",
+        "Q <- model.matrix(~0 + ed, data)\n",
+        "S <- model.matrix(~0 + parity, data)\n",
+        "A <- model.matrix(~0 + inc, data)\n",
+        "Y <- model.matrix(~0 + wt, data)"
+      ],
+      "metadata": {
+        "id": "8vv9F6fe_AoI"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Use cross-fitting with OLS to estimate treatment effect within linear model context\n",
+        "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
+        "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
+        "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
+        "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
+        "\n",
+        "DML.bw.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)"
+      ],
+      "metadata": {
+        "id": "E-KCdxFH_TtC"
       },
       "execution_count": null,
       "outputs": []
