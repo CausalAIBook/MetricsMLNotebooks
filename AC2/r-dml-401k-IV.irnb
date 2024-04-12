@@ -642,11 +642,15 @@
         "yreg.lasso.cv <- function(x,y){ cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "zreg.lasso.cv <- function(x,z){ cv.glmnet(x, z, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "\n",
-        "DML2.results <- DML2.for.PLIVM(as.matrix(X), D, Z, y, dreg.lasso.cv, yreg.lasso.cv, zreg.lasso.cv, nfold=3, method=\"regression\")\n",
+        "DML2.results <- DML2.for.PLIVM(as.matrix(X), D, Z, y, dreg.lasso.cv, yreg.lasso.cv, zreg.lasso.cv, nfold=5, method=\"regression\")\n",
         "sum.lasso.cv <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, name = 'LassoCV')\n",
         "tableplr <- data.frame()\n",
         "tableplr <- rbind(sum.lasso.cv)\n",
-        "tableplr"
+        "tableplr\n",
+        "\n",
+        "ytil.lasso <- DML2.results$ytil\n",
+        "dtil.lasso <- DML2.results$dtil\n",
+        "ztil.lasso <- DML2.results$ztil\n"
       ],
       "metadata": {
         "id": "vBJm7BkUYgsG"
@@ -672,14 +676,18 @@
         "set.seed(123)\n",
         "cat(sprintf(\"\\nDML with Lasso/Logistic \\n\"))\n",
         "\n",
-        "dreg.lasso.cv <- function(x,d){cv.glmnet(x, d, family=\"binomial\", alpha=0, nfolds=5)}\n",
+        "dreg.ridge.cv <- function(x,d){cv.glmnet(x, d, family=\"binomial\", alpha=0, nfolds=5)}\n",
         "yreg.ridge.cv <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "zreg.ridge.cv <- function(x,z){cv.glmnet(x, z, family=\"binomial\", alpha=0, nfolds=5)}\n",
         "\n",
-        "DML2.results <- DML2.for.PLIVM(as.matrix(X), D, Z, y, dreg.lasso.cv, yreg.ridge.cv, zreg.ridge.cv, nfold=3, method=\"regression\")\n",
+        "DML2.results <- DML2.for.PLIVM(as.matrix(X), D, Z, y, dreg.ridge.cv, yreg.ridge.cv, zreg.ridge.cv, nfold=5, method=\"regression\")\n",
         "sum.lasso_ridge.cv <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, name = 'LassoCV/LogisticCV')\n",
         "tableplr <- rbind(tableplr, sum.lasso_ridge.cv)\n",
-        "tableplr"
+        "tableplr\n",
+        "\n",
+        "ytil.ridge <- DML2.results$ytil\n",
+        "dtil.ridge <- DML2.results$dtil\n",
+        "ztil.ridge <- DML2.results$ztil"
       ],
       "metadata": {
         "id": "FM6WvQXKYgxL"
@@ -709,10 +717,14 @@
         "yreg.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "zreg.rf <- function(x,z){randomForest(x, z, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "\n",
-        "DML2.results = DML2.for.PLIVM(as.matrix(X), as.factor(D), as.factor(Z), y, dreg.rf, yreg.rf, zreg.rf, nfold=3, method=\"randomforest\")\n",
+        "DML2.results = DML2.for.PLIVM(as.matrix(X), as.factor(D), as.factor(Z), y, dreg.rf, yreg.rf, zreg.rf, nfold=5, method=\"randomforest\")\n",
         "sum.rf <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, name = 'RF')\n",
         "tableplr <- rbind(tableplr, sum.rf)\n",
-        "tableplr"
+        "tableplr\n",
+        "\n",
+        "ytil.rf <- DML2.results$ytil\n",
+        "dtil.rf <- DML2.results$dtil\n",
+        "ztil.rf <- DML2.results$ztil"
       ],
       "metadata": {
         "id": "mMvJT6NZHW1_"
@@ -742,10 +754,14 @@
         "yreg.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
         "zreg.tr <- function(x,z){rpart(as.formula(\"Z~.\"), cbind(data.frame(Z=z),x), method = \"class\", minbucket=10, cp = 0.001)}\n",
         "\n",
-        "DML2.results = DML2.for.PLIVM(X, D, Z, y, dreg.tr, yreg.tr, zreg.tr, nfold=3, method=\"decisiontrees\") # decision tree takes in X as dataframe, not matrix/array\n",
+        "DML2.results = DML2.for.PLIVM(X, D, Z, y, dreg.tr, yreg.tr, zreg.tr, nfold=5, method=\"decisiontrees\") # decision tree takes in X as dataframe, not matrix/array\n",
         "sum.tr <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, name = 'Decision Trees')\n",
         "tableplr <- rbind(tableplr, sum.tr)\n",
-        "tableplr"
+        "tableplr\n",
+        "\n",
+        "ytil.tr <- DML2.results$ytil\n",
+        "dtil.tr <- DML2.results$dtil\n",
+        "ztil.tr <- DML2.results$ztil"
       ],
       "metadata": {
         "id": "ayrnTPeBHW88"
@@ -778,15 +794,107 @@
         "zreg.boost  <- function(x,z){gbm(as.formula(\"Z~.\"), cbind(data.frame(Z=z),x), distribution= \"bernoulli\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
         "\n",
         "# passing these through regression as type=\"response\", and D and Z should not be factors!\n",
-        "DML2.results = DML2.for.PLIVM(X, D, Z, y, dreg.boost, yreg.boost, zreg.boost, nfold=3, method = \"regression\")\n",
+        "DML2.results = DML2.for.PLIVM(X, D, Z, y, dreg.boost, yreg.boost, zreg.boost, nfold=5, method = \"regression\")\n",
         "sum.boost <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, name = 'Boosted Trees')\n",
         "tableplr <- rbind(tableplr, sum.boost)\n",
-        "tableplr"
+        "tableplr\n",
+        "\n",
+        "ytil.boost <- DML2.results$ytil\n",
+        "dtil.boost <- DML2.results$dtil\n",
+        "ztil.boost <- DML2.results$ztil"
       ],
       "metadata": {
         "id": "nzlszy9zjiSy"
       },
       "id": "nzlszy9zjiSy",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Ensembles"
+      ],
+      "metadata": {
+        "id": "oQpoYedAc4Ic"
+      },
+      "id": "oQpoYedAc4Ic"
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Boosted trees give the best RMSE for Y, D, and Z, so the ensemble based on choosing the best performing prediction rule is identical to boosting in this case."
+      ],
+      "metadata": {
+        "id": "_LLsorarc8Mh"
+      },
+      "id": "_LLsorarc8Mh"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Best fit is boosted trees for D, Z, Y\n",
+        "\n",
+        "sum.best <- summary(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$dtil, name = 'Best')\n",
+        "tableplr <- rbind(tableplr, sum.best)\n",
+        "tableplr"
+      ],
+      "metadata": {
+        "id": "kAePILCadEVh"
+      },
+      "id": "kAePILCadEVh",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We'll form a model average with unconstrained least squares weights."
+      ],
+      "metadata": {
+        "id": "KaaDX4kkdIMx"
+      },
+      "id": "KaaDX4kkdIMx"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Least squares model average\n",
+        "\n",
+        "dhat.lasso <- D - dtil.lasso\n",
+        "dhat.ridge <- D - dtil.ridge\n",
+        "dhat.rf <- D - dtil.rf\n",
+        "dhat.tr <- D - dtil.tr\n",
+        "dhat.boost <- D - dtil.boost\n",
+        "\n",
+        "yhat.lasso <- y - ytil.lasso\n",
+        "yhat.ridge <- y - ytil.ridge\n",
+        "yhat.rf <- y - ytil.rf\n",
+        "yhat.tr <- y - ytil.tr\n",
+        "yhat.boost <- y - ytil.boost\n",
+        "\n",
+        "zhat.lasso <- Z - ztil.lasso\n",
+        "zhat.ridge <- Z - ztil.ridge\n",
+        "zhat.rf <- Z - ztil.rf\n",
+        "zhat.tr <- Z - ztil.tr\n",
+        "zhat.boost <- Z - ztil.boost\n",
+        "\n",
+        "ma.dtil <- lm(D~dhat.lasso+dhat.ridge+dhat.rf+dhat.tr+dhat.boost)$residuals\n",
+        "ma.ytil <- lm(y~yhat.lasso+yhat.ridge+yhat.rf+yhat.tr+yhat.boost)$residuals\n",
+        "ma.ztil <- lm(Z~zhat.lasso+zhat.ridge+zhat.rf+zhat.tr+zhat.boost)$residuals\n",
+        "\n",
+        "ivfit = tsls(y=ma.ytil,d=ma.dtil, x=NULL, z=ma.ztil, intercept=FALSE)\n",
+        "coef.est <- ivfit$coef          #extract coefficient\n",
+        "se <- ivfit$se                  #record standard error\n",
+        "\n",
+        "sum.ma <- summary(coef.est, se, ma.ytil, ma.dtil, ma.ztil, name = 'Model Average')\n",
+        "tableplr <- rbind(tableplr, sum.ma)\n",
+        "tableplr"
+      ],
+      "metadata": {
+        "id": "mCsyY3iJdHm_"
+      },
+      "id": "mCsyY3iJdHm_",
       "execution_count": null,
       "outputs": []
     },
@@ -1103,7 +1211,7 @@
         "  se <- sqrt(variance / nrow(X))\n",
         "  cat(\"se\", se)\n",
         "\n",
-        "  return(list(coef.est = coef.est, se = se, yhat = yhat, dhat = dhat, zhat = zhat, ytil = ytil, dtil = dtil, ztil = ztil, drZ = drZ, drD = drD))\n",
+        "  return(list(coef.est = coef.est, se = se, yhat = yhat, dhat = dhat, zhat = zhat, ytil = ytil, dtil = dtil, ztil = ztil, drZ = drZ, drD = drD, yhat0 = yhat0, yhat1 = yhat1, dhat0 = dhat0, dhat1 = dhat1))\n",
         "}"
       ],
       "metadata": {
@@ -1151,11 +1259,19 @@
         "yreg1 <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
         "zreg <- function(x,z){cv.glmnet(x, z, family=\"binomial\", alpha=0, nfolds=5)}\n",
         "\n",
-        "DML2.results <- DML2.for.IIVM(as.matrix(X), D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=3, method=\"regression\")\n",
+        "DML2.results <- DML2.for.IIVM(as.matrix(X), D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=5, method=\"regression\")\n",
         "sum.lasso_ridge.cv <-summary(DML2.results$coef.est,  DML2.results$se, DML2.results$yhat, DML2.results$dhat, DML2.results$zhat, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, DML2.results$drZ, DML2.results$drD, name = 'LassoCV/LogisticCV')\n",
         "table <- data.frame()\n",
         "table <- rbind(table, sum.lasso_ridge.cv)\n",
-        "table"
+        "table\n",
+        "\n",
+        "yhat.lasso = DML2.results$yhat\n",
+        "dhat.lasso = DML2.results$dhat\n",
+        "yhat0.lasso = DML2.results$yhat0\n",
+        "yhat1.lasso = DML2.results$yhat1\n",
+        "dhat0.lasso = DML2.results$dhat0\n",
+        "dhat1.lasso = DML2.results$dhat1\n",
+        "zhat.lasso = DML2.results$zhat"
       ],
       "metadata": {
         "id": "Tj-8FFF3BXxV"
@@ -1177,10 +1293,18 @@
         "yreg1 <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "zreg <- function(x,z){randomForest(x, z, ntree=1000, nodesize=10)}  #ML method=Forest\n",
         "\n",
-        "DML2.results <- DML2.for.IIVM(X,D,Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=3, method=\"randomforest\")\n",
+        "DML2.results <- DML2.for.IIVM(X,D,Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=5, method=\"randomforest\")\n",
         "sum.rf <- summary(DML2.results$coef.est,  DML2.results$se, DML2.results$yhat, DML2.results$dhat, DML2.results$zhat, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, DML2.results$drZ, DML2.results$drD, name = 'RF')\n",
         "table <- rbind(table, sum.rf)\n",
-        "table"
+        "table\n",
+        "\n",
+        "yhat.rf = DML2.results$yhat\n",
+        "dhat.rf = DML2.results$dhat\n",
+        "yhat0.rf = DML2.results$yhat0\n",
+        "yhat1.rf = DML2.results$yhat1\n",
+        "dhat0.rf = DML2.results$dhat0\n",
+        "dhat1.rf = DML2.results$dhat1\n",
+        "zhat.rf = DML2.results$zhat"
       ],
       "metadata": {
         "id": "sXjbvMbEkYJd"
@@ -1202,10 +1326,18 @@
         "yreg1 <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
         "zreg <- function(x,z){rpart(as.formula(\"Z~.\"), cbind(data.frame(Z=z),x), method = \"class\", minbucket=10, cp = 0.001)}\n",
         "\n",
-        "DML2.results <- DML2.for.IIVM(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=3, method=\"decisiontrees\")\n",
+        "DML2.results <- DML2.for.IIVM(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=5, method=\"decisiontrees\")\n",
         "sum.tr <- summary(DML2.results$coef.est,  DML2.results$se, DML2.results$yhat, DML2.results$dhat, DML2.results$zhat, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, DML2.results$drZ, DML2.results$drD, name = 'Decision Trees')\n",
         "table <- rbind(table, sum.tr)\n",
-        "table"
+        "table\n",
+        "\n",
+        "yhat.tr = DML2.results$yhat\n",
+        "dhat.tr = DML2.results$dhat\n",
+        "yhat0.tr = DML2.results$yhat0\n",
+        "yhat1.tr = DML2.results$yhat1\n",
+        "dhat0.tr = DML2.results$dhat0\n",
+        "dhat1.tr = DML2.results$dhat1\n",
+        "zhat.tr = DML2.results$zhat"
       ],
       "metadata": {
         "id": "ZZRXpY8YkYNN"
@@ -1230,15 +1362,137 @@
         "zreg  <- function(x,z){gbm(as.formula(\"Z~.\"), cbind(data.frame(Z=z),x), distribution= \"bernoulli\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
         "\n",
         "# passing these through regression as type=\"response\", and D and Z should not be factors!\n",
-        "DML2.results <- DML2.for.IIVM(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=3, method=\"boostedtrees\")\n",
+        "DML2.results <- DML2.for.IIVM(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg, trimming=0.01, nfold=5, method=\"boostedtrees\")\n",
         "sum.boost <- summary(DML2.results$coef.est,  DML2.results$se, DML2.results$yhat, DML2.results$dhat, DML2.results$zhat, DML2.results$ytil, DML2.results$dtil, DML2.results$ztil, DML2.results$drZ, DML2.results$drD, name = 'Boosted Trees')\n",
         "table <- rbind(table, sum.boost)\n",
-        "table"
+        "table\n",
+        "\n",
+        "yhat.boost = DML2.results$yhat\n",
+        "dhat.boost = DML2.results$dhat\n",
+        "yhat0.boost = DML2.results$yhat0\n",
+        "yhat1.boost = DML2.results$yhat1\n",
+        "dhat0.boost = DML2.results$dhat0\n",
+        "dhat1.boost = DML2.results$dhat1\n",
+        "zhat.boost = DML2.results$zhat"
       ],
       "metadata": {
         "id": "RYqykjPskYQJ"
       },
       "id": "RYqykjPskYQJ",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Ensembles"
+      ],
+      "metadata": {
+        "id": "29vcyCYsktQ3"
+      },
+      "id": "29vcyCYsktQ3"
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Boosted trees give the best RMSE for D and Z and random forests give the best RMSE for Y."
+      ],
+      "metadata": {
+        "id": "vuyfd9UJkw9G"
+      },
+      "id": "vuyfd9UJkw9G"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Best fit is boosted trees for D, Z and random forests for Y\n",
+        "\n",
+        "best.yhat0 <- yhat0.rf\n",
+        "best.yhat1 <- yhat1.rf\n",
+        "best.yhat <- yhat.rf\n",
+        "\n",
+        "best.dhat0 <- dhat0.boost\n",
+        "best.dhat1 <- dhat1.boost\n",
+        "best.dhat <- dhat.boost\n",
+        "\n",
+        "best.zhat <- zhat.boost\n",
+        "\n",
+        "ytil.best <- y - best.yhat\n",
+        "dtil.best <- D - best.dhat\n",
+        "ztil.best <- Z - best.zhat\n",
+        "\n",
+        "# doubly robust quantity for every sample\n",
+        "HZ <- Z / best.zhat - (1 - Z) / (1 - best.zhat)\n",
+        "drZ <- best.yhat1 - best.yhat0 + (y - best.yhat) * HZ\n",
+        "drD <- best.dhat1 - best.dhat0 + (D - best.dhat) * HZ\n",
+        "coef.est <- mean(drZ) / mean(drD)\n",
+        "psi <- drZ - coef.est * drD\n",
+        "Jhat <- mean(drD)\n",
+        "variance <- mean(psi^2) / Jhat^2\n",
+        "se <- sqrt(variance / nrow(X))\n",
+        "\n",
+        "sum.best <- summary(coef.est, se, best.yhat, best.dhat, best.zhat, ytil.best, dtil.best, ztil.best, drZ, drD, name = 'Best')\n",
+        "table <- rbind(table, sum.best)\n",
+        "table"
+      ],
+      "metadata": {
+        "id": "Y9_T5SMUk3Rd"
+      },
+      "id": "Y9_T5SMUk3Rd",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "We'll form a model average with unconstrained least squares weights."
+      ],
+      "metadata": {
+        "id": "RyRS9zNUlMCF"
+      },
+      "id": "RyRS9zNUlMCF"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Least squares model average\n",
+        "ma.dcoef <- lm(D~dhat.lasso+dhat.rf+dhat.tr+dhat.boost-1)$coef\n",
+        "ma.ycoef <- lm(y~yhat.lasso+yhat.rf+yhat.tr+yhat.boost-1)$coef\n",
+        "ma.zcoef <- lm(Z~zhat.lasso+zhat.rf+zhat.tr+zhat.boost-1)$coef\n",
+        "\n",
+        "ma.yhat0 <- cbind(yhat0.lasso,yhat0.rf,yhat0.tr,yhat0.boost)%*%as.matrix(ma.ycoef)\n",
+        "ma.yhat1 <- cbind(yhat1.lasso,yhat1.rf,yhat1.tr,yhat1.boost)%*%as.matrix(ma.ycoef)\n",
+        "ma.dhat0 <- cbind(dhat0.lasso,dhat0.rf,dhat0.tr,dhat0.boost)%*%as.matrix(ma.dcoef)\n",
+        "ma.dhat1 <- cbind(dhat1.lasso,dhat1.rf,dhat1.tr,dhat1.boost)%*%as.matrix(ma.dcoef)\n",
+        "ma.zhat <- cbind(zhat.lasso,zhat.rf,zhat.tr,zhat.boost)%*%as.matrix(ma.zcoef)\n",
+        "\n",
+        "# Prediction of treatment and outcome for observed instrument\n",
+        "ma.yhat <- ma.yhat0 * (1 - Z) + ma.yhat1 * Z\n",
+        "ma.dhat <- ma.dhat0 * (1 - Z) + ma.dhat1 * Z\n",
+        "\n",
+        "# residuals\n",
+        "ma.ytil <- y-ma.yhat\n",
+        "ma.dtil <- D-ma.dhat\n",
+        "ma.ztil <- Z-ma.zhat\n",
+        "\n",
+        "# doubly robust quantity for every sample\n",
+        "HZ <- Z / ma.zhat - (1 - Z) / (1 - ma.zhat)\n",
+        "drZ <- ma.yhat1 - ma.yhat0 + (y - ma.yhat) * HZ\n",
+        "drD <- ma.dhat1 - ma.dhat0 + (D - ma.dhat) * HZ\n",
+        "coef.est <- mean(drZ) / mean(drD)\n",
+        "psi <- drZ - coef.est * drD\n",
+        "Jhat <- mean(drD)\n",
+        "variance <- mean(psi^2) / Jhat^2\n",
+        "se <- sqrt(variance / nrow(X))\n",
+        "\n",
+        "sum.ma <- summary(coef.est, se, ma.yhat, ma.dhat, ma.zhat, ma.ytil, ma.dtil, ma.ztil, drZ, drD, name = 'Model Average')\n",
+        "table <- rbind(table, sum.ma)\n",
+        "table"
+      ],
+      "metadata": {
+        "id": "1H4sCbO2lLpJ"
+      },
+      "id": "1H4sCbO2lLpJ",
       "execution_count": null,
       "outputs": []
     },
