@@ -63,15 +63,15 @@
         "#beta = 1   #  1 strong IV\n",
         "\n",
         "\n",
-        "U =  rnorm(n)\n",
-        "Z = rnorm(n)  #generate instrument\n",
-        "D = beta*Z + U  #generate endogenougs variable\n",
-        "Y =  D+ U  # the true causal effect is 1\n",
+        "U = rnorm(n)\n",
+        "Z = rnorm(n)    # generate instrument\n",
+        "D = beta*Z + U  # generate endogenougs variable\n",
+        "Y = D + U       # the true causal effect is 1\n",
         "\n",
         "\n",
-        "summary(lm(D~Z))  # first stage is very weak here\n",
+        "summary(lm(D~Z))  # first stage is very weak here when we set beta = .1\n",
         "\n",
-        "summary(tsls(x=NULL, d=D, y=Y, z=Z))  #\n"
+        "summary(tsls(x=NULL, d=D, y=Y, z=Z))\n"
       ],
       "metadata": {
         "trusted": true,
