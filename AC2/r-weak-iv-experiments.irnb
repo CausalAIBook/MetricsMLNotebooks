@@ -100,7 +100,7 @@
     {
       "cell_type": "markdown",
       "source": [
-        "# Run 1000 trials to evaluate distribution of the IV estimator"
+        "# Run 10000 trials to evaluate distribution of the IV estimator"
       ],
       "metadata": {
         "id": "u-SaSi2L-MN1"
