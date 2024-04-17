@@ -56,26 +56,34 @@
       "source": [
         "# Simulation Design\n",
         "set.seed(1)\n",
-        "B= 10000 # trials\n",
-        "IVEst = rep(0, B)\n",
+        "\n",
         "n=100\n",
         "beta = .1   # .1 weak IV\n",
         "#beta = 1   #  1 strong IV\n",
         "\n",
-        "\n",
+        "# One realization\n",
         "U = rnorm(n)\n",
         "Z = rnorm(n)    # generate instrument\n",
         "D = beta*Z + U  # generate endogenougs variable\n",
         "Y = D + U       # the true causal effect is 1\n",
         "\n",
         "\n",
-        "summary(lm(D~Z))  # first stage is very weak here when we set beta = .1\n",
-        "\n",
-        "summary(tsls(x=NULL, d=D, y=Y, z=Z))\n"
+        "summary(lm(D~Z))  # first stage is very weak here when we set beta = .1"
       ],
       "metadata": {
         "trusted": true,
         "id": "svk7GbHx-MNz"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "summary(tsls(x=NULL, d=D, y=Y, z=Z))"
+      ],
+      "metadata": {
+        "id": "086YR0feH0LU"
       },
       "execution_count": null,
       "outputs": []
