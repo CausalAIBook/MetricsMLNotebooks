@@ -182,7 +182,7 @@
         "face_vector <- t(design_matrix[arnold_pics[1], , drop = FALSE])\n",
         "\n",
         "# Perform reconstructions with varying number of components\n",
-        "reconstructions <- lapply(c(1, 2, 4, 8, 16, 32), function(k) {\n",
+        "reconstructions <- lapply(c(1, 2, 8, 32, 64, 128), function(k) {\n",
         "  reconstruct(face_vector, k, eigenfaces)\n",
         "})\n",
         "\n",
@@ -199,7 +199,7 @@
         "id": "eoZ_BsXYDE7P"
       },
       "source": [
-        "# 4. Train linear autoencoder with 8, 32, and 128 neurons using Keras (example below has dim. 64)\n",
+        "# 4. Train linear autoencoder with 64 neurons using Keras\n",
         "# 5. Compare reconstructions of Arnold's face both using MSE and visually"
       ],
       "execution_count": null,
