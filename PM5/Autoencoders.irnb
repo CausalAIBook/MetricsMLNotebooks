@@ -43,6 +43,18 @@
     {
       "cell_type": "code",
       "source": [
+        "install.packages(\"keras\")"
+      ],
+      "metadata": {
+        "id": "nf4aybFuwTft"
+      },
+      "id": "nf4aybFuwTft",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
         "install.packages(\"reticulate\")\n",
         "install.packages(\"abind\")\n",
         "install.packages(\"grid\")\n",
@@ -212,18 +224,24 @@
         "id": "urlMaifVJCDc"
       },
       "source": [
-        "import tensorflow as tf\n",
-        "from tensorflow.keras import Model, Input\n",
-        "from tensorflow.keras.layers import Dense\n",
-        "\n",
-        "encoding_dimension = 64\n",
-        "input_image = Input(shape=(n_features,))\n",
-        "encoded = Dense(encoding_dimension, activation='linear')(input_image)\n",
-        "decoded = Dense(n_features, activation='linear')(encoded)\n",
-        "\n",
-        "autoencoder = Model(input_image, decoded)\n",
-        "\n",
-        "autoencoder.compile(optimizer='adam', loss='mse')"
+        "library(keras)\n",
+        "encoding_dimension <- 64\n",
+        "input_image <- layer_input(shape = n_features)\n",
+        "encoded <- layer_dense(units = encoding_dimension, activation = 'linear')(input_image)\n",
+        "decoded <- layer_dense(units = n_features, activation = 'linear')(encoded)\n",
+        "autoencoder <- keras_model(inputs = input_image, outputs = decoded)\n",
+        "autoencoder %>% compile(\n",
+        "  optimizer = 'adam',\n",
+        "  loss = 'mse'\n",
+        ")\n",
+        "autoencoder %>% fit(\n",
+        "  design_matrix,\n",
+        "  design_matrix,\n",
+        "  epochs = 50,\n",
+        "  batch_size = 256,\n",
+        "  shuffle = TRUE,\n",
+        "  verbose = 0\n",
+        ")"
       ],
       "execution_count": null,
       "outputs": [],
@@ -235,11 +253,14 @@
         "id": "5OTUbWg8NcIE"
       },
       "source": [
-        "autoencoder.fit(design_matrix, design_matrix,\n",
-        "                epochs=50,\n",
-        "                batch_size=256,\n",
-        "                shuffle=True,\n",
-        "                verbose=0)"
+        "autoencoder %>% fit(\n",
+        "  design_matrix,\n",
+        "  design_matrix,\n",
+        "  epochs = 50,\n",
+        "  batch_size = 256,\n",
+        "  shuffle = TRUE,\n",
+        "  verbose = 0\n",
+        ")"
       ],
       "execution_count": null,
       "outputs": [],
@@ -247,23 +268,37 @@
     },
     {
       "cell_type": "code",
-      "metadata": {
-        "id": "omt7zwGfOOQF"
-      },
       "source": [
         "# Compute neural reconstruction\n",
-        "reconstruction = autoencoder.predict(face_vector.reshape(1,-1))\n",
+        "face_vector_flat <- as.numeric(face_vector)\n",
+        "reconstruction <- predict(autoencoder, matrix(face_vector_flat, nrow = 1))\n",
+        "library(ggplot2)\n",
+        "library(gridExtra)\n",
+        "library(reshape2)\n",
         "\n",
         "# Do visual comparison\n",
-        "plot_faces([reconstructions[4],reconstruction],n_row=1,n_col=2)\n",
+        "image_height <- 62\n",
+        "image_width <- 47\n",
+        "image1 <- matrix(reconstructions[[4]], nrow = image_height, ncol = image_width)\n",
+        "image2 <- t(matrix(reconstruction, nrow = image_width, ncol = image_height))\n",
+        "\n",
+        "images <- list(image1, image2)\n",
+        "plot_faces(images, n_row = 1, n_col = 2, width = image_width, height = image_height)\n",
+        "\n",
         "\n",
         "# Do numeric comparison\n",
         "# We also normalize the black/white gradient to take values in [0,1] (divide by 255)\n",
-        "np.mean(np.power((reconstructions[4].T - reconstruction)/255,2))"
+        "img1 <- as.numeric(reconstructions[[4]]) / 255\n",
+        "img2 <- as.numeric(reconstruction) / 255\n",
+        "mse <- mean((img1 - img2)^2)\n",
+        "mse\n"
       ],
+      "metadata": {
+        "id": "90nSf8Y8yIsl"
+      },
+      "id": "90nSf8Y8yIsl",
       "execution_count": null,
-      "outputs": [],
-      "id": "omt7zwGfOOQF"
+      "outputs": []
     },
     {
       "cell_type": "markdown",
@@ -279,46 +314,56 @@
     },
     {
       "cell_type": "code",
-      "metadata": {
-        "id": "DSN-UliDzXyg"
-      },
       "source": [
-        "\n",
         "# Use a nonlinear neural network\n",
         "\n",
-        "import tensorflow as tf\n",
-        "from tensorflow.keras import Model, Input\n",
-        "from tensorflow.keras.layers import Dense\n",
+        "library(tensorflow)\n",
+        "n_features <- 2914\n",
+        "encoding_dimension <- 64\n",
         "\n",
-        "input_image = Input(shape=(n_features,))\n",
-        "encoded = Dense(64, activation='relu')(input_image)\n",
-        "encoded = Dense(64, activation='relu')(encoded)\n",
-        "decoded = Dense(64, activation='relu')(encoded)\n",
-        "decoded = Dense(n_features, activation='relu')(decoded)\n",
+        "input_image <- layer_input(shape = n_features)\n",
+        "encoded <- input_image %>%\n",
+        "  layer_dense(units = encoding_dimension, activation = 'relu') %>%\n",
+        "  layer_dense(units = encoding_dimension, activation = 'relu')\n",
         "\n",
-        "autoencoder = Model(input_image, decoded)\n",
+        "decoded <- encoded %>%\n",
+        "  layer_dense(units = encoding_dimension, activation = 'relu') %>%\n",
+        "  layer_dense(units = n_features, activation = 'relu')\n",
         "\n",
-        "autoencoder.compile(optimizer='adam', loss='mse')\n",
+        "autoencoder <- keras_model(inputs = input_image, outputs = decoded)\n",
         "\n",
-        "autoencoder.fit(design_matrix, design_matrix,\n",
-        "                epochs=50,\n",
-        "                batch_size=256,\n",
-        "                shuffle=True,\n",
-        "                verbose=0)\n",
+        "autoencoder %>% compile(\n",
+        "  optimizer = 'adam',\n",
+        "  loss = 'mse'\n",
+        ")\n",
+        "autoencoder %>% fit(\n",
+        "  design_matrix,\n",
+        "  design_matrix,\n",
+        "  epochs = 50,\n",
+        "  batch_size = 256,\n",
+        "  shuffle = TRUE,\n",
+        "  verbose = 0\n",
+        ")\n",
         "\n",
         "# Compute neural reconstruction\n",
-        "reconstruction = autoencoder.predict(face_vector.reshape(1,-1))\n",
+        "reconstruction <- predict(autoencoder, matrix(face_vector, nrow = 1))\n",
         "\n",
         "# Do visual comparison\n",
-        "plot_faces([reconstructions[4],reconstruction],n_row=1,n_col=2)\n",
+        "plot_faces(list(reconstructions[[4]],t(matrix(reconstruction, nrow = image_width, ncol = image_height))), n_row = 1, n_col = 2, width = image_width, height = image_height)\n",
         "\n",
         "# Do numeric comparison\n",
         "# We also normalize the black/white gradient to take values in [0,1] (divide by 255)\n",
-        "np.mean(np.power((reconstructions[4].T - reconstruction)/255,2))"
+        "img1 <- as.numeric(reconstructions[[4]]) / 255\n",
+        "img2 <- as.numeric(reconstruction) / 255\n",
+        "mse <- mean((img1 - img2)^2)\n",
+        "mse\n"
       ],
+      "metadata": {
+        "id": "KHPoFiS9fuhr"
+      },
+      "id": "KHPoFiS9fuhr",
       "execution_count": null,
-      "outputs": [],
-      "id": "DSN-UliDzXyg"
+      "outputs": []
     }
   ],
   "metadata": {
