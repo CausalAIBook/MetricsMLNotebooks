@@ -1,8 +1,0 @@
-name: my_env
-channels:
-  - defaults
-dependencies:
-  - numpy
-  - pandas  
-  - scikit-learn
-  - statsmodels
