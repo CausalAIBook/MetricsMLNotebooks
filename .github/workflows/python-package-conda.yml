@@ -33,18 +33,18 @@ jobs:
 
     - name: Convert Jupyter notebooks to Python scripts
       run: |
-        find . -name "PM1/*.ipynb" -exec jupyter nbconvert --to script {} \;
+        find PM1 -name "*.ipynb" -exec jupyter nbconvert --to script {} \;
       shell: bash
 
     - name: Run Flake8 linting
       run: |
-        find . -name "PM1/*.py" -exec flake8 {} \;
+        find PM1 -name "*.py" -exec flake8 {} \;
       shell: bash
 
     - name: Run Python scripts with IPython
       run: |
         mkdir -p logs
-        find . -name "PM1/*.py" -exec sh -c '
+        find PM1 -name "*.py" -exec sh -c '
           for script; do
             echo "Running $script"
             ipython $script > "logs/$(basename $script .py).log" 2>&1 || true
