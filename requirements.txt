@@ -3,3 +3,7 @@ pandas
 scikit-learn
 statsmodels
 jupyterlab
+matplotlib
+scipy
+econml
+doubleml
