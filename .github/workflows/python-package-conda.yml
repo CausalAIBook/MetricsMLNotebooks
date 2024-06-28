@@ -17,3 +17,93 @@ jobs:
 
     steps:
     - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install git
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y git
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install git
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          choco install git -y --no-progress || (Start-Sleep -Seconds 30; choco install git -y --no-progress)
+        fi
+      shell: bash
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'  # Use Python 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install jupyter nbconvert flake8 flake8-nb
+      shell: bash
+
+    - name: Create Flake8 configuration file
+      run: |
+        echo "[flake8]" > .flake8
+        echo "max-line-length = 99" >> .flake8
+      shell: bash
+
+    - name: Run Flake8 linting on notebooks
+      id: lint
+      run: |
+        mkdir -p linting_logs
+        flake8_errors=0
+        for notebook in PM1/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+        done
+        echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Convert Jupyter notebooks to Python scripts
+      id: convert
+      run: |
+        mkdir -p converted_scripts
+        for notebook in PM1/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
+        done
+      shell: bash
+
+    - name: Run converted Python scripts
+      id: execute
+      run: |
+        mkdir -p logs
+        script_errors=0
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          echo "Running $script"
+          python "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
+        done
+        echo "script_errors=$script_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Aggregate and report errors and warnings
+      run: |
+        echo "Aggregating errors and warnings..."
+        grep -E "Error|Warning" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        echo "Errors and Warnings:"
+        cat logs/errors_and_warnings.txt
+      shell: bash
+
+    - name: Upload linting logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: linting-logs
+        path: linting_logs
+
+    - name: Upload execution logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: execution-logs
+        path: logs
+
+    - name: Check for errors
+      if: ${{ env.flake8_errors != '0' || env.script_errors != '0' }}
+      run: exit 1
