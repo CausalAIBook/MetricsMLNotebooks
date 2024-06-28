@@ -81,7 +81,7 @@ jobs:
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.txt
       shell: bash
