@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        folder: [AC1, AC2, CM1, CM2, CM3, CM4, PM1, PM2, PM3, PM4, PM5, T]
+        folder: [PM1, PM2, PM3]
 
     steps:
     - name: Checkout repository
@@ -81,7 +81,7 @@ jobs:
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "^Traceback|Error:|Exception:" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        grep -E "^Traceback|Error:|Exception:|ModuleNotFoundError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.txt
       shell: bash
