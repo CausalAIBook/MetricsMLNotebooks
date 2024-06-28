@@ -1,2 +1,6 @@
 [flake8]
 max-line-length = 119
+
+[flake8_nb]
+max-line-length = 119
+ignore = E402
