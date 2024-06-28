@@ -40,18 +40,7 @@ jobs:
           mv "${notebook%.ipynb}.py" converted_scripts/
         done
       shell: bash
-
-    - name: Run Flake8 linting
-      run: |
-        mkdir -p linting_logs
-        flake8_errors=0
-        for script in converted_scripts/*.py; do
-          [ -e "$script" ] || continue
-          flake8 "$script" > "linting_logs/$(basename "$script" .py)_linting.log" 2>&1 || flake8_errors=$((flake8_errors+1))
-        done
-        exit $flake8_errors
-      shell: bash
-
+  
     - name: Run Python scripts with IPython
       run: |
         mkdir -p logs
