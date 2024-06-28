@@ -10,10 +10,10 @@ on:
 jobs:
   run-notebooks:
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        folder: [PM1, PM2, PM3]
 
     steps:
     - name: Checkout repository
@@ -48,7 +48,7 @@ jobs:
       run: |
         mkdir -p linting_logs
         flake8_errors=0
-        for notebook in PM1/*.ipynb; do
+        for notebook in ${{ matrix.folder }}/*.ipynb; do
           [ -e "$notebook" ] || continue
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
         done
@@ -59,7 +59,7 @@ jobs:
       id: convert
       run: |
         mkdir -p converted_scripts
-        for notebook in PM1/*.ipynb; do
+        for notebook in ${{ matrix.folder }}/*.ipynb; do
           [ -e "$notebook" ] || continue
           jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
         done
@@ -81,7 +81,7 @@ jobs:
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "^Traceback|Error:|Exception:" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.txt
       shell: bash
@@ -89,13 +89,13 @@ jobs:
     - name: Upload linting logs
       uses: actions/upload-artifact@v2
       with:
-        name: linting-logs
+        name: linting-logs-${{ matrix.folder }}
         path: linting_logs
 
     - name: Upload execution logs
       uses: actions/upload-artifact@v2
       with:
-        name: execution-logs
+        name: execution-logs-${{ matrix.folder }}
         path: logs
 
     - name: Check for errors
