@@ -21,13 +21,13 @@ jobs:
 
     - name: Install git
       run: |
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
+        if [ "$RUNNER_OS" == "Linux" ]; then
           sudo apt-get update
           sudo apt-get install -y git
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+        elif [ "$RUNNER_OS" == "macOS" ]; then
           brew install git
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          choco install git -y --no-progress || (Start-Sleep -Seconds 30; choco install git -y --no-progress)
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          choco install git -y --no-progress || powershell -Command "Start-Sleep -Seconds 30; choco install git -y --no-progress"
         fi
       shell: bash
 
