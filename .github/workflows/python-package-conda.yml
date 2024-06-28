@@ -40,7 +40,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install jupyter nbconvert flake8 flake8-nb
+        pip install jupyter nbconvert flake8 flake8-nb ipython
       shell: bash
 
     - name: Create Flake8 configuration file
@@ -71,7 +71,7 @@ jobs:
         done
       shell: bash
 
-    - name: Run converted Python scripts
+    - name: Run converted Python scripts with IPython
       id: execute
       run: |
         mkdir -p logs
@@ -79,7 +79,7 @@ jobs:
         for script in converted_scripts/*.py; do
           [ -e "$script" ] || continue
           echo "Running $script"
-          python "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
+          ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
         done
         echo "script_errors=$script_errors" >> $GITHUB_ENV
       shell: bash
