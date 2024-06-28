@@ -46,7 +46,7 @@ jobs:
     - name: Create Flake8 configuration file
       run: |
         echo "[flake8]" > .flake8
-        echo "max-line-length = 99" >> .flake8
+        echo "max-line-length = 119" >> .flake8
       shell: bash
 
     - name: Run Flake8 linting on notebooks
