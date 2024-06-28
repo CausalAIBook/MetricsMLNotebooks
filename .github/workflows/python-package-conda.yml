@@ -87,7 +87,7 @@ jobs:
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "Error|Warning" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        grep -E "^Traceback|Error:|Exception:" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.txt
       shell: bash
