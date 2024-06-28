@@ -5,3 +5,5 @@ statsmodels
 jupyterlab
 matplotlib
 scipy
+torch
+torchvision
