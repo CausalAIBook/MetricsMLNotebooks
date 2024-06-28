@@ -5,5 +5,3 @@ statsmodels
 jupyterlab
 matplotlib
 scipy
-econml
-doubleml
