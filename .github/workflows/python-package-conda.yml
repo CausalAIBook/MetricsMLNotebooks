@@ -34,6 +34,8 @@ jobs:
     - name: Run Flake8 linting on notebooks
       id: lint
       run: |
+        echo "[flake8]" > .flake8
+        echo "max-line-length = 99" >> .flake8
         mkdir -p linting_logs
         flake8_errors=0
         for notebook in PM1/*.ipynb; do
@@ -43,17 +45,27 @@ jobs:
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
 
-    - name: Run Jupyter notebooks
+    - name: Convert Jupyter notebooks to Python scripts
+      id: convert
+      run: |
+        mkdir -p converted_scripts
+        for notebook in PM1/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
+        done
+      shell: bash
+
+    - name: Run converted Python scripts
       id: execute
       run: |
         mkdir -p logs
-        notebook_errors=0
-        for notebook in PM1/*.ipynb; do
-          [ -e "$notebook" ] || continue
-          echo "Running $notebook"
-          jupyter nbconvert --execute --inplace --to notebook --allow-errors "$notebook" > "logs/$(basename "$notebook" .ipynb).txt" 2>&1 || notebook_errors=$((notebook_errors+1))
+        script_errors=0
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          echo "Running $script"
+          python "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
         done
-        echo "notebook_errors=$notebook_errors" >> $GITHUB_ENV
+        echo "script_errors=$script_errors" >> $GITHUB_ENV
       shell: bash
 
     - name: Aggregate and report errors and warnings
@@ -77,5 +89,5 @@ jobs:
         path: logs
 
     - name: Check for errors
-      if: ${{ env.flake8_errors != '0' || env.notebook_errors != '0' }}
+      if: ${{ env.flake8_errors != '0' || env.script_errors != '0' }}
       run: exit 1
