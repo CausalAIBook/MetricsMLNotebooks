@@ -31,16 +31,20 @@ jobs:
         pip install jupyter nbconvert flake8 flake8-nb
       shell: bash
 
-    - name: Run Flake8 linting on notebooks
-      id: lint
+    - name: Create Flake8 configuration file
       run: |
         echo "[flake8]" > .flake8
         echo "max-line-length = 99" >> .flake8
+      shell: bash
+
+    - name: Run Flake8 linting on notebooks
+      id: lint
+      run: |
         mkdir -p linting_logs
         flake8_errors=0
         for notebook in PM1/*.ipynb; do
           [ -e "$notebook" ] || continue
-          flake8-nb "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+          flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
         done
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
