@@ -26,7 +26,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python3.8 -m pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install jupyter nbconvert flake8 ipython
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       shell: bash
@@ -44,20 +44,24 @@ jobs:
     - name: Run Flake8 linting
       run: |
         mkdir -p linting_logs
+        flake8_errors=0
         for script in converted_scripts/*.py; do
           [ -e "$script" ] || continue
-          flake8 "$script" > "linting_logs/$(basename "$script" .py)_linting.log" 2>&1 || true
+          flake8 "$script" > "linting_logs/$(basename "$script" .py)_linting.log" 2>&1 || flake8_errors=$((flake8_errors+1))
         done
+        exit $flake8_errors
       shell: bash
 
     - name: Run Python scripts with IPython
       run: |
         mkdir -p logs
+        script_errors=0
         for script in converted_scripts/*.py; do
           [ -e "$script" ] || continue
           echo "Running $script"
-          ipython "$script" > "logs/$(basename "$script" .py).log" 2>&1 || true
+          ipython "$script" > "logs/$(basename "$script" .py).log" 2>&1 || script_errors=$((script_errors+1))
         done
+        exit $script_errors
       shell: bash
 
     - name: Aggregate and report errors and warnings
@@ -66,6 +70,9 @@ jobs:
         grep -E "Error|Warning" logs/*.log linting_logs/*.log > logs/errors_and_warnings.log || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.log
+        if grep -q "Error" logs/errors_and_warnings.log; then
+          exit 1
+        fi
       shell: bash
 
     - name: Zip the Python scripts
