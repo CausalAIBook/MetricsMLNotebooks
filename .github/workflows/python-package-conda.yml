@@ -27,30 +27,33 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install jupyter nbconvert flake8 ipython
+        pip install jupyter nbconvert flake8 flake8-nb
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       shell: bash
 
-    - name: Convert Jupyter notebooks to Python scripts
+    - name: Run Flake8 linting on notebooks
+      id: lint
       run: |
-        mkdir -p converted_scripts
+        mkdir -p linting_logs
+        flake8_errors=0
         for notebook in PM1/*.ipynb; do
           [ -e "$notebook" ] || continue
-          jupyter nbconvert --to script "$notebook"
-          mv "${notebook%.ipynb}.py" converted_scripts/
+          flake8-nb "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.log" 2>&1 || flake8_errors=$((flake8_errors+1))
         done
+        echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
-  
-    - name: Run Python scripts with IPython
+
+    - name: Run Jupyter notebooks
+      id: execute
       run: |
         mkdir -p logs
-        script_errors=0
-        for script in converted_scripts/*.py; do
-          [ -e "$script" ] || continue
-          echo "Running $script"
-          ipython "$script" > "logs/$(basename "$script" .py).log" 2>&1 || script_errors=$((script_errors+1))
+        notebook_errors=0
+        for notebook in PM1/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          echo "Running $notebook"
+          jupyter nbconvert --execute --inplace --to notebook --allow-errors "$notebook" > "logs/$(basename "$notebook" .ipynb).log" 2>&1 || notebook_errors=$((notebook_errors+1))
         done
-        exit $script_errors
+        echo "notebook_errors=$notebook_errors" >> $GITHUB_ENV
       shell: bash
 
     - name: Aggregate and report errors and warnings
@@ -64,13 +67,6 @@ jobs:
         fi
       shell: bash
 
-    - name: Zip the Python scripts
-      run: |
-        zip -r converted_scripts.zip converted_scripts
-      shell: bash
-
-    - name: Upload the zip file
-      uses: actions/upload-artifact@v2
-      with:
-        name: converted-scripts
-        path: converted_scripts.zip
+    - name: Check for errors
+      if: ${{ env.flake8_errors != '0' || env.notebook_errors != '0' }}
+      run: exit 1
