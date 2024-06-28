@@ -26,36 +26,55 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3.8 -m pip install --upgrade pip
         pip install jupyter nbconvert flake8 ipython
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       shell: bash
 
     - name: Convert Jupyter notebooks to Python scripts
       run: |
-        find PM1 -name "*.ipynb" -exec jupyter nbconvert --to script {} \;
+        mkdir -p converted_scripts
+        for notebook in PM1/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          jupyter nbconvert --to script "$notebook"
+          mv "${notebook%.ipynb}.py" converted_scripts/
+        done
       shell: bash
 
     - name: Run Flake8 linting
       run: |
-        find PM1 -name "*.py" -exec flake8 {} \;
+        mkdir -p linting_logs
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          flake8 "$script" > "linting_logs/$(basename "$script" .py)_linting.log" 2>&1 || true
+        done
       shell: bash
 
     - name: Run Python scripts with IPython
       run: |
         mkdir -p logs
-        find PM1 -name "*.py" -exec sh -c '
-          for script; do
-            echo "Running $script"
-            ipython $script > "logs/$(basename $script .py).log" 2>&1 || true
-          done
-        ' sh {} +
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          echo "Running $script"
+          ipython "$script" > "logs/$(basename "$script" .py).log" 2>&1 || true
+        done
       shell: bash
 
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "Error|Warning" logs/*.log > logs/errors_and_warnings.log || true
+        grep -E "Error|Warning" logs/*.log linting_logs/*.log > logs/errors_and_warnings.log || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.log
       shell: bash
+
+    - name: Zip the Python scripts
+      run: |
+        zip -r converted_scripts.zip converted_scripts
+      shell: bash
+
+    - name: Upload the zip file
+      uses: actions/upload-artifact@v2
+      with:
+        name: converted-scripts
+        path: converted_scripts.zip
