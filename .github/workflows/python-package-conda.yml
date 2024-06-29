@@ -18,6 +18,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         folder: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3]
+      exclude:
+        - folder: CM3
+          os: windows-latest
+        - folder: CM3
+          os: macos-latest
 
     steps:
     - name: Checkout repository
@@ -33,6 +38,11 @@ jobs:
         elif [ "$RUNNER_OS" == "Windows" ]; then
           choco install git -y --no-progress || powershell -Command "Start-Sleep -Seconds 30; choco install git -y --no-progress"
         fi
+      shell: bash
+
+    - name: Install libgraphviz-dev if folder is CM3
+      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install -y libgraphviz-dev
       shell: bash
 
     - name: Set up Python
