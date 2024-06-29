@@ -7,6 +7,10 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Runs once a week on Sunday at midnight
 
+concurrency:
+  group: run-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-notebooks:
     runs-on: ${{ matrix.os }}
