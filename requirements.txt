@@ -7,3 +7,5 @@ matplotlib>=3.7.1
 scipy>=1.11.4
 torch
 torchvision
+lightgbm>=4.1.0
+xgboost>=2.0.3
