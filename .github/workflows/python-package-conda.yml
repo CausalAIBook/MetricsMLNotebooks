@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        folder: [PM1, PM2, PM3, PM4, PM5]
+        folder: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3]
 
     steps:
     - name: Checkout repository
@@ -53,7 +53,7 @@ jobs:
         mkdir -p linting_logs
         flake8_errors=0
         for notebook in ${{ matrix.folder }}/*.ipynb; do
-          [ -e "$notebook" ] || continue
+          [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
         done
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
