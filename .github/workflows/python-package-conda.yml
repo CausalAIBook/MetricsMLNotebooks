@@ -42,6 +42,13 @@ jobs:
       run: sudo apt-get install -y libgraphviz-dev
       shell: bash
 
+    - name: Install R if folder is CM3
+      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y r-base
+      shell: bash
+
     - name: Set up Python
       if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
       uses: actions/setup-python@v2
