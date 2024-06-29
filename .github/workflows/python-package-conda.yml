@@ -12,17 +12,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  set-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      run_job: ${{ steps.set-vars.outputs.run_job }}
+    steps:
+    - name: Set run variables
+      id: set-vars
+      run: |
+        if [[ "${{ matrix.folder }}" == "CM3" && ("${{ matrix.os }}" == "windows-latest" || "${{ matrix.os }}" == "macos-latest") ]]; then
+          echo "run_job=false" >> $GITHUB_ENV
+        else
+          echo "run_job=true" >> $GITHUB_ENV
+      shell: bash
+
   run-notebooks:
+    needs: set-vars
     runs-on: ${{ matrix.os }}
+    if: needs.set-vars.outputs.run_job == 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         folder: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3]
-      exclude:
-        - folder: CM3
-          os: windows-latest
-        - folder: CM3
-          os: macos-latest
 
     steps:
     - name: Checkout repository
