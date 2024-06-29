@@ -9,3 +9,4 @@ torch
 torchvision
 lightgbm>=4.1.0
 xgboost~=2.0.3
+seaborn>=0.13.1
