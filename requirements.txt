@@ -13,3 +13,4 @@ seaborn>=0.13.1
 tensorflow
 keras>2.15.0
 tf_keras>=2.15.1
+plotnine>=0.12.4
