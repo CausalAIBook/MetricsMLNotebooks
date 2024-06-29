@@ -10,3 +10,6 @@ torchvision
 lightgbm>=4.1.0
 xgboost~=2.0.3
 seaborn>=0.13.1
+tensorflow
+keras>2.15.0
+tf_keras>=2.15.1
