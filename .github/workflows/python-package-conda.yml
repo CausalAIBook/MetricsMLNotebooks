@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        folder: [PM1, PM2, PM3]
+        folder: [PM1, PM2, PM3, PM4, PM5]
 
     steps:
     - name: Checkout repository
