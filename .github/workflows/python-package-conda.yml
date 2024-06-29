@@ -7,6 +7,10 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Runs once a week on Sunday at midnight
 
+concurrency:
+  group: run-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-notebooks:
     runs-on: ${{ matrix.os }}
@@ -81,7 +85,7 @@ jobs:
     - name: Aggregate and report errors and warnings
       run: |
         echo "Aggregating errors and warnings..."
-        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
         cat logs/errors_and_warnings.txt
       shell: bash
