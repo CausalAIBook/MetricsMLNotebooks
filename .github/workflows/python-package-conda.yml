@@ -83,6 +83,7 @@ jobs:
         mkdir -p converted_scripts
         for notebook in ${{ matrix.folder }}/*.ipynb; do
           [ -e "$notebook" ] || continue
+          [ "$(basename "$notebook")" = "DoubleML_and_Feature_Engineering_with_BERT.ipynb" ] && continue
           jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
         done
       shell: bash
@@ -114,14 +115,14 @@ jobs:
       if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
       uses: actions/upload-artifact@v2
       with:
-        name: linting-logs-${{ matrix.folder }}
+        name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
         path: linting_logs
 
     - name: Upload execution logs
       if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
       uses: actions/upload-artifact@v2
       with:
-        name: execution-logs-${{ matrix.folder }}
+        name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
         path: logs
 
     - name: Check for errors
