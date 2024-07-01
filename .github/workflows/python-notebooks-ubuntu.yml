@@ -8,11 +8,11 @@ on:
     - cron: '0 0 * * 0'  # Runs once a week on Sunday at midnight
 
 concurrency:
-  group: run-notebooks-${{ github.ref }}
+  group: run-notebooks-ubuntu-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  run-notebooks:
+  run-notebooks-ubuntu:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
