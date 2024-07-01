@@ -16,5 +16,5 @@ jobs:
     - name: Install dependencies
       run: |
         echo "message=Installing-Dependencies" >> $GITHUB_OUTPUT
-        echo "::error file=test"
+        echo "::error file=test" >> $GITHUB_OUTPUT
       shell: bash
