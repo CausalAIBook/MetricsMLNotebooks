@@ -25,7 +25,6 @@ jobs:
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
           echo "name=notebooks_changed::true"
-          cat "changed_notebooks.txt"
         else
           echo "name=notebooks_changed::false"
         fi
@@ -61,6 +60,12 @@ jobs:
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
+    
+    - name: Upload linting logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: linting-logs
+        path: linting_logs
 
     - name: Check for linting errors
       if: "(env.flake8_errors != '0')"
@@ -90,7 +95,6 @@ jobs:
       shell: bash
 
     - name: Convert changed Jupyter notebooks to Python scripts
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
       id: convert
       run: |
         mkdir -p converted_scripts
@@ -123,16 +127,10 @@ jobs:
         cat logs/errors_and_warnings.txt
       shell: bash
 
-    - name: Upload linting logs
-      uses: actions/upload-artifact@v2
-      with:
-        name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
-        path: linting_logs
-
     - name: Upload execution logs
       uses: actions/upload-artifact@v2
       with:
-        name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
+        name: execution-logs
         path: logs
 
     - name: Check for errors
