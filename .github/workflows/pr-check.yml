@@ -43,7 +43,7 @@ jobs:
     - name: Install flake8
       run: |
         python -m pip install --upgrade pip
-        pip install jupyter nbconvert flake8 flake8-nb ipython
+        pip install flake8 flake8-nb
       shell: bash
   
     - name: Run Flake8 linting on changed notebooks
@@ -91,7 +91,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install jupyter nbconvert flake8 flake8-nb ipython
+        pip install jupyter nbconvert ipython
       shell: bash
 
     - name: Convert changed Jupyter notebooks to Python scripts
