@@ -37,5 +37,5 @@ jobs:
     - name: Install dependencies
       run: |
         echo "message=Installing-Dependencies" >> $GITHUB_OUTPUT
-        python -m pip install --upgrade pip
+        echo "::error file=test"
       shell: bash
