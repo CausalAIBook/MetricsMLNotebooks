@@ -24,9 +24,9 @@ jobs:
       id: check_notebooks
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
-          echo "::set-output name=notebooks_changed::true"
+          echo "name=notebooks_changed::true"
         else
-          echo "::set-output name=notebooks_changed::false"
+          echo "name=notebooks_changed::false"
         fi
   
     - name: No notebooks changed
