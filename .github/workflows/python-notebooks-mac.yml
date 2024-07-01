@@ -1,0 +1,130 @@
+name: Run Jupyter Notebooks
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 4 * * 0'  # Runs once a week on Sunday at midnight
+
+concurrency:
+  group: run-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-notebooks:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+        folder: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3, AC1, AC2, T]
+
+    steps:
+    - name: Checkout repository
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      uses: actions/checkout@v2
+
+    - name: Install git
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y git
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install git
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          choco install git -y --no-progress || powershell -Command "Start-Sleep -Seconds 30; choco install git -y --no-progress"
+        fi
+      shell: bash
+
+    - name: Install libgraphviz-dev if folder is CM3
+      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install -y libgraphviz-dev
+      shell: bash
+
+    - name: Install R if folder is CM3
+      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y r-base
+      shell: bash
+
+    - name: Set up Python
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'  # Use Python 3.10
+
+    - name: Install dependencies
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install jupyter nbconvert flake8 flake8-nb ipython
+      shell: bash
+
+    - name: Run Flake8 linting on notebooks
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      id: lint
+      run: |
+        mkdir -p linting_logs
+        flake8_errors=0
+        for notebook in ${{ matrix.folder }}/*.ipynb; do
+          [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
+          flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+        done
+        echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Convert Jupyter notebooks to Python scripts
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      id: convert
+      run: |
+        mkdir -p converted_scripts
+        for notebook in ${{ matrix.folder }}/*.ipynb; do
+          [ -e "$notebook" ] || continue
+          [ "$(basename "$notebook")" = "DoubleML_and_Feature_Engineering_with_BERT.ipynb" ] && continue
+          jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
+        done
+      shell: bash
+
+    - name: Run converted Python scripts with IPython
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      id: execute
+      run: |
+        mkdir -p logs
+        script_errors=0
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          echo "Running $script"
+          ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
+        done
+        echo "script_errors=$script_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Aggregate and report errors and warnings
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      run: |
+        echo "Aggregating errors and warnings..."
+        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        echo "Errors and Warnings:"
+        cat logs/errors_and_warnings.txt
+      shell: bash
+
+    - name: Upload linting logs
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      uses: actions/upload-artifact@v2
+      with:
+        name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
+        path: linting_logs
+
+    - name: Upload execution logs
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      uses: actions/upload-artifact@v2
+      with:
+        name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
+        path: logs
+
+    - name: Check for errors
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0')"
+      run: exit 1
