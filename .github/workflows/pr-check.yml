@@ -71,6 +71,7 @@ jobs:
           [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
           echo "Linting $notebook"
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+          cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt"
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
