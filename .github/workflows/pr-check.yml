@@ -25,6 +25,7 @@ jobs:
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
           echo "name=notebooks_changed::true"
+          cat "changed_notebooks.txt"
         else
           echo "name=notebooks_changed::false"
         fi
