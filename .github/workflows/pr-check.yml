@@ -15,5 +15,5 @@ jobs:
 
     - name: Install dependencies
       run: |
-        echo "::error::Filename doesn't match possible files" || exit 1
+        echo "::error::Filename doesn't match possible files" && exit 1
       shell: bash
