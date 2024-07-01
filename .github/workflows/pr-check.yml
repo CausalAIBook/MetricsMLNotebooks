@@ -19,11 +19,11 @@ jobs:
         sudo apt-get install -y git
       shell: bash
 
-    - name: Install libgraphviz-dev if folder is CM3
+    - name: Install libgraphviz-dev
       run: sudo apt-get install -y libgraphviz-dev
       shell: bash
 
-    - name: Install R if folder is CM3
+    - name: Install R
       run: |
         sudo apt-get update
         sudo apt-get install -y r-base
@@ -36,6 +36,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        echo "::set-output Installing Dependencies"
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install jupyter nbconvert flake8 flake8-nb ipython
@@ -71,7 +72,7 @@ jobs:
           [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
           echo "::set-output Linting $notebook"
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
-          linting_errors = $(cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt")
+          linting_errors=$(cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt")
           echo "::set-output $linting_errors"
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
@@ -108,7 +109,7 @@ jobs:
         echo "Aggregating errors and warnings..."
         grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
-        exec_errors = $(cat logs/errors_and_warnings.txt)
+        exec_errors=$(cat logs/errors_and_warnings.txt)
         echo "::set-output $exec_errors"
       shell: bash
 
