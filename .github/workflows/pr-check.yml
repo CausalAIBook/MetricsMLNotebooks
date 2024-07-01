@@ -61,6 +61,10 @@ jobs:
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
+
+    - name: Check for linting errors
+      if: "(env.flake8_errors != '0')"
+      run: exit 1
   
     - name: Install git
       run: |
