@@ -48,35 +48,40 @@ jobs:
         git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
         git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
         grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
-        echo "Found the following changed notebooks" >> $GITHUB_OUTPUT
-        cat "changed_notebooks.txt" >> $GITHUB_OUTPUT
+        echo "message=Found the following changed notebooks" >> $GITHUB_OUTPUT
+        cat "changed_notebooks.txt"
+        changed=$(cat "changed_notebooks.txt")
+        echo "changed=$changed" >> $GITHUB_OUTPUT
   
     - name: Check if any notebooks changed
       id: check_notebooks
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
-          echo "name=notebooks_changed::true"
+          echo "notebooks_changed=true" >> $GITHUB_ENV
         else
-          echo "name=notebooks_changed::false"
+          echo "notebooks_changed=false" >> $GITHUB_ENV
         fi
   
     - name: No notebooks changed
-      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
-      run: echo "No Jupyter notebooks changed in this PR." >> $GITHUB_OUTPUT
+      if: env.notebooks_changed == 'false'
+      run: echo "message=No Jupyter notebooks changed in this PR." >> $GITHUB_OUTPUT
 
     - name: Run Flake8 linting on changed notebooks
-      if: steps.check_notebooks.outputs.notebooks_changed == 'true'
+      if: env.notebooks_changed == 'true'
       id: lint
       run: |
         mkdir -p linting_logs
         flake8_errors=0
         while IFS= read -r notebook; do
           [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
-          echo "::set-output Linting $notebook"
+          echo "notebook=Linting-$notebook" >> $GITHUB_OUTPUT
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
-          cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" >> $GITHUB_OUTPUT
+          cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt"
+          lint_errors = $(cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt")
+          echo "lint_errors=$lint_errors" >> $GITHUB_OUTPUT
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
+        echo "flake8_errors=$flake8_errors" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Convert changed Jupyter notebooks to Python scripts
@@ -85,7 +90,7 @@ jobs:
       run: |
         mkdir -p converted_scripts
         while IFS= read -r notebook; do
-          echo "Processing $notebook" >> $GITHUB_OUTPUT
+          echo "Processing $notebook"
           [ -e "$notebook" ] || continue
           [ "$(basename "$notebook")" = "DoubleML_and_Feature_Engineering_with_BERT.ipynb" ] && continue
           jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
@@ -99,7 +104,8 @@ jobs:
         script_errors=0
         for script in converted_scripts/*.py; do
           [ -e "$script" ] || continue
-          echo "Running $script" >> $GITHUB_OUTPUT
+          echo "Running $script"
+          echo "script=$script" >> $GITHUB_OUTPUT
           ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
         done
         echo "script_errors=$script_errors" >> $GITHUB_ENV
@@ -110,8 +116,10 @@ jobs:
       run: |
         echo "Aggregating errors and warnings..."
         grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
-        echo "Errors and Warnings:" >> $GITHUB_ENV
-        cat logs/errors_and_warnings.txt >> $GITHUB_ENV
+        echo "Errors and Warnings:"
+        cat logs/errors_and_warnings.txt
+        exec_errors=$(cat logs/errors_and_warnings.txt)
+        echo "exec_errors=$exec_errors" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Upload linting logs
