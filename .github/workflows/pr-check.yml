@@ -24,13 +24,13 @@ jobs:
       id: check_notebooks
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
-          echo "name=notebooks_changed::true"
+          echo "notebooks_changed=true" >> GITHUB_ENV
         else
-          echo "name=notebooks_changed::false"
+          echo "notebooks_changed=false" >> GITHUB_ENV
         fi
   
     - name: No notebooks changed
-      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
+      if: env.notebooks_changed == 'false'
       run: |
         echo "No Jupyter notebooks changed in this PR."
         exit 0
@@ -47,7 +47,7 @@ jobs:
       shell: bash
   
     - name: Run Flake8 linting on changed notebooks
-      if: steps.check_notebooks.outputs.notebooks_changed == 'true'
+      if: env.notebooks_changed == 'true'
       id: lint
       run: |
         mkdir -p linting_logs
