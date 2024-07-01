@@ -36,10 +36,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        echo "Installing Dependencies" >> $GITHUB_OUTPUT
+        echo "message=Installing-Dependencies" >> $GITHUB_OUTPUT
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install jupyter nbconvert flake8 flake8-nb ipython
       shell: bash
   
     - name: Find changed notebooks
