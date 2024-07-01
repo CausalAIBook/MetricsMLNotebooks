@@ -1,4 +1,4 @@
-name: Run Jupyter Notebooks
+name: Run Jupyter Pyton Notebooks on Mac
 
 on:
   push:
