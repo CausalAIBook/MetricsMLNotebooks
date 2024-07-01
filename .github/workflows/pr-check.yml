@@ -44,10 +44,10 @@ jobs:
     - name: Find changed notebooks
       id: find_notebooks
       run: |
-        git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
-        git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} > changed_files.txt
+        git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+        git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
         grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
-  
+
     - name: Check if any notebooks changed
       id: check_notebooks
       run: |
