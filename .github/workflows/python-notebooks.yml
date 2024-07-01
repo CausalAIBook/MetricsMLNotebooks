@@ -100,7 +100,7 @@ jobs:
 
     - name: Run converted Python scripts with IPython (Linux and macOS)
       if: matrix.os != 'windows-latest'
-      id: execute
+      id: execute_unix
       run: |
         mkdir -p logs
         script_errors=0
@@ -110,7 +110,7 @@ jobs:
 
     - name: Run converted Python scripts with IPython (Windows)
       if: matrix.os == 'windows-latest'
-      id: execute
+      id: execute_windows
       run: |
         mkdir -p logs
         $ErrorActionPreference = "Stop"
