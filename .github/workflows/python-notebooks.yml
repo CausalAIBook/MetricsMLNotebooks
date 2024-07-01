@@ -1,4 +1,4 @@
-name: Run Jupyter Python Notebooks on Ubuntu
+name: Run Jupyter Notebooks
 
 on:
   push:
@@ -8,15 +8,15 @@ on:
     - cron: '0 0 * * 0'  # Runs once a week on Sunday at midnight
 
 concurrency:
-  group: run-notebooks-ubuntu-${{ github.ref }}
+  group: run-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  run-notebooks-ubuntu:
+  run-notebooks:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         folder: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3, AC1, AC2, T]
 
     steps:
@@ -88,19 +88,45 @@ jobs:
         done
       shell: bash
 
-    - name: Run converted Python scripts with IPython
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+    - name: Install GNU Parallel (Linux and macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get install -y parallel
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install parallel
+        fi
+      shell: bash
+
+    - name: Run converted Python scripts with IPython (Linux and macOS)
+      if: matrix.os != 'windows-latest'
       id: execute
       run: |
         mkdir -p logs
         script_errors=0
-        for script in converted_scripts/*.py; do
-          [ -e "$script" ] || continue
-          echo "Running $script"
-          ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
-        done
+        find converted_scripts -name "*.py" | parallel --timeout 600s --halt now,fail=1 "echo Running {}; ipython {} > logs/{/.}.txt 2>&1 || script_errors=$((script_errors+1))"
         echo "script_errors=$script_errors" >> $GITHUB_ENV
       shell: bash
+
+    - name: Run converted Python scripts with IPython (Windows)
+      if: matrix.os == 'windows-latest'
+      id: execute
+      run: |
+        mkdir -p logs
+        $ErrorActionPreference = "Stop"
+        $scriptErrors = 0
+        Get-ChildItem -Path converted_scripts -Filter *.py | ForEach-Object {
+          $scriptName = $_.FullName
+          $logFile = "logs\$($_.BaseName).txt"
+          Write-Output "Running $scriptName"
+          try {
+            & ipython $scriptName *>&1 | Out-File -FilePath $logFile -Append
+          } catch {
+            $scriptErrors++
+          }
+        }
+        echo "script_errors=$scriptErrors" >> $GITHUB_ENV
+      shell: powershell
 
     - name: Aggregate and report errors and warnings
       if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
