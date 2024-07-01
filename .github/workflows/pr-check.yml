@@ -13,6 +13,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Find changed notebooks
+      id: find_notebooks
+      run: |
+        git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+        git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
+        grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+
+    - name: Check if any notebooks changed
+      id: check_notebooks
+      run: |
+        if grep -q '\.ipynb$' changed_notebooks.txt; then
+          echo "::set-output name=notebooks_changed::true"
+        else
+          echo "::set-output name=notebooks_changed::false"
+        fi
+  
+    - name: No notebooks changed
+      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
+      run: |
+        echo "No Jupyter notebooks changed in this PR."
+        exit 0
+
     - name: Install git
       run: |
         sudo apt-get update
@@ -40,26 +62,6 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install jupyter nbconvert flake8 flake8-nb ipython
       shell: bash
-  
-    - name: Find changed notebooks
-      id: find_notebooks
-      run: |
-        git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
-        git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
-        grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
-
-    - name: Check if any notebooks changed
-      id: check_notebooks
-      run: |
-        if grep -q '\.ipynb$' changed_notebooks.txt; then
-          echo "::set-output name=notebooks_changed::true"
-        else
-          echo "::set-output name=notebooks_changed::false"
-        fi
-  
-    - name: No notebooks changed
-      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
-      run: echo "No Jupyter notebooks changed in this PR."
 
     - name: Run Flake8 linting on changed notebooks
       if: steps.check_notebooks.outputs.notebooks_changed == 'true'
