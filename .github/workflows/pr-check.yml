@@ -59,7 +59,7 @@ jobs:
   
     - name: No notebooks changed
       if: steps.check_notebooks.outputs.notebooks_changed == 'false'
-      run: echo "No Jupyter notebooks changed in this PR."
+      run: echo "::set-output No Jupyter notebooks changed in this PR."
 
     - name: Run Flake8 linting on changed notebooks
       if: steps.check_notebooks.outputs.notebooks_changed == 'true'
@@ -69,9 +69,10 @@ jobs:
         flake8_errors=0
         while IFS= read -r notebook; do
           [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
-          echo "Linting $notebook"
+          echo "::set-output Linting $notebook"
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
-          cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt"
+          linting_errors = $(cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt")
+          echo "::set-output $linting_errors"
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
@@ -82,7 +83,7 @@ jobs:
       run: |
         mkdir -p converted_scripts
         while IFS= read -r notebook; do
-          echo "Processing $notebook"
+          echo "::set-output Processing $notebook"
           [ -e "$notebook" ] || continue
           [ "$(basename "$notebook")" = "DoubleML_and_Feature_Engineering_with_BERT.ipynb" ] && continue
           jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
@@ -96,10 +97,10 @@ jobs:
         script_errors=0
         for script in converted_scripts/*.py; do
           [ -e "$script" ] || continue
-          echo "Running $script"
+          echo "::set-output Running $script"
           ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
         done
-        echo "script_errors=$script_errors" >> $GITHUB_ENV
+        echo "::set-output script_errors=$script_errors" >> $GITHUB_ENV
       shell: bash
 
     - name: Aggregate and report errors and warnings
@@ -107,7 +108,8 @@ jobs:
         echo "Aggregating errors and warnings..."
         grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
         echo "Errors and Warnings:"
-        cat logs/errors_and_warnings.txt
+        exec_errors = $(cat logs/errors_and_warnings.txt)
+        echo "::set-output $exec_errors"
       shell: bash
 
     - name: Upload linting logs
