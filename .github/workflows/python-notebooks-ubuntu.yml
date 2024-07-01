@@ -1,4 +1,4 @@
-name: Run Jupyter Notebooks
+name: Run Jupyter Python Notebooks on Ubuntu
 
 on:
   push:
