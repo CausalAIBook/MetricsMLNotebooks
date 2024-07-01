@@ -1,0 +1,125 @@
+name: Test Changed Jupyter Notebooks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-notebooks:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install git
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git
+      shell: bash
+
+    - name: Install libgraphviz-dev if folder is CM3
+      run: sudo apt-get install -y libgraphviz-dev
+      shell: bash
+
+    - name: Install R if folder is CM3
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y r-base
+      shell: bash
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'  # Use Python 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install jupyter nbconvert flake8 flake8-nb ipython
+      shell: bash
+  
+    - name: Find changed notebooks
+      id: find_notebooks
+      run: |
+        git diff --name-only ${{ github.base_ref }}..${{ github.head_ref }} > changed_files.txt
+        grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+
+    - name: Check if any notebooks changed
+      id: check_notebooks
+      run: |
+        if grep -q '\.ipynb$' changed_notebooks.txt; then
+          echo "::set-output name=notebooks_changed::true"
+        else
+          echo "::set-output name=notebooks_changed::false"
+        fi
+  
+    - name: No notebooks changed
+      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
+      run: echo "No Jupyter notebooks changed in this PR."
+
+    - name: Run Flake8 linting on changed notebooks
+      if: steps.check_notebooks.outputs.notebooks_changed == 'true'
+      id: lint
+      run: |
+        mkdir -p linting_logs
+        flake8_errors=0
+        while IFS= read -r notebook; do
+          [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
+          echo "Linting $notebook"
+          flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+        done < changed_notebooks.txt
+        echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Convert changed Jupyter notebooks to Python scripts
+      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      id: convert
+      run: |
+        mkdir -p converted_scripts
+        while IFS= read -r notebook; do
+          echo "Processing $notebook"
+          [ -e "$notebook" ] || continue
+          [ "$(basename "$notebook")" = "DoubleML_and_Feature_Engineering_with_BERT.ipynb" ] && continue
+          jupyter nbconvert --to script "$notebook" --output-dir converted_scripts
+        done < changed_notebooks.txt
+      shell: bash
+
+    - name: Run converted Python scripts with IPython
+      id: execute
+      run: |
+        mkdir -p logs
+        script_errors=0
+        for script in converted_scripts/*.py; do
+          [ -e "$script" ] || continue
+          echo "Running $script"
+          ipython "$script" > "logs/$(basename "$script" .py).txt" 2>&1 || script_errors=$((script_errors+1))
+        done
+        echo "script_errors=$script_errors" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Aggregate and report errors and warnings
+      run: |
+        echo "Aggregating errors and warnings..."
+        grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
+        echo "Errors and Warnings:"
+        cat logs/errors_and_warnings.txt
+      shell: bash
+
+    - name: Upload linting logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
+        path: linting_logs
+
+    - name: Upload execution logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
+        path: logs
+
+    - name: Check for errors
+      if: "(env.flake8_errors != '0' || env.script_errors != '0')"
+      run: exit 1
