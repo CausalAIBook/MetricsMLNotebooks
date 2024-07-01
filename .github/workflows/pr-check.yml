@@ -8,60 +8,42 @@ on:
 jobs:
   test-notebooks:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Install git
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git
-      shell: bash
-
-    - name: Install libgraphviz-dev if folder is CM3
-      run: sudo apt-get install -y libgraphviz-dev
-      shell: bash
-
-    - name: Install R if folder is CM3
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y r-base
-      shell: bash
 
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.10'  # Use Python 3.10
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install jupyter nbconvert flake8 flake8-nb ipython
-      shell: bash
-  
     - name: Find changed notebooks
       id: find_notebooks
       run: |
-        git diff --name-only ${{ github.base_ref }}..${{ github.head_ref }} > changed_files.txt
+        git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+        git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
         grep '\.ipynb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
     - name: Check if any notebooks changed
       id: check_notebooks
       run: |
         if grep -q '\.ipynb$' changed_notebooks.txt; then
-          echo "::set-output name=notebooks_changed::true"
+          echo "notebooks_changed=true" >> $GITHUB_ENV
         else
-          echo "::set-output name=notebooks_changed::false"
+          echo "notebooks_changed=false" >> $GITHUB_ENV
+          echo "No Jupyter notebooks changed in this PR."
         fi
   
-    - name: No notebooks changed
-      if: steps.check_notebooks.outputs.notebooks_changed == 'false'
-      run: echo "No Jupyter notebooks changed in this PR."
-
+    - name: Install flake8
+      if: env.notebooks_changed == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 flake8-nb
+      shell: bash
+  
     - name: Run Flake8 linting on changed notebooks
-      if: steps.check_notebooks.outputs.notebooks_changed == 'true'
+      if: env.notebooks_changed == 'true'
       id: lint
       run: |
         mkdir -p linting_logs
@@ -70,12 +52,51 @@ jobs:
           [ "$(basename "$notebook")" = "python-dosearch.ipynb" ] && continue
           echo "Linting $notebook"
           flake8-nb --config=.flake8 "$notebook" > "linting_logs/$(basename "$notebook" .ipynb)_linting.txt" 2>&1 || flake8_errors=$((flake8_errors+1))
+          cat "linting_logs/$(basename "$notebook" .ipynb)_linting.txt"
         done < changed_notebooks.txt
         echo "flake8_errors=$flake8_errors" >> $GITHUB_ENV
       shell: bash
+    
+    - name: Upload linting logs
+      if: env.notebooks_changed == 'true'
+      uses: actions/upload-artifact@v2
+      with:
+        name: linting-logs
+        path: linting_logs
+
+    - name: Check for linting errors
+      if: "(env.notebooks_changed == 'true') && (env.flake8_errors != '0')"
+      run: exit 1
+  
+    - name: Install git
+      if: env.notebooks_changed == 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git
+      shell: bash
+
+    - name: Install libgraphviz-dev if folder
+      if: env.notebooks_changed == 'true'
+      run: sudo apt-get install -y libgraphviz-dev
+      shell: bash
+
+    - name: Install R if folder
+      if: env.notebooks_changed == 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y r-base
+      shell: bash
+
+    - name: Install dependencies
+      if: env.notebooks_changed == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install jupyter nbconvert ipython
+      shell: bash
 
     - name: Convert changed Jupyter notebooks to Python scripts
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: env.notebooks_changed == 'true'
       id: convert
       run: |
         mkdir -p converted_scripts
@@ -88,6 +109,7 @@ jobs:
       shell: bash
 
     - name: Run converted Python scripts with IPython
+      if: env.notebooks_changed == 'true'
       id: execute
       run: |
         mkdir -p logs
@@ -101,6 +123,7 @@ jobs:
       shell: bash
 
     - name: Aggregate and report errors and warnings
+      if: env.notebooks_changed == 'true'
       run: |
         echo "Aggregating errors and warnings..."
         grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
@@ -108,18 +131,13 @@ jobs:
         cat logs/errors_and_warnings.txt
       shell: bash
 
-    - name: Upload linting logs
-      uses: actions/upload-artifact@v2
-      with:
-        name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
-        path: linting_logs
-
     - name: Upload execution logs
+      if: env.notebooks_changed == 'true'
       uses: actions/upload-artifact@v2
       with:
-        name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
+        name: execution-logs
         path: logs
 
     - name: Check for errors
-      if: "(env.flake8_errors != '0' || env.script_errors != '0')"
+      if: "(env.notebooks_changed == 'true') && (env.flake8_errors != '0' || env.script_errors != '0')"
       run: exit 1
