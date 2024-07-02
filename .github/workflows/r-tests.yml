@@ -20,8 +20,34 @@ jobs:
         run: R -e 'install.packages("lintr")'
 
       - name: Lint R scripts and notebooks in ${{ matrix.folder }}
+        id: lint
         run: |
-          R -e 'files <- list.files("${{ matrix.folder }}", pattern = "\\.(R|r|Rmd|rmd|irnb)$", full.names = TRUE); 
-                linters <- lintr::with_defaults(line_length_linter = lintr::line_length_linter(119));
-                lapply(files, lintr::lint, linters = linters);'
-        continue-on-error: true
+          R -e '
+            files <- list.files("${{ matrix.folder }}", pattern = "\\.(R|r|Rmd|rmd|irnb)$", full.names = TRUE); 
+            linters <- lintr::with_defaults(line_length_linter = lintr::line_length_linter(119));
+            results <- lapply(files, lintr::lint, linters = linters);
+            errors <- sum(sapply(results, function(res) length(res) > 0));
+            write(errors, file = "lint_errors.txt");
+            saveRDS(results, file = "lint_results.rds");
+          '
+
+      - name: Print linting errors
+        run: |
+          R -e '
+            results <- readRDS("lint_results.rds");
+            for (file_results in results) {
+              if (length(file_results) > 0) {
+                print(file_results);
+              }
+            }
+          '
+
+      - name: Check for linting errors
+        run: |
+          errors=$(cat lint_errors.txt)
+          if [ "$errors" -ne 0 ]; then
+            echo "Linting errors found"
+            exit 1
+          else
+            echo "No linting errors"
+          fi
