@@ -2,9 +2,11 @@ on:
   push:
     branches: [main, master, r-tests]
   pull_request:
-    branches: [main, master, r-tests]
+    branches: [main, master]
 
 name: lint
+
+permissions: read-all
 
 jobs:
   lint:
@@ -20,10 +22,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: |
-            any::cyclocomp
-            r-lib/lintr
-            local::.
+          extra-packages: any::lintr, local::.
           needs: lint
 
       - name: Lint
