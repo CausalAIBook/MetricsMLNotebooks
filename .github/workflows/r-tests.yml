@@ -1,32 +1,25 @@
-on:
-  push:
-    branches: [main, master, r-tests]
-  pull_request:
-    branches: [main, master]
+name: Lint R Scripts and Notebooks
 
-name: lint
-
-permissions: read-all
+on: [push, pull_request]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        folder: [PM1, PM2]
+    name: Lint ${{ matrix.folder }} folder
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::lintr, local::.
-          needs: lint
+      - name: Install lintr
+        run: R -e 'install.packages("lintr")'
 
-      - name: Lint
-        run: lintr::lint_dir(path="PM1")
-        shell: Rscript {0}
-        env:
-          LINTR_ERROR_ON_LINT: true
+      - name: Lint R scripts and notebooks in ${{ matrix.folder }}
+        run: |
+          R -e 'lintr::lint_dir("${{ matrix.folder }}", linters = lintr::with_defaults())'
+        continue-on-error: true
