@@ -21,5 +21,7 @@ jobs:
 
       - name: Lint R scripts and notebooks in ${{ matrix.folder }}
         run: |
-          R -e 'lintr::lint_dir("${{ matrix.folder }}", linters = lintr::with_defaults())'
+          R -e 'files <- list.files("${{ matrix.folder }}", pattern = "\\.(R|r|Rmd|rmd|irnb)$", full.names = TRUE); 
+                linters <- lintr::with_defaults(line_length_linter = lintr::line_length_linter(119));
+                lapply(files, lintr::lint, linters = linters);'
         continue-on-error: true
