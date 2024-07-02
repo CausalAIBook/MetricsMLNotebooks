@@ -26,28 +26,44 @@ jobs:
             files <- list.files("${{ matrix.folder }}", pattern = "\\.(R|r|Rmd|rmd|irnb)$", full.names = TRUE); 
             linters <- lintr::with_defaults(line_length_linter = lintr::line_length_linter(119));
             results <- lapply(files, lintr::lint, linters = linters);
-            errors <- sum(sapply(results, function(res) length(res) > 0));
-            write(errors, file = "lint_errors.txt");
+            errors_and_warnings <- lapply(results, function(res) {
+              errs_warns <- sapply(res, function(x) grepl("Error:", x$message) || grepl("Warning:", x$message))
+              res[errs_warns]
+            })
+            saveRDS(errors_and_warnings, file = "lint_errors_warnings.rds");
             saveRDS(results, file = "lint_results.rds");
+            total_errors <- sum(sapply(errors_and_warnings, length))
+            write(total_errors, file = "total_lint_errors.txt");
           '
 
-      - name: Print linting errors
+      - name: Print all linting results
         run: |
           R -e '
             results <- readRDS("lint_results.rds");
             for (file_results in results) {
-              if (length(file_results) > 0) {
-                print(file_results);
+              for (result in file_results) {
+                print(result)
               }
             }
           '
 
-      - name: Check for linting errors
+      - name: Print linting errors and warnings
         run: |
-          errors=$(cat lint_errors.txt)
-          if [ "$errors" -ne 0 ]; then
-            echo "Linting errors found"
+          R -e '
+            errors_and_warnings <- readRDS("lint_errors_warnings.rds");
+            for (file_errors_warnings in errors_and_warnings) {
+              for (error_warning in file_errors_warnings) {
+                print(error_warning)
+              }
+            }
+          '
+
+      - name: Check for linting errors and warnings
+        run: |
+          total_errors=$(cat total_lint_errors.txt)
+          if [ "$total_errors" -ne 0 ]; then
+            echo "Linting errors or warnings found"
             exit 1
           else
-            echo "No linting errors"
+            echo "No linting errors or warnings"
           fi
