@@ -1,0 +1,38 @@
+name: Convert R Notebooks to Rmd
+
+on:
+  push
+
+jobs:
+  convert-ipynb-to-rmd:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'  # Specify your Python version here
+
+    - name: Install nbconvert
+      run: |
+        python -m pip install --upgrade pip
+        pip install nbconvert
+
+    - name: Convert .ipynb to .Rmd
+      run: |
+        for notebook in PM1/*.irnb; do  # Update this path to your directory
+          jupyter nbconvert --to rmarkdown "$notebook"
+        done
+
+    - name: Commit and push changes
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add PM1/*.Rmd  # Update this path to your directory
+        git commit -m 'Convert .ipynb to .Rmd'
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
