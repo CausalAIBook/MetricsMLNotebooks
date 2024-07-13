@@ -30,18 +30,18 @@
    "source": [
     "\n",
     "set.seed(123)\n",
-    "n = 1000\n",
+    "n <- 1000\n",
     "\n",
-    "p = n\n",
-    "X<- matrix(rnorm(n*p), n, p)\n",
-    "Y<- rnorm(n)\n",
+    "p <- n\n",
+    "x <- matrix(rnorm(n * p), n, p)\n",
+    "y <- rnorm(n)\n",
     "\n",
     "print(\"p/n is\")\n",
-    "print(p/n)\n",
+    "print(p / n)\n",
     "print(\"R2 is\")\n",
-    "print(summary(lm(Y~X))$r.squared)\n",
+    "print(summary(lm(y ~ x))$r.squared)\n",
     "print(\"Adjusted R2 is\")\n",
-    "print(summary(lm(Y~X))$adj.r.squared)\n"
+    "print(summary(lm(y ~ x))$adj.r.squared)\n"
    ]
   },
   {
@@ -63,18 +63,18 @@
    "source": [
     "\n",
     "set.seed(123)\n",
-    "n = 1000\n",
+    "n <- 1000\n",
     "\n",
-    "p = n/2\n",
-    "X<- matrix(rnorm(n*p), n, p)\n",
-    "Y<- rnorm(n)\n",
+    "p <- n/2\n",
+    "x <- matrix(rnorm(n * p), n, p)\n",
+    "y <- rnorm(n)\n",
     "\n",
     "print(\"p/n is\")\n",
-    "print(p/n)\n",
+    "print(p / n)\n",
     "print(\"R2 is\")\n",
-    "print(summary(lm(Y~X))$r.squared)\n",
+    "print(summary(lm(y ~ x))$r.squared)\n",
     "print(\"Adjusted R2 is\")\n",
-    "print(summary(lm(Y~X))$adj.r.squared)\n"
+    "print(summary(lm(y ~ x))$adj.r.squared)\n"
    ]
   },
   {
@@ -96,18 +96,18 @@
    "source": [
     "\n",
     "set.seed(123)\n",
-    "n = 1000\n",
+    "n <- 1000\n",
     "\n",
-    "p = .05*n\n",
-    "X<- matrix(rnorm(n*p), n, p)\n",
-    "Y<- rnorm(n)\n",
+    "p <- .05*n\n",
+    "x <- matrix(rnorm(n*p), n, p)\n",
+    "y <- rnorm(n)\n",
     "\n",
     "print(\"p/n is\")\n",
-    "print(p/n)\n",
+    "print(p / n)\n",
     "print(\"R2 is\")\n",
-    "print(summary(lm(Y~X))$r.squared)\n",
+    "print(summary(lm(y ~ x))$r.squared)\n",
     "print(\"Adjusted R2 is\")\n",
-    "print(summary(lm(Y~X))$adj.r.squared)\n",
+    "print(summary(lm(y ~ x))$adj.r.squared)\n",
     "\n"
    ]
   }
