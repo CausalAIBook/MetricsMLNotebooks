@@ -274,7 +274,7 @@
     "\n",
     "# print unconditional effect of gender and the corresponding standard error\n",
     "cat(\"The estimated coefficient on the dummy for gender is\", nocontrol_est,\n",
-    "    \" and the corresponding robust standard error is\", nocontrol_se)\n"
+    "    \" and the corresponding robust standard error is\", nocontrol_se)"
    ]
   },
   {
