@@ -4,7 +4,7 @@ on:
   push
 
 jobs:
-  convert-ipynb-to-rmd:
+  convert-irnb-to-rmd:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,10 +18,10 @@ jobs:
       run: |
         R -e 'install.packages(c("rmarkdown", "knitr", "xfun"), repos="https://cloud.r-project.org")'
 
-    - name: Convert .ipynb to .Rmd and .R
+    - name: Convert .irnb to .Rmd and .R
       run: |
         R -e '
-          files <- list.files(path = "path/to/directory", pattern = "\\.ipynb$", full.names = TRUE, recursive = FALSE)
+          files <- list.files(path = "PM1", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
           lapply(files, function(input) {
             rmarkdown::convert_ipynb(input)
             rmd_file <- xfun::with_ext(input, "Rmd")
@@ -32,7 +32,7 @@ jobs:
     - name: Zip .R files
       run: |
         mkdir r_scripts
-        mv path/to/directory/*.R r_scripts/
+        mv PM1/*.R r_scripts/
         zip -r r_scripts.zip r_scripts
 
     - name: Upload artifact
@@ -45,8 +45,8 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add path/to/directory/*.Rmd  # Update this path to your directory
-        git commit -m 'Convert .ipynb to .Rmd'
+        git add PM1/*.Rmd  # Update this path to your directory
+        git commit -m 'Convert .irnb to .Rmd'
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
