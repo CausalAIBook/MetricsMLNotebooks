@@ -664,7 +664,7 @@
    "source": [
     "set.seed(2724)\n",
     "subset_size <- 1000\n",
-    "random <- sample(1:seq_len(nrow(data)), subset_size)\n",
+    "random <- sample(seq_len(nrow(data)), subset_size)\n",
     "subset <- data[random, ]"
    ]
   },
