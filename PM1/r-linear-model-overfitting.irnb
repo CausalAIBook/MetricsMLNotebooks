@@ -65,7 +65,7 @@
     "set.seed(123)\n",
     "n <- 1000\n",
     "\n",
-    "p <- n/2\n",
+    "p <- n / 2\n",
     "x <- matrix(rnorm(n * p), n, p)\n",
     "y <- rnorm(n)\n",
     "\n",
