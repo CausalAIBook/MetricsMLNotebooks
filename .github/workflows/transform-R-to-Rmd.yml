@@ -56,16 +56,13 @@ jobs:
           linters <- with_defaults(line_length_linter = line_length_linter(120))
           rmd_files <- list.files(path = "PM1", pattern = "\\.Rmd$", full.names = TRUE)
           results <- lapply(rmd_files, function(file) {
-            lint(file, linters)
+            lints <- lint(file, linters)
+            if (length(lints) > 0) {
+              cat("Warnings found during linting:\n")
+              print(lints)
+              stop("Linting failed with warnings")
+            }
           })
-          warnings <- unlist(lapply(results, function(res) {
-            res[grep("^Warning:", res$message)]
-          }))
-          if (length(warnings) > 0) {
-            cat("Warnings found during linting:\n")
-            cat(warnings, sep="\n")
-            stop("Linting failed with warnings")
-          }
         '
 
     - name: Zip .R files
@@ -79,6 +76,11 @@ jobs:
       with:
         name: r-scripts
         path: r_scripts.zip
+
+    - name: Delete .R files and zip
+      run: |
+        rm -rf r_scripts
+        rm r_scripts.zip
 
     - name: Commit and push stripped .irnb and .Rmd files
       run: |
