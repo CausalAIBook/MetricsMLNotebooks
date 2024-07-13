@@ -98,8 +98,8 @@
     "set.seed(123)\n",
     "n <- 1000\n",
     "\n",
-    "p <- .05*n\n",
-    "x <- matrix(rnorm(n*p), n, p)\n",
+    "p <- .05 * n\n",
+    "x <- matrix(rnorm(n * p), n, p)\n",
     "y <- rnorm(n)\n",
     "\n",
     "print(\"p/n is\")\n",
@@ -107,8 +107,7 @@
     "print(\"R2 is\")\n",
     "print(summary(lm(y ~ x))$r.squared)\n",
     "print(\"Adjusted R2 is\")\n",
-    "print(summary(lm(y ~ x))$adj.r.squared)\n",
-    "\n"
+    "print(summary(lm(y ~ x))$adj.r.squared)\n"
    ]
   }
  ],
