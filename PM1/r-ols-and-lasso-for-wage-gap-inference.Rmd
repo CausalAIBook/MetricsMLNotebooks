@@ -44,7 +44,8 @@ dim(data)
 To start our (causal) analysis, we compare the sample means given gender:
 
 ```{r}
-z <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl", "clg", "ad", "ne", "mw", "so", "we", "exp1"))]
+z <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl", "clg",
+                                      "ad", "ne", "mw", "so", "we", "exp1"))]
 
 data_female <- data[data$sex == 1, ]
 z_female <- data_female[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl",
@@ -107,12 +108,12 @@ We verify this by running an ols regression in R.
 nocontrol_fit <- lm(lwage ~ sex, data = data)
 nocontrol_est <- summary(nocontrol_fit)$coef["sex", 1]
 # HC - "heteroskedasticity cosistent" -- HC3 is the SE that remains consistent in high dimensions
-hcv_coefs <- vcovHC(nocontrol_fit, type = 'HC3')
+hcv_coefs <- vcovHC(nocontrol_fit, type = "HC3")
 nocontrol_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors
 
 # print unconditional effect of gender and the corresponding standard error
-cat ("The estimated coefficient on the dummy for gender is", nocontrol_est,
-     " and the corresponding robust standard error is", nocontrol_se)
+cat("The estimated coefficient on the dummy for gender is", nocontrol_est,
+    " and the corresponding robust standard error is", nocontrol_se)
 ```
 
 Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity.
@@ -133,8 +134,8 @@ Let us run the ols regression with controls.
 flex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 
 # Note that ()*() operation in formula objects in R creates a formula of the sort:
-#   (exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we) 
-#    + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)
+#   '(exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we)
+#     + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)'
 # This is not intuitive at all, but that's what it does.
 
 control_fit <- lm(flex, data = data)
@@ -144,7 +145,7 @@ summary(control_fit)
 
 cat("Coefficient for OLS with controls", control_est)
 
-hcv_coefs <- vcovHC(control_fit, type = 'HC3');
+hcv_coefs <- vcovHC(control_fit, type = "HC3")
 control_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors
 ```
 
@@ -155,10 +156,10 @@ We now show how the conditional gap and the remainder decompose the marginal wag
 
 ```{r}
 xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),
-                    data=data[data$sex == 0, ])
+                    data = data[data$sex == 0, ])
 y0 <- data[data$sex == 0, ]$lwage
 xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),
-                    data=data[data$sex == 1, ])
+                    data = data[data$sex == 1, ])
 y1 <- data[data$sex == 1, ]$lwage
 mu1 <- colMeans(xx1)
 mu0 <- colMeans(xx0)
@@ -177,8 +178,8 @@ We next consider a Oaxaca-Blinder decomposition that also incorporates an intera
 ```{r}
 svd0 <- svd(xx0)
 svd1 <- svd(xx1)
-svd0$d[svd0$d <= 1e-10] = 0
-svd0$d[svd0$d > 1e-10] = 1 / svd0$d[svd0$d > 1e-10]
+svd0$d[svd0$d <= 1e-10] <- 0
+svd0$d[svd0$d > 1e-10] <- 1 / svd0$d[svd0$d > 1e-10]
 beta0 <- (svd0$v %*% (svd0$d * svd0$d * t(svd0$v))) %*% t(xx0) %*% y0
 svd1$d[svd1$d <= 1e-10] <- 0
 svd1$d[svd1$d > 1e-10] <- 1 / svd1$d[svd1$d > 1e-10]
@@ -209,17 +210,17 @@ t_y <- lm(flex_y, data = data)$res
 t_d <- lm(flex_d, data = data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.fit <- lm(t_y ~ t_d)
-partial_est <- summary(partial.fit)$coef[2, 1]
+partial_fit <- lm(t_y ~ t_d)
+partial_est <- summary(partial_fit)$coef[2, 1]
 
 cat("Coefficient for D via partialling-out", partial_est)
 
 # standard error
-hcv_coefs <- vcovHC(partial.fit, type = 'HC3')
+hcv_coefs <- vcovHC(partial_fit, type = "HC3")
 partial_se <- sqrt(diag(hcv_coefs))[2]
 
 # confidence interval
-confint(partial.fit)[2, ]
+confint(partial_fit)[2, ]
 ```
 
 Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem.
@@ -244,13 +245,13 @@ t_y <- rlasso(flex_y, data = data)$res
 t_d <- rlasso(flex_d, data = data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t_y ~ t_d)
-partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]
+partial_lasso_fit <- lm(t_y ~ t_d)
+partial_lasso_est <- summary(partial_lasso_fit)$coef[2, 1]
 
 cat("Coefficient for D via partialling-out using lasso", partial_lasso_est)
 
 # standard error
-hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+hcv_coefs <- vcovHC(partial_lasso_fit, type = "HC3")
 partial_lasso_se <- sqrt(diag(hcv_coefs))[2]
 ```
 
@@ -270,7 +271,7 @@ table[4, 1] <-  partial_lasso_est
 table[4, 2] <- partial_lasso_se
 colnames(table) <- c("Estimate", "Std. Error")
 rownames(table) <- c("Without controls", "full reg", "partial reg", "partial reg via lasso")
-tab<- xtable(table, digits = c(3, 3, 4))
+tab <- xtable(table, digits = c(3, 3, 4))
 tab
 ```
 
@@ -300,7 +301,7 @@ Next we motivate the usage of lasso. We try an "extra" flexible model, where we 
 ```{r}
 set.seed(2724)
 subset_size <- 1000
-random <- sample(1:nrow(data), subset_size)
+random <- sample(1:seq_len(nrow(data)), subset_size)
 subset <- data[random, ]
 ```
 
@@ -333,7 +334,7 @@ n <- subset_size
 p <- length(control_fit$coef)
 
 # HC0 SE
-hcv_coefs_hc0 <- vcovHC(control_fit, type = 'HC0')
+hcv_coefs_hc0 <- vcovHC(control_fit, type = "HC0")
 control_se_hc0 <- sqrt(diag(hcv_coefs_hc0))[2]
 
 # For a more correct approach, we
@@ -343,9 +344,9 @@ control_se_hc0 <- sqrt(diag(hcv_coefs_hc0))[2]
 # really work here.
 coefs <- hatvalues(control_fit)
 trim <- 0.99999999999
-coefs_trimmed <- coefs*(coefs < trim) + trim * (coefs >= trim)
+coefs_trimmed <- coefs * (coefs < trim) + trim * (coefs >= trim)
 omega <- (control_fit$residuals^2) / ((1 - coefs_trimmed)^2)
-hcv_coefs <- vcovHC(control_fit, omega = as.vector(omega), type = 'HC3')
+hcv_coefs <- vcovHC(control_fit, omega = as.vector(omega), type = "HC3")
 control_se_hc3 <- sqrt(diag(hcv_coefs))[2]
 ```
 
@@ -361,13 +362,13 @@ t_y <- rlasso(extraflex_y, data = subset)$res
 t_d <- rlasso(extraflex_d, data = subset)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t_y ~ t_d)
-partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]
+partial_lasso_fit <- lm(t_y ~ t_d)
+partial_lasso_est <- summary(partial_lasso_fit)$coef[2, 1]
 
 cat("Coefficient for D via partialling-out using lasso", partial_lasso_est)
 
 # standard error
-hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+hcv_coefs <- vcovHC(partial_lasso_fit, type = "HC3")
 partial_lasso_se <- sqrt(diag(hcv_coefs))[2]
 ```
 
