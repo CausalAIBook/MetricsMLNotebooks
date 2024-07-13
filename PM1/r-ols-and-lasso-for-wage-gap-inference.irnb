@@ -454,7 +454,7 @@
     "# Partialling-out using ols\n",
     "\n",
     "# model for Y\n",
-    "flex_y <- lwage ~  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
+    "flex_y <- lwage ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "# model for D\n",
     "flex_d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "\n",
