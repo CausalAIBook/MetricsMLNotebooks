@@ -49,14 +49,23 @@ jobs:
         '
 
     - name: Lint .Rmd files
+      id: lint
       run: |
         R -e '
           library(lintr)
           linters <- with_defaults(line_length_linter = line_length_linter(120))
           rmd_files <- list.files(path = "PM1", pattern = "\\.Rmd$", full.names = TRUE)
-          lapply(rmd_files, function(file) {
+          results <- lapply(rmd_files, function(file) {
             lint(file, linters)
           })
+          warnings <- unlist(lapply(results, function(res) {
+            res[grep("^Warning:", res$message)]
+          }))
+          if (length(warnings) > 0) {
+            cat("Warnings found during linting:\n")
+            cat(warnings, sep="\n")
+            stop("Linting failed with warnings")
+          }
         '
 
     - name: Zip .R files
