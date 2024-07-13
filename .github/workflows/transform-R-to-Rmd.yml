@@ -3,6 +3,10 @@ name: Convert and Lint R Notebooks
 on:
   push
 
+concurrency:
+  group: convert-lint-notebooks
+  cancel-in-progress: true
+
 jobs:
   convert-lint-notebooks:
     runs-on: ubuntu-latest
@@ -65,6 +69,25 @@ jobs:
           })
         '
 
+    - name: Execute R scripts
+      id: execute
+      run: |
+        R -e '
+          files <- list.files(path = "PM1", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
+          for (file in files) {
+            tryCatch(
+              {
+                source(file)
+              },
+              error = function(e) {
+                cat("Error found in file:", file, "\n")
+                cat("Error message:", e$message, "\n")
+                stop("Execution failed due to an error in ", file)
+              }
+            )
+          }
+        '
+
     - name: Zip .R files
       run: |
         mkdir r_scripts
@@ -87,7 +110,7 @@ jobs:
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git add PM1/*.irnb PM1/*.Rmd
-        git commit -m 'Strip outputs from .irnb, convert to .Rmd, and lint .Rmd files'
+        git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files'
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
