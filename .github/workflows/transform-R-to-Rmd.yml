@@ -1,9 +1,7 @@
 name: Convert R Notebooks to Rmd and R Scripts
 
 on:
-  push:
-    paths:
-      - 'path/to/directory/*.ipynb'  # Update this path to your directory
+  push
 
 jobs:
   convert-ipynb-to-rmd:
