@@ -1,7 +1,9 @@
-name: Convert R Notebooks to Rmd
+name: Convert R Notebooks to Rmd and R Scripts
 
 on:
-  push
+  push:
+    paths:
+      - 'path/to/directory/*.ipynb'  # Update this path to your directory
 
 jobs:
   convert-ipynb-to-rmd:
@@ -11,27 +13,41 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+
+    - name: Install rmarkdown and knitr packages
+      run: |
+        R -e 'install.packages(c("rmarkdown", "knitr", "xfun"), repos="https://cloud.r-project.org")'
+
+    - name: Convert .ipynb to .Rmd and .R
+      run: |
+        R -e '
+          files <- list.files(path = "path/to/directory", pattern = "\\.ipynb$", full.names = TRUE, recursive = FALSE)
+          lapply(files, function(input) {
+            rmarkdown::convert_ipynb(input)
+            rmd_file <- xfun::with_ext(input, "Rmd")
+            knitr::purl(rmd_file, output = xfun::with_ext(input, "R"))
+          })
+        '
+
+    - name: Zip .R files
+      run: |
+        mkdir r_scripts
+        mv path/to/directory/*.R r_scripts/
+        zip -r r_scripts.zip r_scripts
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
       with:
-        python-version: '3.8'  # Specify your Python version here
+        name: r-scripts
+        path: r_scripts.zip
 
-    - name: Install nbconvert
-      run: |
-        python -m pip install --upgrade pip
-        pip install nbconvert
-
-    - name: Convert .ipynb to .Rmd
-      run: |
-        for notebook in PM1/*.irnb; do  # Update this path to your directory
-          jupyter nbconvert --to rmarkdown "$notebook"
-        done
-
-    - name: Commit and push changes
+    - name: Commit and push .Rmd files
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add PM1/*.Rmd  # Update this path to your directory
+        git add path/to/directory/*.Rmd  # Update this path to your directory
         git commit -m 'Convert .ipynb to .Rmd'
         git push
       env:
