@@ -10,18 +10,18 @@ First set p=n
 ```{r}
 
 set.seed(123)
-n = 1000
+n <- 1000
 
-p = n
-X<- matrix(rnorm(n*p), n, p)
-Y<- rnorm(n)
+p <- n
+x <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
 
 print("p/n is")
-print(p/n)
+print(p / n)
 print("R2 is")
-print(summary(lm(Y~X))$r.squared)
+print(summary(lm(y ~ x))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(Y~X))$adj.r.squared)
+print(summary(lm(y ~ x))$adj.r.squared)
 ```
 
 Second, set p=n/2.
@@ -29,18 +29,18 @@ Second, set p=n/2.
 ```{r}
 
 set.seed(123)
-n = 1000
+n <- 1000
 
-p = n/2
-X<- matrix(rnorm(n*p), n, p)
-Y<- rnorm(n)
+p <- n / 2
+x <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
 
 print("p/n is")
-print(p/n)
+print(p / n)
 print("R2 is")
-print(summary(lm(Y~X))$r.squared)
+print(summary(lm(y ~ x))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(Y~X))$adj.r.squared)
+print(summary(lm(y ~ x))$adj.r.squared)
 ```
 
 Third, set p/n =.05
@@ -48,18 +48,17 @@ Third, set p/n =.05
 ```{r}
 
 set.seed(123)
-n = 1000
+n <- 1000
 
-p = .05*n
-X<- matrix(rnorm(n*p), n, p)
-Y<- rnorm(n)
+p <- .05 * n
+x <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
 
 print("p/n is")
-print(p/n)
+print(p / n)
 print("R2 is")
-print(summary(lm(Y~X))$r.squared)
+print(summary(lm(y ~ x))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(Y~X))$adj.r.squared)
-
+print(summary(lm(y ~ x))$adj.r.squared)
 ```
 

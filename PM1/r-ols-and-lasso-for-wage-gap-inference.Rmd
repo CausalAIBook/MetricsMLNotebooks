@@ -26,7 +26,6 @@ install.packages("xtable")
 install.packages("hdm") # a library for high-dimensional metrics
 install.packages("sandwich") # a package used to compute robust standard errors
 
-
 library(hdm)
 library(xtable)
 library(sandwich)
@@ -37,11 +36,7 @@ library(sandwich)
 We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set.
 
 ```{r}
-# load("../input/wage2015-inference/wage2015_subsample_inference.Rdata")
-# attach(data)
-# dim(data)
-
-file = "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
 data <- read.csv(file)
 dim(data)
 ```
@@ -49,26 +44,29 @@ dim(data)
 To start our (causal) analysis, we compare the sample means given gender:
 
 ```{r}
-Z <- data[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+z <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl", "clg", "ad", "ne", "mw", "so", "we", "exp1"))]
 
-data_female <- data[data$sex==1,]
-Z_female <- data_female[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+data_female <- data[data$sex == 1, ]
+z_female <- data_female[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl",
+                                                    "clg", "ad", "ne", "mw", "so", "we", "exp1"))]
 
-data_male <- data[data$sex==0,]
-Z_male <- data_male[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+data_male <- data[data$sex == 0, ]
+z_male <- data_male[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl", "clg", "ad",
+                                                "ne", "mw", "so", "we", "exp1"))]
 
 table <- matrix(0, 12, 3)
-table[1:12,1]   <- as.numeric(lapply(Z,mean))
-table[1:12,2]   <- as.numeric(lapply(Z_male,mean))
-table[1:12,3]   <- as.numeric(lapply(Z_female,mean))
-rownames(table) <- c("Log Wage","Sex","Less then High School","High School Graduate","Some College","College Graduate","Advanced Degree", "Northeast","Midwest","South","West","Experience")
-colnames(table) <- c("All","Men","Women")
-tab<- xtable(table, digits = 4)
+table[1:12, 1] <- as.numeric(lapply(z, mean))
+table[1:12, 2] <- as.numeric(lapply(z_male, mean))
+table[1:12, 3] <- as.numeric(lapply(z_female, mean))
+rownames(table) <- c("Log Wage", "Sex", "Less then High School", "High School Graduate", "Some College",
+                     "College Graduate", "Advanced Degree", "Northeast", "Midwest", "South", "West", "Experience")
+colnames(table) <- c("All", "Men", "Women")
+tab <- xtable(table, digits = 4)
 tab
 ```
 
 ```{r}
-print(tab,type="html") # set type="latex" for printing table in LaTeX
+print(tab, type = "html") # set type="latex" for printing table in LaTeX
 ```
 
 <!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
@@ -92,7 +90,7 @@ print(tab,type="html") # set type="latex" for printing table in LaTeX
 In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$
 
 ```{r}
-mean(data_female$lwage)-mean(data_male$lwage)
+mean(data_female$lwage) - mean(data_male$lwage)
 ```
 
 Thus, the unconditional gender wage gap is about $3,8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
@@ -106,13 +104,15 @@ This unconditional (predictive) effect of gender equals the coefficient $\beta$ 
 We verify this by running an ols regression in R.
 
 ```{r}
-nocontrol.fit <- lm(lwage ~ sex, data=data)
-nocontrol.est <- summary(nocontrol.fit)$coef["sex",1]
-HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3'); # HC - "heteroskedasticity cosistent" -- HC3 is the SE that remains consistent in high dimensions
-nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+nocontrol_fit <- lm(lwage ~ sex, data = data)
+nocontrol_est <- summary(nocontrol_fit)$coef["sex", 1]
+# HC - "heteroskedasticity cosistent" -- HC3 is the SE that remains consistent in high dimensions
+hcv_coefs <- vcovHC(nocontrol_fit, type = 'HC3')
+nocontrol_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors
 
 # print unconditional effect of gender and the corresponding standard error
-cat ("The estimated coefficient on the dummy for gender is",nocontrol.est," and the corresponding robust standard error is",nocontrol.se)
+cat ("The estimated coefficient on the dummy for gender is", nocontrol_est,
+     " and the corresponding robust standard error is", nocontrol_se)
 ```
 
 Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity.
@@ -130,21 +130,22 @@ Let us run the ols regression with controls.
 ```{r}
 # ols regression with controls
 
-flex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)
+flex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 
-#   Note that ()*() operation in formula objects in R creates a formula of the sort:
-#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)
-#  This is not intuitive at all, but that's what it does.
+# Note that ()*() operation in formula objects in R creates a formula of the sort:
+#   (exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we) 
+#    + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)
+# This is not intuitive at all, but that's what it does.
 
-control.fit <- lm(flex, data=data)
-control.est <- summary(control.fit)$coef[2,1]
+control_fit <- lm(flex, data = data)
+control_est <- summary(control_fit)$coef[2, 1]
 
-summary(control.fit)
+summary(control_fit)
 
-cat("Coefficient for OLS with controls", control.est)
+cat("Coefficient for OLS with controls", control_est)
 
-HCV.coefs <- vcovHC(control.fit, type = 'HC3');
-control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+hcv_coefs <- vcovHC(control_fit, type = 'HC3');
+control_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors
 ```
 
 The estimated regression coefficient $\beta_1\approx-0.0696$ measures how our linear prediction of wage changes if we set the gender variable $D$ from 0 to 1, holding the controls $W$ fixed.
@@ -153,39 +154,43 @@ We can call this the *predictive effect* (PE), as it measures the impact of a va
 We now show how the conditional gap and the remainder decompose the marginal wage gap into the parts explained and unexplained by the additional controls. (Note that this does *not* explain why there is a difference in the controls to begin with in the two groups.)
 
 ```{r}
-XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==0,])
-y0  = data[data$sex==0,]$lwage
-XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we), data = data[data$sex==1,])
-y1  = data[data$sex==1,]$lwage
-mu1 = colMeans(XX1)
-mu0 = colMeans(XX0)
-betarest = summary(control.fit)$coef[3:(ncol(XX0)+1),1] # the coefficients excluding intercept and "sex"
+xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),
+                    data=data[data$sex == 0, ])
+y0 <- data[data$sex == 0, ]$lwage
+xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),
+                    data=data[data$sex == 1, ])
+y1 <- data[data$sex == 1, ]$lwage
+mu1 <- colMeans(xx1)
+mu0 <- colMeans(xx0)
+betarest <- summary(control_fit)$coef[3:(ncol(xx0) + 1), 1] # the coefficients excluding intercept and "sex"
 
-cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage),"\n")
-diff.unexplained = control.est
-cat("The unexplained difference: ",diff.unexplained,"\n")
-diff.explained = sum(betarest*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)]))
-cat("The explained difference:",diff.explained,"\n")
-cat("The sum of these differences:",diff.unexplained + diff.explained,"\n")
+cat("The marginal gap:", mean(data_female$lwage) - mean(data_male$lwage), "\n")
+diff.unexplained <- control_est
+cat("The unexplained difference: ", diff.unexplained, "\n")
+diff.explained <- sum(betarest * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)]))
+cat("The explained difference:", diff.explained, "\n")
+cat("The sum of these differences:", diff.unexplained + diff.explained, "\n")
 ```
 
 We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term.
 
 ```{r}
-svd0=svd(XX0)
-svd1=svd(XX1)
-svd0$d[svd0$d<=1e-10]=0
-svd0$d[svd0$d>1e-10]=1/svd0$d[svd0$d>1e-10]
-beta0 = (svd0$v %*% (svd0$d*svd0$d*t(svd0$v))) %*% t(XX0) %*% y0
-svd1$d[svd1$d<=1e-10]=0
-svd1$d[svd1$d>1e-10]=1/svd1$d[svd1$d>1e-10]
-beta1 = (svd1$v %*% (svd1$d*svd1$d*t(svd1$v))) %*% t(XX1) %*% y1
+svd0 <- svd(xx0)
+svd1 <- svd(xx1)
+svd0$d[svd0$d <= 1e-10] = 0
+svd0$d[svd0$d > 1e-10] = 1 / svd0$d[svd0$d > 1e-10]
+beta0 <- (svd0$v %*% (svd0$d * svd0$d * t(svd0$v))) %*% t(xx0) %*% y0
+svd1$d[svd1$d <= 1e-10] <- 0
+svd1$d[svd1$d > 1e-10] <- 1 / svd1$d[svd1$d > 1e-10]
+beta1 <- (svd1$v %*% (svd1$d * svd1$d * t(svd1$v))) %*% t(xx1) %*% y1
 
-cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage),"\n")
-cat("The unexplained difference:",beta1[1]-beta0[1],"\n")
-cat("The difference explained by endowment:",sum(beta0[2:ncol(XX0)]*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])),"\n")
-cat("The difference explained by coefficient:",sum((beta1[2:ncol(XX0)]-beta0[2:ncol(XX0)])*mu1[2:ncol(XX0)]),"\n")
-cat("The sum of these differences:",beta1[1]-beta0[1] + sum(beta0[2:ncol(XX0)]*(mu1[2:ncol(XX0)]-mu0[2:ncol(XX0)])) + sum((beta1[2:ncol(XX0)]-beta0[2:ncol(XX0)])*mu1[2:ncol(XX0)]),"\n")
+cat("The marginal gap:", mean(data_female$lwage) - mean(data_male$lwage), "\n")
+cat("The unexplained difference:", beta1[1] - beta0[1], "\n")
+cat("The difference explained by endowment:", sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)])), "\n")
+cat("The difference explained by coefficient:", sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)]), "\n")
+cat("The sum of these differences:",
+    (beta1[1] - beta0[1] + sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)]))
+     + sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)])), "\n")
 ```
 
 Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols.
@@ -193,27 +198,28 @@ Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out
 ```{r}
 # Partialling-out using ols
 
-# models
-flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y
-flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D
+# model for Y
+flex_y <- lwage ~  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
+# model for D
+flex_d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 
 # partialling-out the linear effect of W from Y
-t.Y <- lm(flex.y, data=data)$res
+t_y <- lm(flex_y, data = data)$res
 # partialling-out the linear effect of W from D
-t.D <- lm(flex.d, data=data)$res
+t_d <- lm(flex_d, data = data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.fit <- lm(t.Y~t.D)
-partial.est <- summary(partial.fit)$coef[2,1]
+partial.fit <- lm(t_y ~ t_d)
+partial_est <- summary(partial.fit)$coef[2, 1]
 
-cat("Coefficient for D via partialling-out", partial.est)
+cat("Coefficient for D via partialling-out", partial_est)
 
 # standard error
-HCV.coefs <- vcovHC(partial.fit, type = 'HC3')
-partial.se <- sqrt(diag(HCV.coefs))[2]
+hcv_coefs <- vcovHC(partial.fit, type = 'HC3')
+partial_se <- sqrt(diag(hcv_coefs))[2]
 
 # confidence interval
-confint(partial.fit)[2,]
+confint(partial.fit)[2, ]
 ```
 
 Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem.
@@ -227,24 +233,25 @@ In the following, we illustrate the partialling-out approach using lasso instead
 ```{r}
 # Partialling-out using lasso
 
-# models
-flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for Y
-flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we) # model for D
+# model for Y
+flex_y <- lwage ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
+# model for D
+flex_d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 
 # partialling-out the linear effect of W from Y
-t.Y <- rlasso(flex.y, data=data)$res
+t_y <- rlasso(flex_y, data = data)$res
 # partialling-out the linear effect of W from D
-t.D <- rlasso(flex.d, data=data)$res
+t_d <- rlasso(flex_d, data = data)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t.Y~t.D)
-partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]
+partial.lasso.fit <- lm(t_y ~ t_d)
+partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]
 
-cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
+cat("Coefficient for D via partialling-out using lasso", partial_lasso_est)
 
 # standard error
-HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
-partial.lasso.se <- sqrt(diag(HCV.coefs))[2]
+hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+partial_lasso_se <- sqrt(diag(hcv_coefs))[2]
 ```
 
 Using lasso for partialling-out here provides similar results as using ols.
@@ -252,23 +259,23 @@ Using lasso for partialling-out here provides similar results as using ols.
 Next, we summarize the results.
 
 ```{r}
-table<- matrix(0, 4, 2)
-table[1,1]<- nocontrol.est
-table[1,2]<- nocontrol.se
-table[2,1]<- control.est
-table[2,2]<- control.se
-table[3,1]<- partial.est
-table[3,2]<- partial.se
-table[4,1]<-  partial.lasso.est
-table[4,2]<- partial.lasso.se
-colnames(table)<- c("Estimate","Std. Error")
-rownames(table)<- c("Without controls", "full reg", "partial reg", "partial reg via lasso")
-tab<- xtable(table, digits=c(3, 3, 4))
+table <- matrix(0, 4, 2)
+table[1, 1] <- nocontrol_est
+table[1, 2] <- nocontrol_se
+table[2, 1] <- control_est
+table[2, 2] <- control_se
+table[3, 1] <- partial_est
+table[3, 2] <- partial_se
+table[4, 1] <-  partial_lasso_est
+table[4, 2] <- partial_lasso_se
+colnames(table) <- c("Estimate", "Std. Error")
+rownames(table) <- c("Without controls", "full reg", "partial reg", "partial reg via lasso")
+tab<- xtable(table, digits = c(3, 3, 4))
 tab
 ```
 
 ```{r}
-print(tab, type="html")
+print(tab, type = "html")
 ```
 
 <!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
@@ -294,7 +301,7 @@ Next we motivate the usage of lasso. We try an "extra" flexible model, where we 
 set.seed(2724)
 subset_size <- 1000
 random <- sample(1:nrow(data), subset_size)
-subset <- data[random,]
+subset <- data[random, ]
 ```
 
 For a linear model, the covariance matrix of the estimated $\hat{\beta}$ coefficients is given by $$\Sigma_{\hat{\beta}} = (X'X)^{-1} X' \Omega X (X'X)^{-1}$$ Under homoskedasticity, $\Omega = \sigma^2 I$ so $\Sigma_{\hat{\beta}}$ reduces to $\sigma^2(X'X)^{-1}$ with $\sigma^2$ estimated with the mean squared residuals. Under heteroskedasticity, $\Omega \neq \sigma^2 I$, so we must use an approach that yields valid standard errors. Under heteroskedasticity, there exists a variety of consistent "sandwich" estimators proposed for $\Sigma_{\hat{\beta}}$. With $e_i$ denoting the residual of observation $i:
@@ -314,71 +321,70 @@ HC3 is similar to HC2, weighting by the squared $(1-h_{ii})^2$ in the denominato
 
 ```{r}
 # extra flexible model
-extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2
+extraflex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2
 
-control.fit <- lm(extraflex, data=subset)
-#summary(control.fit)
-control.est <- summary(control.fit)$coef[2,1]
-cat("Number of Extra-Flex Controls", length(control.fit$coef)-1, "\n")
-cat("Coefficient for OLS with extra flex controls", control.est)
+control_fit <- lm(extraflex, data = subset)
+control_est <- summary(control_fit)$coef[2, 1]
+cat("Number of Extra-Flex Controls", length(control_fit$coef) - 1, "\n")
+cat("Coefficient for OLS with extra flex controls", control_est)
 
 
-n=subset_size; p=length(control.fit$coef);
+n <- subset_size
+p <- length(control_fit$coef)
 
 # HC0 SE
-HCV.coefs_HC0 <- vcovHC(control.fit, type = 'HC0')
-control.se.HC0 <- sqrt(diag(HCV.coefs_HC0))[2]
+hcv_coefs_hc0 <- vcovHC(control_fit, type = 'HC0')
+control_se_hc0 <- sqrt(diag(hcv_coefs_hc0))[2]
 
 # For a more correct approach, we
 # would implement the approach of Cattaneo, Jannson, and Newey (2018)'s procedure.
 
 # Jackknife. Need to trim some leverages or otherwise regularize. Theory shouldn't
 # really work here.
-# HC3 SE
-# estimates
-coefs = hatvalues(control.fit)
-trim = 0.99999999999
-coefs_trimmed = coefs*(coefs < trim) + trim*(coefs >= trim)
-omega = (control.fit$residuals^2)/((1-coefs_trimmed)^2)
-HCV.coefs <- vcovHC(control.fit, omega = as.vector(omega), type = 'HC3')
-control.se.HC3 <- sqrt(diag(HCV.coefs))[2]
+coefs <- hatvalues(control_fit)
+trim <- 0.99999999999
+coefs_trimmed <- coefs*(coefs < trim) + trim * (coefs >= trim)
+omega <- (control_fit$residuals^2) / ((1 - coefs_trimmed)^2)
+hcv_coefs <- vcovHC(control_fit, omega = as.vector(omega), type = 'HC3')
+control_se_hc3 <- sqrt(diag(hcv_coefs))[2]
 ```
 
 ```{r}
-# models
-extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for Y
-extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2))^2 # model for D
+# model for Y
+extraflex_y <- lwage ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2
+# model for D
+extraflex_d <- sex ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2
 
 # partialling-out the linear effect of W from Y
-t.Y <- rlasso(extraflex.y, data=subset)$res
+t_y <- rlasso(extraflex_y, data = subset)$res
 # partialling-out the linear effect of W from D
-t.D <- rlasso(extraflex.d, data=subset)$res
+t_d <- rlasso(extraflex_d, data = subset)$res
 
 # regression of Y on D after partialling-out the effect of W
-partial.lasso.fit <- lm(t.Y~t.D)
-partial.lasso.est <- summary(partial.lasso.fit)$coef[2,1]
+partial.lasso.fit <- lm(t_y ~ t_d)
+partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]
 
-cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
+cat("Coefficient for D via partialling-out using lasso", partial_lasso_est)
 
 # standard error
-HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
-partial.lasso.se <- sqrt(diag(HCV.coefs))[2]
+hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+partial_lasso_se <- sqrt(diag(hcv_coefs))[2]
 ```
 
 ```{r}
-table<- matrix(0, 3, 2)
-table[1,1]<- control.est
-table[1,2]<- control.se.HC0
-table[2,1]<- control.est
-table[2,2]<- control.se.HC3
-table[3,1]<-  partial.lasso.est
-table[3,2]<- partial.lasso.se
-colnames(table)<- c("Estimate","Std. Error")
-rownames(table)<- c("full reg, HC0", "full reg, HC3", "partial reg via lasso")
-tab<- xtable(table, digits=c(3, 3, 4))
+table <- matrix(0, 3, 2)
+table[1, 1] <- control_est
+table[1, 2] <- control_se_hc0
+table[2, 1] <- control_est
+table[2, 2] <- control_se_hc3
+table[3, 1] <- partial_lasso_est
+table[3, 2] <- partial_lasso_se
+colnames(table) <- c("Estimate", "Std. Error")
+rownames(table) <- c("full reg, HC0", "full reg, HC3", "partial reg via lasso")
+tab <- xtable(table, digits = c(3, 3, 4))
 tab
 
-print(tab, type="latex")
+print(tab, type = "latex")
 ```
 
 In this case $p/n \approx 1$, that is $p/n$ is no longer small and we start seeing the differences between
