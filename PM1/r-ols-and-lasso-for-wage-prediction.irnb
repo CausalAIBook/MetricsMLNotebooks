@@ -1,857 +1,767 @@
 {
-  "metadata": {
-    "kernelspec": {
-      "name": "ir",
-      "display_name": "R",
-      "language": "R"
-    },
-    "language_info": {
-      "name": "R",
-      "codemirror_mode": "r",
-      "pygments_lexer": "r",
-      "mimetype": "text/x-r-source",
-      "file_extension": ".r",
-      "version": "3.6.3"
-    },
-    "colab": {
-      "provenance": []
-    }
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "-kWzJajkykal"
+   },
+   "source": [
+    "## Introduction"
+   ]
   },
-  "nbformat_minor": 0,
-  "nbformat": 4,
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Introduction"
-      ],
-      "metadata": {
-        "id": "-kWzJajkykal"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "An important question in labor economics is what determines the wage of workers. This is a causal question, but we can begin to investigate it from a predictive perspective.\n",
-        "\n",
-        "In the following wage example, $Y$ is the (log) hourly wage of a worker and $X$ is a vector of worker's characteristics, e.g., education, experience, gender. Two main questions here are:\n",
-        "\n",
-        "* How can we use job-relevant characteristics, such as education and experience, to best predict wages?\n",
-        "\n",
-        "* What is the difference in predicted wages between men and women with the same job-relevant characteristics?\n",
-        "\n",
-        "In this lab, we focus on the prediction question first."
-      ],
-      "metadata": {
-        "id": "bWDpKmCRykam"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Data\n"
-      ],
-      "metadata": {
-        "id": "uPoP-4dXykan"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "The data set we consider is from the 2015 March Supplement of the U.S. Current Population Survey.  We select white non-hispanic individuals, aged 25 to 64 years, and working more than 35 hours per week for at least 50 weeks of the year. We exclude self-employed workers; individuals living in group quarters; individuals in the military, agricultural or private household sectors;  individuals with inconsistent reports on earnings and employment status; individuals with allocated or missing information in any of the variables used in the analysis; and individuals with hourly wage below $3$.\n",
-        "\n",
-        "The variable of interest $Y$ is the (log) hourly wage rate constructed as the ratio of the annual earnings to the total number of hours worked, which is constructed in turn as the product of number of weeks worked and the usual number of hours worked per week. In our analysis, we also focus on single (never married) workers. The final sample is of size $n=5150$."
-      ],
-      "metadata": {
-        "id": "_kNNsU5Kykan"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "install.packages(\"xtable\")\n",
-        "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
-        "install.packages(\"glmnet\") # for lasso CV\n",
-        "\n",
-        "library(hdm)\n",
-        "library(xtable)\n",
-        "library(glmnet)"
-      ],
-      "metadata": {
-        "id": "_zAzi7q14V1f"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Data analysis"
-      ],
-      "metadata": {
-        "id": "ecuLVkuhykao"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We start by loading the data set."
-      ],
-      "metadata": {
-        "id": "bnjk8mxBykao"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
-        "data <- read.csv(file)\n",
-        "dim(data)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:28:21.788603Z",
-          "iopub.execute_input": "2021-07-08T18:28:21.79079Z",
-          "iopub.status.idle": "2021-07-08T18:28:21.939468Z"
-        },
-        "trusted": true,
-        "id": "eQ7eG0JTykao"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Let's have a look at the structure of the data."
-      ],
-      "metadata": {
-        "id": "pdVofJa0ykas"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "str(data)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:28:21.942167Z",
-          "iopub.execute_input": "2021-07-08T18:28:21.974325Z",
-          "iopub.status.idle": "2021-07-08T18:28:22.011174Z"
-        },
-        "trusted": true,
-        "id": "T1JH0uaXykat"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We construct the output variable $Y$ and the matrix $Z$ which includes the characteristics of workers that are given in the data."
-      ],
-      "metadata": {
-        "id": "Hin9wYrpykau"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# construct matrices for estimation from the data\n",
-        "Y <- log(data$wage)\n",
-        "n <- length(Y)\n",
-        "Z <- data[-which(colnames(data) %in% c(\"wage\",\"lwage\"))]\n",
-        "p <- dim(Z)[2]\n",
-        "\n",
-        "cat(\"Number of observations:\", n, '\\n')\n",
-        "cat( \"Number of raw regressors:\", p)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:28:22.013426Z",
-          "iopub.execute_input": "2021-07-08T18:28:22.014776Z",
-          "iopub.status.idle": "2021-07-08T18:28:22.038842Z"
-        },
-        "trusted": true,
-        "id": "b8SdPks-ykau"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "For the outcome variable *wage* and a subset of the raw regressors, we calculate the empirical mean to get familiar with the data."
-      ],
-      "metadata": {
-        "id": "FvqKO5rYykav"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# generate a table of means of variables\n",
-        "Z_subset <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"mw\",\"so\",\"we\",\"ne\",\"exp1\"))]\n",
-        "table <- matrix(0, 12, 1)\n",
-        "table[1:12,1]   <- as.numeric(lapply(Z_subset,mean))\n",
-        "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Some High School\",\"High School Graduate\",\"Some College\",\"College Graduate\", \"Advanced Degree\",\"Midwest\",\"South\",\"West\",\"Northeast\",\"Experience\")\n",
-        "colnames(table) <- c(\"Sample mean\")\n",
-        "tab<- xtable(table, digits = 2)\n",
-        "tab"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:32:13.181466Z",
-          "iopub.execute_input": "2021-07-08T18:32:13.188888Z",
-          "iopub.status.idle": "2021-07-08T18:32:13.25268Z"
-        },
-        "trusted": true,
-        "id": "mLttnFeKykav"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "E.g., the share of female workers in our sample is ~44% ($sex=1$ if female)."
-      ],
-      "metadata": {
-        "id": "ivClVVsCykaw"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Alternatively, using the xtable package, we can also print the table in LaTeX."
-      ],
-      "metadata": {
-        "id": "p7tfUT9gykaw"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "print(tab, type=\"latex\") # type=\"latex\" for printing table in LaTeX"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:32:52.154266Z",
-          "iopub.execute_input": "2021-07-08T18:32:52.156136Z",
-          "iopub.status.idle": "2021-07-08T18:32:52.177001Z"
-        },
-        "trusted": true,
-        "id": "wIojwGx4ykaw"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Prediction Question"
-      ],
-      "metadata": {
-        "id": "rTNep10kykaw"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Now, we will construct a prediction rule for (log) hourly wage $Y$, which depends linearly on job-relevant characteristics $X$:\n",
-        "\n",
-        "\\begin{equation}\\label{decompose}\n",
-        "Y = \\beta'X+ \\epsilon.\n",
-        "\\end{equation}"
-      ],
-      "metadata": {
-        "id": "VAMsBil7ykaw"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Our goals are\n",
-        "\n",
-        "* Predict wages using various characteristics of workers.\n",
-        "\n",
-        "* Assess the predictive performance of a given model using the (adjusted) sample MSE, the (adjusted) sample $R^2$ and the out-of-sample MSE and $R^2$.\n",
-        "\n",
-        "\n",
-        "Toward answering the latter, we measure the prediction quality of the two models via data splitting:\n",
-        "\n",
-        "- Randomly split the data into one training sample and one testing sample. Here we just use a simple method (stratified splitting is a more sophisticated version of splitting that we might consider).\n",
-        "- Use the training sample to estimate the parameters of the Basic Model and the Flexible Model.\n",
-        "- Before using the testing sample, we evaluate in-sample fit.\n"
-      ],
-      "metadata": {
-        "id": "IwWMP87Cykax"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# splitting the data\n",
-        "set.seed(1) # to make the results replicable (we will generate random numbers)\n",
-        "random <- sample(1:n, floor(n*4/5)) # draw (4/5)*n random numbers from 1 to n without replacing\n",
-        "train <- data[random,]\n",
-        "test <- data[-random,]"
-      ],
-      "metadata": {
-        "id": "cArtOhBOWaNs"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "\n",
-        "We employ two different specifications for prediction:\n",
-        "\n",
-        "\n",
-        "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators,  occupation and industry indicators and regional indicators).\n",
-        "\n",
-        "\n",
-        "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus a dictionary of transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions of a polynomial in experience with other regressors. An example of a regressor created through a two-way interaction is *experience* times the indicator of having a *college degree*.\n",
-        "\n",
-        "Using the **Flexible Model** enables us to approximate the real relationship by a more complex regression model and therefore to reduce the bias. The **Flexible Model** increases the range of potential shapes of the estimated regression function. In general, flexible models often deliver higher prediction accuracy but are harder to interpret."
-      ],
-      "metadata": {
-        "id": "o65RUVCzSV9d"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Data-Splitting: In-sample performance"
-      ],
-      "metadata": {
-        "id": "o5zcXyBGg6ch"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Let us fit both models to our data by running ordinary least squares (ols):"
-      ],
-      "metadata": {
-        "id": "fPxlwhL9ykax"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# 1. basic model\n",
-        "basic <- lwage~ (sex + exp1 + shs + hsg+ scl + clg + mw + so + we +C(occ2) + C(ind2))\n",
-        "regbasic <- lm(basic, data=train) # perform ols using the defined model\n",
-        "cat( \"Number of regressors in the basic model:\",length(regbasic$coef), '\\n') # number of regressors in the Basic Model\n"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:37:37.891982Z",
-          "iopub.execute_input": "2021-07-08T18:37:37.895598Z",
-          "iopub.status.idle": "2021-07-08T18:37:37.976362Z"
-        },
-        "trusted": true,
-        "id": "BhaBGtEBykax"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "##### Note that the basic model consists of $51$ regressors."
-      ],
-      "metadata": {
-        "id": "u0vJhtj8ykax"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# 2. flexible model\n",
-        "flex <- lwage ~ sex + shs+hsg+scl+clg+mw+so+we+C(occ2)+C(ind2) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
-        "regflex <- lm(flex, data=train)\n",
-        "cat( \"Number of regressors in the flexible model:\",length(regflex$coef)) # number of regressors in the Flexible Model"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:37:57.22358Z",
-          "iopub.execute_input": "2021-07-08T18:37:57.225554Z",
-          "iopub.status.idle": "2021-07-08T18:37:57.431288Z"
-        },
-        "trusted": true,
-        "id": "y74aI4bhykax"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "##### Note that the flexible model consists of $246$ regressors."
-      ],
-      "metadata": {
-        "id": "zAVUFc0Mykax"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "#### Re-estimating the flexible model using Lasso\n",
-        "We re-estimate the flexible model using Lasso (the least absolute shrinkage and selection operator) rather than ols. Lasso is a penalized regression method that can be used to reduce the complexity of a regression model when the ratio $p/n$ is not small. We will introduce this approach formally later in the course, but for now, we try it out here as a black-box method.  "
-      ],
-      "metadata": {
-        "id": "WxT3rBbzykax"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Flexible model using Lasso, in-sample fit\n",
-        "train_flex <- model.matrix(flex,train) # all regressors\n",
-        "fit.lasso.cv  <- cv.glmnet(as.matrix(train_flex), train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
-        "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = as.matrix(train_flex), s = \"lambda.min\") # in-sample fit right now, not out-of-sample using \"test\""
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:52:56.57425Z",
-          "iopub.execute_input": "2021-07-08T18:52:56.575443Z",
-          "iopub.status.idle": "2021-07-08T18:53:02.824983Z"
-        },
-        "trusted": true,
-        "id": "Nx21IQPrykay"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "#### Evaluating the predictive performance of the basic and flexible models in-sample\n",
-        "Now, we can evaluate the performance of both models based on the (adjusted) $R^2_{sample}$ and the (adjusted) $MSE_{sample}$:"
-      ],
-      "metadata": {
-        "id": "oJhnBR2Fykay"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Assess predictive performance\n",
-        "sumbasic <- summary(regbasic)\n",
-        "sumflex <- summary(regflex)\n",
-        "# no summary() for lassocv\n",
-        "\n",
-        "ntrain = nrow(train)\n",
-        "\n",
-        "# R-squared and adjusted R-squared\n",
-        "R2.1 <- sumbasic$r.squared\n",
-        "cat(\"R-squared for the basic model: \", R2.1, \"\\n\")\n",
-        "R2.adj1 <- sumbasic$adj.r.squared\n",
-        "cat(\"adjusted R-squared for the basic model: \", R2.adj1, \"\\n\")\n",
-        "\n",
-        "R2.2 <- sumflex$r.squared\n",
-        "cat(\"R-squared for the flexible model: \", R2.2, \"\\n\")\n",
-        "R2.adj2 <- sumflex$adj.r.squared\n",
-        "cat(\"adjusted R-squared for the flexible model: \", R2.adj2, \"\\n\")\n",
-        "\n",
-        "pL <- fit.lasso.cv$nzero[fit.lasso.cv$index[1]]\n",
-        "R2.L <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
-        "cat(\"R-squared for the lasso with flexible model: \", R2.L, \"\\n\")\n",
-        "R2.adjL <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
-        "cat(\"adjusted R-squared for the flexible model: \", R2.adjL, \"\\n\")\n",
-        "\n",
-        "# MSE and adjusted MSE\n",
-        "MSE1 <- mean(sumbasic$res^2)\n",
-        "cat(\"MSE for the basic model: \", MSE1, \"\\n\")\n",
-        "p1 <- sumbasic$df[1] # number of regressors\n",
-        "MSE.adj1 <- (ntrain/(ntrain-p1))*MSE1\n",
-        "cat(\"adjusted MSE for the basic model: \", MSE.adj1, \"\\n\")\n",
-        "\n",
-        "MSE2 <-mean(sumflex$res^2)\n",
-        "cat(\"MSE for the flexible model: \", MSE2, \"\\n\")\n",
-        "p2 <- sumflex$df[1]\n",
-        "MSE.adj2 <- (ntrain/(ntrain-p2))*MSE2\n",
-        "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adj2, \"\\n\")\n",
-        "\n",
-        "lasso.res <- train$lwage - yhat.lasso.cv\n",
-        "MSEL <-mean(lasso.res^2)\n",
-        "cat(\"MSE for the lasso flexible model: \", MSEL, \"\\n\")\n",
-        "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
-        "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adjL, \"\\n\")"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:40:36.165581Z",
-          "iopub.execute_input": "2021-07-08T18:40:36.167647Z",
-          "iopub.status.idle": "2021-07-08T18:40:36.313986Z"
-        },
-        "trusted": true,
-        "id": "cSuifUPiykay"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Output the table\n",
-        "table <- matrix(0, 3, 5)\n",
-        "table[1,1:5]   <- c(p1,R2.1,MSE1,R2.adj1,MSE.adj1)\n",
-        "table[2,1:5]   <- c(p2,R2.2,MSE2,R2.adj2,MSE.adj2)\n",
-        "table[3,1:5]   <- c(pL,R2.L,MSEL,R2.adjL,MSE.adjL)\n",
-        "colnames(table)<- c(\"p\",\"$R^2_{sample}$\",\"$MSE_{sample}$\",\"$R^2_{adjusted}$\", \"$MSE_{adjusted}$\")\n",
-        "rownames(table)<- c(\"basic reg\",\"flexible reg\", \"lasso flex\")\n",
-        "tab<- xtable(table, digits =c(0,0,2,2,2,2))\n",
-        "print(tab,type=\"latex\")\n",
-        "tab"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T18:45:38.193447Z",
-          "iopub.execute_input": "2021-07-08T18:45:38.195503Z",
-          "iopub.status.idle": "2021-07-08T18:45:38.239301Z"
-        },
-        "trusted": true,
-        "id": "lo8UazUiykay"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Considering the measures above, the flexible model performs slightly better than the basic model.\n",
-        "\n",
-        "As $p/n$ is not large, the discrepancy between the adjusted and unadjusted measures is not large. However, if it were, we might still like to apply **data splitting** as a more general procedure to deal with potential overfitting if $p/n$. We illustrate the approach in the following."
-      ],
-      "metadata": {
-        "id": "vHTewaFjykaz"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Data Splitting: Out-of-sample performance\n",
-        "\n",
-        "Now that we have seen in-sample fit, we evaluate our models on the out-of-sample performance:\n",
-        "- Use the testing sample for evaluation. Predict the $\\mathtt{wage}$  of every observation in the testing sample based on the estimated parameters in the training sample.\n",
-        "- Calculate the Mean Squared Prediction Error $MSE_{test}$ based on the testing sample for both prediction models.\n"
-      ],
-      "metadata": {
-        "id": "YL1sJ2Rrykaz"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# basic model\n",
-        "options(warn=-1) # ignore warnings\n",
-        "regbasic <- lm(basic, data=train)\n",
-        "\n",
-        "# calculating the out-of-sample MSE\n",
-        "yhat.bas <- predict(regbasic, newdata=test)\n",
-        "y.test <- test$lwage\n",
-        "mean.train = mean(train$lwage)\n",
-        "MSE.test1 <- sum((y.test-yhat.bas)^2)/length(y.test)\n",
-        "R2.test1<- 1- MSE.test1/mean((y.test-mean.train)^2)\n",
-        "\n",
-        "cat(\"Test MSE for the basic model: \", MSE.test1, \" \")\n",
-        "cat(\"Test R2 for the basic model: \", R2.test1)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T19:09:30.936688Z",
-          "iopub.execute_input": "2021-07-08T19:09:30.937619Z",
-          "iopub.status.idle": "2021-07-08T19:09:30.994861Z"
-        },
-        "trusted": true,
-        "id": "kwdlZV-iykaz"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "In the basic model, the $MSE_{test}$ is quite close to the $MSE_{sample}$."
-      ],
-      "metadata": {
-        "id": "IUaPTo3Byka0"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# flexible model\n",
-        "options(warn=-1) # ignore warnings\n",
-        "regflex <- lm(flex, data=train)\n",
-        "\n",
-        "# calculating the out-of-sample MSE\n",
-        "yhat.flex<- predict(regflex, newdata=test)\n",
-        "y.test <- test$lwage\n",
-        "mean.train = mean(train$lwage)\n",
-        "MSE.test2 <- sum((y.test-yhat.flex)^2)/length(y.test)\n",
-        "R2.test2<- 1- MSE.test2/mean((y.test-mean.train)^2)\n",
-        "\n",
-        "cat(\"Test MSE for the flexible model: \", MSE.test2, \" \")\n",
-        "\n",
-        "cat(\"Test R2 for the flexible model: \", R2.test2)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T19:09:33.397254Z",
-          "iopub.execute_input": "2021-07-08T19:09:33.398926Z",
-          "iopub.status.idle": "2021-07-08T19:09:33.540486Z"
-        },
-        "trusted": true,
-        "id": "U2lQCgJeyka0"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "In the flexible model too, the discrepancy between the $MSE_{test}$ and the $MSE_{sample}$ is not large."
-      ],
-      "metadata": {
-        "id": "F-1niaXxyka0"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "It is worth noticing that the $MSE_{test}$ varies across different data splits. Hence, it is a good idea to average the out-of-sample MSE over different data splits to get valid results.\n",
-        "\n",
-        "Nevertheless, we observe that, based on the out-of-sample $MSE$, the basic model using ols regression performs **about as well (or slightly better)** than the flexible model.\n",
-        "\n",
-        "Next, let us use lasso regression in the flexible model instead of ols regression. The out-of-sample $MSE$ on the test sample can be computed for any black-box prediction method, so we also compare the performance of lasso regression in the flexible model to ols regression."
-      ],
-      "metadata": {
-        "id": "J4RRkCzHyka0"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Flexible model using Lasso\n",
-        "# model matrix should be formed before train/test as some levels dropped\n",
-        "flex_data = model.matrix(flex,data)\n",
-        "train_flex <- flex_data[random,]\n",
-        "test_flex <- flex_data[-random,]\n",
-        "\n",
-        "fit.lasso.cv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
-        "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = test_flex, s = \"lambda.min\")\n",
-        "\n",
-        "# calculating the out-of-sample MSE\n",
-        "MSE.lasso <- sum((y.test-yhat.lasso.cv)^2)/length(y.test)\n",
-        "R2.lasso<- 1- MSE.lasso/mean((y.test-mean(train$lwage))^2)\n",
-        "\n",
-        "cat(\"Test MSE for the lasso on flexible model: \", MSE.lasso, \" \")\n",
-        "\n",
-        "cat(\"Test R2 for the lasso flexible model: \", R2.lasso)"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T19:09:35.618543Z",
-          "iopub.execute_input": "2021-07-08T19:09:35.619332Z",
-          "iopub.status.idle": "2021-07-08T19:09:37.560353Z"
-        },
-        "trusted": true,
-        "id": "5xFTH78Kyka1"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Finally, let us summarize the results:"
-      ],
-      "metadata": {
-        "id": "c_dnTXxryka1"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Output the comparison table\n",
-        "table2 <- matrix(0, 3,2)\n",
-        "table2[1,1]   <- MSE.test1\n",
-        "table2[2,1]   <- MSE.test2\n",
-        "table2[3,1]   <- MSE.lasso\n",
-        "table2[1,2]   <- R2.test1\n",
-        "table2[2,2]   <- R2.test2\n",
-        "table2[3,2]   <- R2.lasso\n",
-        "\n",
-        "rownames(table2)<- c(\"basic reg\",\"flexible reg\",\"lasso regression\")\n",
-        "colnames(table2)<- c(\"$MSE_{test}$\", \"$R^2_{test}$\")\n",
-        "tab2 <- xtable(table2, digits =3)\n",
-        "tab2"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T19:09:39.761011Z",
-          "iopub.execute_input": "2021-07-08T19:09:39.762739Z",
-          "iopub.status.idle": "2021-07-08T19:09:39.795945Z"
-        },
-        "trusted": true,
-        "id": "PS3YeUT_yka2"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "print(tab2,type=\"latex\")"
-      ],
-      "metadata": {
-        "execution": {
-          "iopub.status.busy": "2021-07-08T19:09:42.229018Z",
-          "iopub.execute_input": "2021-07-08T19:09:42.230825Z",
-          "iopub.status.idle": "2021-07-08T19:09:42.245937Z"
-        },
-        "trusted": true,
-        "id": "kFuPPNytyka2"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Extra flexible model and Overfitting\n",
-        "Given the results above, it is not immediately clear why one would choose to use Lasso as results are fairly similar. To motivate, we consider an extra flexible model to show how OLS can overfit significantly to the in-sample train data and perform poorly on the out-of-sample testing data.\n",
-        "\n"
-      ],
-      "metadata": {
-        "id": "vLFGDU2lnHTM"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# extra flexible model\n",
-        "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\n",
-        "regextra <- lm(extraflex, data=train)\n",
-        "sumextra <- summary(regextra)\n",
-        "cat(\"Number of Extra-Flex Controls\", length(regextra$coef)-1, \"\\n\")\n",
-        "n= length(data$wage); p =length(regextra$coef);\n",
-        "ntrain = length(train$wage)"
-      ],
-      "metadata": {
-        "id": "G_Mm2gG3nwMn"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "## In-sample\n",
-        "# R-squared and adjusted R-squared\n",
-        "R2.extra <- sumextra$r.squared\n",
-        "cat(\"R-squared for the extra flexible model (in-sample): \", R2.extra, \"\\n\")\n",
-        "R2.adjextra <- sumextra$adj.r.squared\n",
-        "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", R2.adjextra, \"\\n\")\n",
-        "\n",
-        "# MSE and adjusted MSE\n",
-        "MSE.extra <- mean(sumextra$res^2)\n",
-        "cat(\"MSE for the extra flexible model (in-sample): \", MSE.extra, \"\\n\")\n",
-        "MSE.adjextra <- (ntrain/(ntrain-p))*MSE.extra\n",
-        "cat(\"adjusted MSE for the basic model (in-sample): \", MSE.adj1, \"\\n\")"
-      ],
-      "metadata": {
-        "id": "OXSNAxauoJ3h"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "## Out-of-sample\n",
-        "yhat.ex <- predict(regextra, newdata=test)\n",
-        "y.test.ex <- test$lwage\n",
-        "MSE.test.ex <- sum((y.test.ex-yhat.ex)^2)/length(y.test.ex)\n",
-        "R2.test.ex<- 1- MSE.test.ex/mean((y.test.ex-mean(train$lwage))^2)\n",
-        "\n",
-        "cat(\"Test MSE for the basic model: \", MSE.test.ex, \" \")\n",
-        "cat(\"Test R2 for the basic model: \", R2.test.ex)"
-      ],
-      "metadata": {
-        "id": "vFrRnnlmo9yG"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "As we can see, a simple OLS overfits when the dimensionality of covariates is high, as the out-of-sample performance suffers dramatically in comparison to the in-sample performance.\n",
-        "\n",
-        "Contrast this with Lasso:"
-      ],
-      "metadata": {
-        "id": "Bat-VbZ-pL5R"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# model matrix should be formed before train/test as some levels dropped\n",
-        "flex_data = model.matrix(extraflex,data)\n",
-        "train_flex <- flex_data[random,]\n",
-        "test_flex <- flex_data[-random,]\n",
-        "\n",
-        "# fit model\n",
-        "fit.lcv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
-        "\n",
-        "# in-sample\n",
-        "yhat.lcv <- predict(fit.lcv, newx = train_flex, s = \"lambda.min\")\n",
-        "\n",
-        "R2.L <- 1-(sum((yhat.lcv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
-        "pL <- fit.lcv$nzero[fit.lcv$index[1]]\n",
-        "R2.adjL <- 1-(sum((yhat.lcv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
-        "\n",
-        "lasso.res <- train$lwage - yhat.lcv\n",
-        "MSEL <-mean(lasso.res^2)\n",
-        "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
-        "\n",
-        "cat(\"R-squared for the lasso with the extra flexible model (in-sample): \", R2.L, \"\\n\")\n",
-        "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", R2.adjL, \"\\n\")\n",
-        "cat(\"MSE for the lasso with the extra flexible model (in-sample): \", MSEL, \"\\n\")\n",
-        "cat(\"adjusted MSE for the lasso with the extraflexible model (in-sample): \", MSE.adjL, \"\\n\")\n",
-        "\n",
-        "# out-of-sample\n",
-        "yhat.lcv.test <- predict(fit.lcv, newx = test_flex, s = \"lambda.min\")\n",
-        "MSE.lasso <- sum((test$lwage-yhat.lcv.test)^2)/length(test$lwage)\n",
-        "R2.lasso <- 1- MSE.lasso/mean((test$lwage-mean(train$lwage))^2)\n",
-        "\n",
-        "cat(\"\\n\")\n",
-        "cat(\"Test R2 for the lasso the extra flexible model: \", R2.lasso,\"\\n\")\n",
-        "cat(\"Test MSE for the lasso on the extra flexible model: \", MSE.lasso)\n"
-      ],
-      "metadata": {
-        "id": "TYvDJ3QepUgl"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "As shown above, the overfitting effect is mitigated with the penalized regression model."
-      ],
-      "metadata": {
-        "id": "oIdTLf8Uq41n"
-      }
-    }
-  ]
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "bWDpKmCRykam"
+   },
+   "source": [
+    "An important question in labor economics is what determines the wage of workers. This is a causal question, but we can begin to investigate it from a predictive perspective.\n",
+    "\n",
+    "In the following wage example, $Y$ is the (log) hourly wage of a worker and $X$ is a vector of worker's characteristics, e.g., education, experience, gender. Two main questions here are:\n",
+    "\n",
+    "* How can we use job-relevant characteristics, such as education and experience, to best predict wages?\n",
+    "\n",
+    "* What is the difference in predicted wages between men and women with the same job-relevant characteristics?\n",
+    "\n",
+    "In this lab, we focus on the prediction question first."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "uPoP-4dXykan"
+   },
+   "source": [
+    "## Data\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "_kNNsU5Kykan"
+   },
+   "source": [
+    "The data set we consider is from the 2015 March Supplement of the U.S. Current Population Survey.  We select white non-hispanic individuals, aged 25 to 64 years, and working more than 35 hours per week for at least 50 weeks of the year. We exclude self-employed workers; individuals living in group quarters; individuals in the military, agricultural or private household sectors;  individuals with inconsistent reports on earnings and employment status; individuals with allocated or missing information in any of the variables used in the analysis; and individuals with hourly wage below $3$.\n",
+    "\n",
+    "The variable of interest $Y$ is the (log) hourly wage rate constructed as the ratio of the annual earnings to the total number of hours worked, which is constructed in turn as the product of number of weeks worked and the usual number of hours worked per week. In our analysis, we also focus on single (never married) workers. The final sample is of size $n=5150$."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "_zAzi7q14V1f"
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"xtable\")\n",
+    "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
+    "install.packages(\"glmnet\") # for lasso CV\n",
+    "\n",
+    "library(hdm)\n",
+    "library(xtable)\n",
+    "library(glmnet)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "ecuLVkuhykao"
+   },
+   "source": [
+    "## Data analysis"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "bnjk8mxBykao"
+   },
+   "source": [
+    "We start by loading the data set."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "eQ7eG0JTykao"
+   },
+   "outputs": [],
+   "source": [
+    "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
+    "data <- read.csv(file)\n",
+    "dim(data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "pdVofJa0ykas"
+   },
+   "source": [
+    "Let's have a look at the structure of the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "T1JH0uaXykat"
+   },
+   "outputs": [],
+   "source": [
+    "str(data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Hin9wYrpykau"
+   },
+   "source": [
+    "We construct the output variable $Y$ and the matrix $Z$ which includes the characteristics of workers that are given in the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "b8SdPks-ykau"
+   },
+   "outputs": [],
+   "source": [
+    "# construct matrices for estimation from the data\n",
+    "Y <- log(data$wage)\n",
+    "n <- length(Y)\n",
+    "Z <- data[-which(colnames(data) %in% c(\"wage\",\"lwage\"))]\n",
+    "p <- dim(Z)[2]\n",
+    "\n",
+    "cat(\"Number of observations:\", n, '\\n')\n",
+    "cat( \"Number of raw regressors:\", p)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "FvqKO5rYykav"
+   },
+   "source": [
+    "For the outcome variable *wage* and a subset of the raw regressors, we calculate the empirical mean to get familiar with the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "mLttnFeKykav"
+   },
+   "outputs": [],
+   "source": [
+    "# generate a table of means of variables\n",
+    "Z_subset <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"mw\",\"so\",\"we\",\"ne\",\"exp1\"))]\n",
+    "table <- matrix(0, 12, 1)\n",
+    "table[1:12,1]   <- as.numeric(lapply(Z_subset,mean))\n",
+    "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Some High School\",\"High School Graduate\",\"Some College\",\"College Graduate\", \"Advanced Degree\",\"Midwest\",\"South\",\"West\",\"Northeast\",\"Experience\")\n",
+    "colnames(table) <- c(\"Sample mean\")\n",
+    "tab<- xtable(table, digits = 2)\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "ivClVVsCykaw"
+   },
+   "source": [
+    "E.g., the share of female workers in our sample is ~44% ($sex=1$ if female)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "p7tfUT9gykaw"
+   },
+   "source": [
+    "Alternatively, using the xtable package, we can also print the table in LaTeX."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "wIojwGx4ykaw"
+   },
+   "outputs": [],
+   "source": [
+    "print(tab, type=\"latex\") # type=\"latex\" for printing table in LaTeX"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "rTNep10kykaw"
+   },
+   "source": [
+    "## Prediction Question"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "VAMsBil7ykaw"
+   },
+   "source": [
+    "Now, we will construct a prediction rule for (log) hourly wage $Y$, which depends linearly on job-relevant characteristics $X$:\n",
+    "\n",
+    "\\begin{equation}\\label{decompose}\n",
+    "Y = \\beta'X+ \\epsilon.\n",
+    "\\end{equation}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "IwWMP87Cykax"
+   },
+   "source": [
+    "Our goals are\n",
+    "\n",
+    "* Predict wages using various characteristics of workers.\n",
+    "\n",
+    "* Assess the predictive performance of a given model using the (adjusted) sample MSE, the (adjusted) sample $R^2$ and the out-of-sample MSE and $R^2$.\n",
+    "\n",
+    "\n",
+    "Toward answering the latter, we measure the prediction quality of the two models via data splitting:\n",
+    "\n",
+    "- Randomly split the data into one training sample and one testing sample. Here we just use a simple method (stratified splitting is a more sophisticated version of splitting that we might consider).\n",
+    "- Use the training sample to estimate the parameters of the Basic Model and the Flexible Model.\n",
+    "- Before using the testing sample, we evaluate in-sample fit.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "cArtOhBOWaNs"
+   },
+   "outputs": [],
+   "source": [
+    "# splitting the data\n",
+    "set.seed(1) # to make the results replicable (we will generate random numbers)\n",
+    "random <- sample(1:n, floor(n*4/5)) # draw (4/5)*n random numbers from 1 to n without replacing\n",
+    "train <- data[random,]\n",
+    "test <- data[-random,]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "o65RUVCzSV9d"
+   },
+   "source": [
+    "\n",
+    "We employ two different specifications for prediction:\n",
+    "\n",
+    "\n",
+    "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators,  occupation and industry indicators and regional indicators).\n",
+    "\n",
+    "\n",
+    "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus a dictionary of transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions of a polynomial in experience with other regressors. An example of a regressor created through a two-way interaction is *experience* times the indicator of having a *college degree*.\n",
+    "\n",
+    "Using the **Flexible Model** enables us to approximate the real relationship by a more complex regression model and therefore to reduce the bias. The **Flexible Model** increases the range of potential shapes of the estimated regression function. In general, flexible models often deliver higher prediction accuracy but are harder to interpret."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "o5zcXyBGg6ch"
+   },
+   "source": [
+    "## Data-Splitting: In-sample performance"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "fPxlwhL9ykax"
+   },
+   "source": [
+    "Let us fit both models to our data by running ordinary least squares (ols):"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "BhaBGtEBykax"
+   },
+   "outputs": [],
+   "source": [
+    "# 1. basic model\n",
+    "basic <- lwage~ (sex + exp1 + shs + hsg+ scl + clg + mw + so + we +C(occ2) + C(ind2))\n",
+    "regbasic <- lm(basic, data=train) # perform ols using the defined model\n",
+    "cat( \"Number of regressors in the basic model:\",length(regbasic$coef), '\\n') # number of regressors in the Basic Model\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "u0vJhtj8ykax"
+   },
+   "source": [
+    "##### Note that the basic model consists of $51$ regressors."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "y74aI4bhykax"
+   },
+   "outputs": [],
+   "source": [
+    "# 2. flexible model\n",
+    "flex <- lwage ~ sex + shs+hsg+scl+clg+mw+so+we+C(occ2)+C(ind2) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
+    "regflex <- lm(flex, data=train)\n",
+    "cat( \"Number of regressors in the flexible model:\",length(regflex$coef)) # number of regressors in the Flexible Model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "zAVUFc0Mykax"
+   },
+   "source": [
+    "##### Note that the flexible model consists of $246$ regressors."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "WxT3rBbzykax"
+   },
+   "source": [
+    "#### Re-estimating the flexible model using Lasso\n",
+    "We re-estimate the flexible model using Lasso (the least absolute shrinkage and selection operator) rather than ols. Lasso is a penalized regression method that can be used to reduce the complexity of a regression model when the ratio $p/n$ is not small. We will introduce this approach formally later in the course, but for now, we try it out here as a black-box method.  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "Nx21IQPrykay"
+   },
+   "outputs": [],
+   "source": [
+    "# Flexible model using Lasso, in-sample fit\n",
+    "train_flex <- model.matrix(flex,train) # all regressors\n",
+    "fit.lasso.cv  <- cv.glmnet(as.matrix(train_flex), train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
+    "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = as.matrix(train_flex), s = \"lambda.min\") # in-sample fit right now, not out-of-sample using \"test\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "oJhnBR2Fykay"
+   },
+   "source": [
+    "#### Evaluating the predictive performance of the basic and flexible models in-sample\n",
+    "Now, we can evaluate the performance of both models based on the (adjusted) $R^2_{sample}$ and the (adjusted) $MSE_{sample}$:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "cSuifUPiykay"
+   },
+   "outputs": [],
+   "source": [
+    "# Assess predictive performance\n",
+    "sumbasic <- summary(regbasic)\n",
+    "sumflex <- summary(regflex)\n",
+    "# no summary() for lassocv\n",
+    "\n",
+    "ntrain = nrow(train)\n",
+    "\n",
+    "# R-squared and adjusted R-squared\n",
+    "R2.1 <- sumbasic$r.squared\n",
+    "cat(\"R-squared for the basic model: \", R2.1, \"\\n\")\n",
+    "R2.adj1 <- sumbasic$adj.r.squared\n",
+    "cat(\"adjusted R-squared for the basic model: \", R2.adj1, \"\\n\")\n",
+    "\n",
+    "R2.2 <- sumflex$r.squared\n",
+    "cat(\"R-squared for the flexible model: \", R2.2, \"\\n\")\n",
+    "R2.adj2 <- sumflex$adj.r.squared\n",
+    "cat(\"adjusted R-squared for the flexible model: \", R2.adj2, \"\\n\")\n",
+    "\n",
+    "pL <- fit.lasso.cv$nzero[fit.lasso.cv$index[1]]\n",
+    "R2.L <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
+    "cat(\"R-squared for the lasso with flexible model: \", R2.L, \"\\n\")\n",
+    "R2.adjL <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
+    "cat(\"adjusted R-squared for the flexible model: \", R2.adjL, \"\\n\")\n",
+    "\n",
+    "# MSE and adjusted MSE\n",
+    "MSE1 <- mean(sumbasic$res^2)\n",
+    "cat(\"MSE for the basic model: \", MSE1, \"\\n\")\n",
+    "p1 <- sumbasic$df[1] # number of regressors\n",
+    "MSE.adj1 <- (ntrain/(ntrain-p1))*MSE1\n",
+    "cat(\"adjusted MSE for the basic model: \", MSE.adj1, \"\\n\")\n",
+    "\n",
+    "MSE2 <-mean(sumflex$res^2)\n",
+    "cat(\"MSE for the flexible model: \", MSE2, \"\\n\")\n",
+    "p2 <- sumflex$df[1]\n",
+    "MSE.adj2 <- (ntrain/(ntrain-p2))*MSE2\n",
+    "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adj2, \"\\n\")\n",
+    "\n",
+    "lasso.res <- train$lwage - yhat.lasso.cv\n",
+    "MSEL <-mean(lasso.res^2)\n",
+    "cat(\"MSE for the lasso flexible model: \", MSEL, \"\\n\")\n",
+    "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
+    "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adjL, \"\\n\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "lo8UazUiykay"
+   },
+   "outputs": [],
+   "source": [
+    "# Output the table\n",
+    "table <- matrix(0, 3, 5)\n",
+    "table[1,1:5]   <- c(p1,R2.1,MSE1,R2.adj1,MSE.adj1)\n",
+    "table[2,1:5]   <- c(p2,R2.2,MSE2,R2.adj2,MSE.adj2)\n",
+    "table[3,1:5]   <- c(pL,R2.L,MSEL,R2.adjL,MSE.adjL)\n",
+    "colnames(table)<- c(\"p\",\"$R^2_{sample}$\",\"$MSE_{sample}$\",\"$R^2_{adjusted}$\", \"$MSE_{adjusted}$\")\n",
+    "rownames(table)<- c(\"basic reg\",\"flexible reg\", \"lasso flex\")\n",
+    "tab<- xtable(table, digits =c(0,0,2,2,2,2))\n",
+    "print(tab,type=\"latex\")\n",
+    "tab"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "vHTewaFjykaz"
+   },
+   "source": [
+    "Considering the measures above, the flexible model performs slightly better than the basic model.\n",
+    "\n",
+    "As $p/n$ is not large, the discrepancy between the adjusted and unadjusted measures is not large. However, if it were, we might still like to apply **data splitting** as a more general procedure to deal with potential overfitting if $p/n$. We illustrate the approach in the following."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "YL1sJ2Rrykaz"
+   },
+   "source": [
+    "## Data Splitting: Out-of-sample performance\n",
+    "\n",
+    "Now that we have seen in-sample fit, we evaluate our models on the out-of-sample performance:\n",
+    "- Use the testing sample for evaluation. Predict the $\\mathtt{wage}$  of every observation in the testing sample based on the estimated parameters in the training sample.\n",
+    "- Calculate the Mean Squared Prediction Error $MSE_{test}$ based on the testing sample for both prediction models.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "kwdlZV-iykaz"
+   },
+   "outputs": [],
+   "source": [
+    "# basic model\n",
+    "options(warn=-1) # ignore warnings\n",
+    "regbasic <- lm(basic, data=train)\n",
+    "\n",
+    "# calculating the out-of-sample MSE\n",
+    "yhat.bas <- predict(regbasic, newdata=test)\n",
+    "y.test <- test$lwage\n",
+    "mean.train = mean(train$lwage)\n",
+    "MSE.test1 <- sum((y.test-yhat.bas)^2)/length(y.test)\n",
+    "R2.test1<- 1- MSE.test1/mean((y.test-mean.train)^2)\n",
+    "\n",
+    "cat(\"Test MSE for the basic model: \", MSE.test1, \" \")\n",
+    "cat(\"Test R2 for the basic model: \", R2.test1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "IUaPTo3Byka0"
+   },
+   "source": [
+    "In the basic model, the $MSE_{test}$ is quite close to the $MSE_{sample}$."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "U2lQCgJeyka0"
+   },
+   "outputs": [],
+   "source": [
+    "# flexible model\n",
+    "options(warn=-1) # ignore warnings\n",
+    "regflex <- lm(flex, data=train)\n",
+    "\n",
+    "# calculating the out-of-sample MSE\n",
+    "yhat.flex<- predict(regflex, newdata=test)\n",
+    "y.test <- test$lwage\n",
+    "mean.train = mean(train$lwage)\n",
+    "MSE.test2 <- sum((y.test-yhat.flex)^2)/length(y.test)\n",
+    "R2.test2<- 1- MSE.test2/mean((y.test-mean.train)^2)\n",
+    "\n",
+    "cat(\"Test MSE for the flexible model: \", MSE.test2, \" \")\n",
+    "\n",
+    "cat(\"Test R2 for the flexible model: \", R2.test2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "F-1niaXxyka0"
+   },
+   "source": [
+    "In the flexible model too, the discrepancy between the $MSE_{test}$ and the $MSE_{sample}$ is not large."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "J4RRkCzHyka0"
+   },
+   "source": [
+    "It is worth noticing that the $MSE_{test}$ varies across different data splits. Hence, it is a good idea to average the out-of-sample MSE over different data splits to get valid results.\n",
+    "\n",
+    "Nevertheless, we observe that, based on the out-of-sample $MSE$, the basic model using ols regression performs **about as well (or slightly better)** than the flexible model.\n",
+    "\n",
+    "Next, let us use lasso regression in the flexible model instead of ols regression. The out-of-sample $MSE$ on the test sample can be computed for any black-box prediction method, so we also compare the performance of lasso regression in the flexible model to ols regression."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "5xFTH78Kyka1"
+   },
+   "outputs": [],
+   "source": [
+    "# Flexible model using Lasso\n",
+    "# model matrix should be formed before train/test as some levels dropped\n",
+    "flex_data = model.matrix(flex,data)\n",
+    "train_flex <- flex_data[random,]\n",
+    "test_flex <- flex_data[-random,]\n",
+    "\n",
+    "fit.lasso.cv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
+    "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = test_flex, s = \"lambda.min\")\n",
+    "\n",
+    "# calculating the out-of-sample MSE\n",
+    "MSE.lasso <- sum((y.test-yhat.lasso.cv)^2)/length(y.test)\n",
+    "R2.lasso<- 1- MSE.lasso/mean((y.test-mean(train$lwage))^2)\n",
+    "\n",
+    "cat(\"Test MSE for the lasso on flexible model: \", MSE.lasso, \" \")\n",
+    "\n",
+    "cat(\"Test R2 for the lasso flexible model: \", R2.lasso)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "c_dnTXxryka1"
+   },
+   "source": [
+    "Finally, let us summarize the results:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "PS3YeUT_yka2"
+   },
+   "outputs": [],
+   "source": [
+    "# Output the comparison table\n",
+    "table2 <- matrix(0, 3,2)\n",
+    "table2[1,1]   <- MSE.test1\n",
+    "table2[2,1]   <- MSE.test2\n",
+    "table2[3,1]   <- MSE.lasso\n",
+    "table2[1,2]   <- R2.test1\n",
+    "table2[2,2]   <- R2.test2\n",
+    "table2[3,2]   <- R2.lasso\n",
+    "\n",
+    "rownames(table2)<- c(\"basic reg\",\"flexible reg\",\"lasso regression\")\n",
+    "colnames(table2)<- c(\"$MSE_{test}$\", \"$R^2_{test}$\")\n",
+    "tab2 <- xtable(table2, digits =3)\n",
+    "tab2"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "kFuPPNytyka2"
+   },
+   "outputs": [],
+   "source": [
+    "print(tab2,type=\"latex\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "vLFGDU2lnHTM"
+   },
+   "source": [
+    "## Extra flexible model and Overfitting\n",
+    "Given the results above, it is not immediately clear why one would choose to use Lasso as results are fairly similar. To motivate, we consider an extra flexible model to show how OLS can overfit significantly to the in-sample train data and perform poorly on the out-of-sample testing data.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "G_Mm2gG3nwMn"
+   },
+   "outputs": [],
+   "source": [
+    "# extra flexible model\n",
+    "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\n",
+    "regextra <- lm(extraflex, data=train)\n",
+    "sumextra <- summary(regextra)\n",
+    "cat(\"Number of Extra-Flex Controls\", length(regextra$coef)-1, \"\\n\")\n",
+    "n= length(data$wage); p =length(regextra$coef);\n",
+    "ntrain = length(train$wage)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "OXSNAxauoJ3h"
+   },
+   "outputs": [],
+   "source": [
+    "## In-sample\n",
+    "# R-squared and adjusted R-squared\n",
+    "R2.extra <- sumextra$r.squared\n",
+    "cat(\"R-squared for the extra flexible model (in-sample): \", R2.extra, \"\\n\")\n",
+    "R2.adjextra <- sumextra$adj.r.squared\n",
+    "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", R2.adjextra, \"\\n\")\n",
+    "\n",
+    "# MSE and adjusted MSE\n",
+    "MSE.extra <- mean(sumextra$res^2)\n",
+    "cat(\"MSE for the extra flexible model (in-sample): \", MSE.extra, \"\\n\")\n",
+    "MSE.adjextra <- (ntrain/(ntrain-p))*MSE.extra\n",
+    "cat(\"adjusted MSE for the basic model (in-sample): \", MSE.adj1, \"\\n\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "vFrRnnlmo9yG"
+   },
+   "outputs": [],
+   "source": [
+    "## Out-of-sample\n",
+    "yhat.ex <- predict(regextra, newdata=test)\n",
+    "y.test.ex <- test$lwage\n",
+    "MSE.test.ex <- sum((y.test.ex-yhat.ex)^2)/length(y.test.ex)\n",
+    "R2.test.ex<- 1- MSE.test.ex/mean((y.test.ex-mean(train$lwage))^2)\n",
+    "\n",
+    "cat(\"Test MSE for the basic model: \", MSE.test.ex, \" \")\n",
+    "cat(\"Test R2 for the basic model: \", R2.test.ex)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Bat-VbZ-pL5R"
+   },
+   "source": [
+    "As we can see, a simple OLS overfits when the dimensionality of covariates is high, as the out-of-sample performance suffers dramatically in comparison to the in-sample performance.\n",
+    "\n",
+    "Contrast this with Lasso:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "TYvDJ3QepUgl"
+   },
+   "outputs": [],
+   "source": [
+    "# model matrix should be formed before train/test as some levels dropped\n",
+    "flex_data = model.matrix(extraflex,data)\n",
+    "train_flex <- flex_data[random,]\n",
+    "test_flex <- flex_data[-random,]\n",
+    "\n",
+    "# fit model\n",
+    "fit.lcv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
+    "\n",
+    "# in-sample\n",
+    "yhat.lcv <- predict(fit.lcv, newx = train_flex, s = \"lambda.min\")\n",
+    "\n",
+    "R2.L <- 1-(sum((yhat.lcv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
+    "pL <- fit.lcv$nzero[fit.lcv$index[1]]\n",
+    "R2.adjL <- 1-(sum((yhat.lcv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
+    "\n",
+    "lasso.res <- train$lwage - yhat.lcv\n",
+    "MSEL <-mean(lasso.res^2)\n",
+    "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
+    "\n",
+    "cat(\"R-squared for the lasso with the extra flexible model (in-sample): \", R2.L, \"\\n\")\n",
+    "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", R2.adjL, \"\\n\")\n",
+    "cat(\"MSE for the lasso with the extra flexible model (in-sample): \", MSEL, \"\\n\")\n",
+    "cat(\"adjusted MSE for the lasso with the extraflexible model (in-sample): \", MSE.adjL, \"\\n\")\n",
+    "\n",
+    "# out-of-sample\n",
+    "yhat.lcv.test <- predict(fit.lcv, newx = test_flex, s = \"lambda.min\")\n",
+    "MSE.lasso <- sum((test$lwage-yhat.lcv.test)^2)/length(test$lwage)\n",
+    "R2.lasso <- 1- MSE.lasso/mean((test$lwage-mean(train$lwage))^2)\n",
+    "\n",
+    "cat(\"\\n\")\n",
+    "cat(\"Test R2 for the lasso the extra flexible model: \", R2.lasso,\"\\n\")\n",
+    "cat(\"Test MSE for the lasso on the extra flexible model: \", MSE.lasso)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "oIdTLf8Uq41n"
+   },
+   "source": [
+    "As shown above, the overfitting effect is mitigated with the penalized regression model."
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "3.6.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
 }
