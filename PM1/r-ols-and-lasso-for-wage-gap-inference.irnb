@@ -47,7 +47,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "XuSVp1TShFKs",
-    "outputId": "6e38357e-eef8-44bf-c11b-d4e4aa4139a8"
+    "outputId": "6e38357e-eef8-44bf-c11b-d4e4aa4139a8",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -55,10 +58,9 @@
     "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
     "install.packages(\"sandwich\") # a package used to compute robust standard errors\n",
     "\n",
-    "\n",
     "library(hdm)\n",
     "library(xtable)\n",
-    "library(sandwich)\n"
+    "library(sandwich)"
    ]
   },
   {
@@ -88,7 +90,10 @@
      "height": 34
     },
     "id": "T46lur9zyorw",
-    "outputId": "bad9c980-6655-4027-f9dd-b07a2216ab0a"
+    "outputId": "bad9c980-6655-4027-f9dd-b07a2216ab0a",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -115,23 +120,29 @@
      "height": 474
     },
     "id": "hsx7vuc2yor3",
-    "outputId": "2f3378b9-4534-40c0-98e4-36a4b135f1e9"
+    "outputId": "2f3378b9-4534-40c0-98e4-36a4b135f1e9",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "z <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
     "\n",
     "data_female <- data[data$sex == 1, ]\n",
-    "z_female <- data_female[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
+    "z_female <- data_female[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \n",
+    "                                                    \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
     "\n",
     "data_male <- data[data$sex == 0, ]\n",
-    "z_male <- data_male[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
+    "z_male <- data_male[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\",\n",
+    "                                                \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
     "\n",
     "table <- matrix(0, 12, 3)\n",
     "table[1:12, 1] <- as.numeric(lapply(z, mean))\n",
     "table[1:12, 2] <- as.numeric(lapply(z_male, mean))\n",
     "table[1:12, 3] <- as.numeric(lapply(z_female, mean))\n",
-    "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Less then High School\", \"High School Graduate\", \"Some College\", \"College Graduate\", \"Advanced Degree\", \"Northeast\", \"Midwest\", \"South\", \"West\", \"Experience\")\n",
+    "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Less then High School\", \"High School Graduate\", \"Some College\", \n",
+    "                     \"College Graduate\", \"Advanced Degree\", \"Northeast\", \"Midwest\", \"South\", \"West\", \"Experience\")\n",
     "colnames(table) <- c(\"All\", \"Men\", \"Women\")\n",
     "tab <- xtable(table, digits = 4)\n",
     "tab"
@@ -145,7 +156,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "X81tdQRFyor4",
-    "outputId": "406ea0b4-4dda-4d81-d2a3-ef94505942c7"
+    "outputId": "406ea0b4-4dda-4d81-d2a3-ef94505942c7",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -195,11 +209,14 @@
      "height": 34
     },
     "id": "r8B46bNgyor6",
-    "outputId": "b4d7a26d-fc67-4595-99d8-178ed1a872fe"
+    "outputId": "b4d7a26d-fc67-4595-99d8-178ed1a872fe",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "mean(data_female$lwage)-mean(data_male$lwage)"
+    "mean(data_female$lwage) - mean(data_male$lwage)"
    ]
   },
   {
@@ -241,17 +258,22 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "2kGIBjpYyor8",
-    "outputId": "bface8f9-2135-43bb-9e54-7ab2d5641b16"
+    "outputId": "bface8f9-2135-43bb-9e54-7ab2d5641b16",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "nocontrol.fit <- lm(lwage ~ sex, data = data)\n",
     "nocontrol.est <- summary(nocontrol.fit)$coef[\"sex\", 1]\n",
-    "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3'); # HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
+    "# HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
+    "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3')\n",
     "nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
     "\n",
     "# print unconditional effect of gender and the corresponding standard error\n",
-    "cat (\"The estimated coefficient on the dummy for gender is\",nocontrol.est,\" and the corresponding robust standard error is\",nocontrol.se)\n"
+    "cat (\"The estimated coefficient on the dummy for gender is\", nocontrol.est,\n",
+    "     \" and the corresponding robust standard error is\", nocontrol.se)\n"
    ]
   },
   {
@@ -296,7 +318,10 @@
      "height": 1000
     },
     "id": "gemX0ZyTyosC",
-    "outputId": "e5255cb1-5bed-491b-98b9-f95c39aa13e6"
+    "outputId": "e5255cb1-5bed-491b-98b9-f95c39aa13e6",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -304,12 +329,13 @@
     "\n",
     "flex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "\n",
-    "#   Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
-    "#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
-    "#  This is not intuitive at all, but that's what it does.\n",
+    "# Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
+    "#   (exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we) \n",
+    "#    + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "# This is not intuitive at all, but that's what it does.\n",
     "\n",
     "control.fit <- lm(flex, data = data)\n",
-    "control.est <- summary(control.fit)$coef[2,1]\n",
+    "control.est <- summary(control.fit)$coef[2, 1]\n",
     "\n",
     "summary(control.fit)\n",
     "\n",
@@ -339,12 +365,18 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "metadata": {},
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
    "outputs": [],
    "source": [
-    "xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we), data=data[data$sex == 0, ])\n",
+    "xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
+    "                    data=data[data$sex == 0, ])\n",
     "y0 <- data[data$sex == 0, ]$lwage\n",
-    "xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we), data=data[data$sex == 1, ])\n",
+    "xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
+    "                    data=data[data$sex == 1, ])\n",
     "y1 <- data[data$sex == 1, ]$lwage\n",
     "mu1 <- colMeans(xx1)\n",
     "mu0 <- colMeans(xx0)\n",
@@ -368,7 +400,11 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "metadata": {},
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
    "outputs": [],
    "source": [
     "svd0 <- svd(xx0)\n",
@@ -384,7 +420,9 @@
     "cat(\"The unexplained difference:\", beta1[1] - beta0[1], \"\\n\")\n",
     "cat(\"The difference explained by endowment:\", sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)])), \"\\n\")\n",
     "cat(\"The difference explained by coefficient:\", sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)]), \"\\n\")\n",
-    "cat(\"The sum of these differences:\", beta1[1] - beta0[1] + sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)])) + sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)]), \"\\n\")"
+    "cat(\"The sum of these differences:\",\n",
+    "    (beta1[1] - beta0[1] + sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)]))\n",
+    "     + sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)])), \"\\n\")"
    ]
   },
   {
@@ -405,15 +443,19 @@
      "height": 52
     },
     "id": "iYSsI8ZEyosD",
-    "outputId": "a11b3ec7-f1ec-4488-9350-69a28481d342"
+    "outputId": "a11b3ec7-f1ec-4488-9350-69a28481d342",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Partialling-out using ols\n",
     "\n",
-    "# models\n",
-    "flex.y <- lwage ~  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we) # model for Y\n",
-    "flex.d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we) # model for D\n",
+    "# model for Y\n",
+    "flex.y <- lwage ~  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
+    "# model for D\n",
+    "flex.d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "\n",
     "# partialling-out the linear effect of W from Y\n",
     "t.Y <- lm(flex.y, data = data)$res\n",
@@ -464,20 +506,24 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "Pd-5O1U8yosH",
-    "outputId": "ffc5adbe-b367-422c-9421-112485563b6e"
+    "outputId": "ffc5adbe-b367-422c-9421-112485563b6e",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Partialling-out using lasso\n",
     "\n",
-    "# models\n",
-    "flex.y <- lwage ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we) # model for Y\n",
-    "flex.d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we) # model for D\n",
+    "# model for Y\n",
+    "flex.y <- lwage ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
+    "# model for D\n",
+    "flex.d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "\n",
     "# partialling-out the linear effect of W from Y\n",
-    "t.Y <- rlasso(flex.y, data=data)$res\n",
+    "t.Y <- rlasso(flex.y, data = data)$res\n",
     "# partialling-out the linear effect of W from D\n",
-    "t.D <- rlasso(flex.d, data=data)$res\n",
+    "t.D <- rlasso(flex.d, data = data)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
     "partial.lasso.fit <- lm(t.Y ~ t.D)\n",
@@ -517,7 +563,10 @@
      "height": 224
     },
     "id": "IpU4gNZayosI",
-    "outputId": "fdb05e51-0596-4804-bad2-50c729ddd0aa"
+    "outputId": "fdb05e51-0596-4804-bad2-50c729ddd0aa",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -544,11 +593,14 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "wGa29D7NyosJ",
-    "outputId": "36b56e8c-3853-48e6-8740-16db8a5eab9e"
+    "outputId": "36b56e8c-3853-48e6-8740-16db8a5eab9e",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print(tab, type=\"html\")"
+    "print(tab, type = \"html\")"
    ]
   },
   {
@@ -602,14 +654,17 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "hjSPZpef1Mfc"
+    "id": "hjSPZpef1Mfc",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "set.seed(2724)\n",
     "subset_size <- 1000\n",
     "random <- sample(1:nrow(data), subset_size)\n",
-    "subset <- data[random,]"
+    "subset <- data[random, ]"
    ]
   },
   {
@@ -642,7 +697,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "vZ84pYQVyosL",
-    "outputId": "f73bb150-a229-43b5-e052-7ab8390cc851"
+    "outputId": "f73bb150-a229-43b5-e052-7ab8390cc851",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -650,7 +708,6 @@
     "extraflex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2\n",
     "\n",
     "control.fit <- lm(extraflex, data = subset)\n",
-    "#summary(control.fit)\n",
     "control.est <- summary(control.fit)$coef[2, 1]\n",
     "cat(\"Number of Extra-Flex Controls\", length(control.fit$coef) - 1, \"\\n\")\n",
     "cat(\"Coefficient for OLS with extra flex controls\", control.est)\n",
@@ -668,8 +725,6 @@
     "\n",
     "# Jackknife. Need to trim some leverages or otherwise regularize. Theory shouldn't\n",
     "# really work here.\n",
-    "# HC3 SE\n",
-    "# estimates\n",
     "coefs <- hatvalues(control.fit)\n",
     "trim <- 0.99999999999\n",
     "coefs_trimmed <- coefs*(coefs < trim) + trim * (coefs >= trim)\n",
@@ -686,18 +741,22 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "SfB4go24yosL",
-    "outputId": "8584501d-8152-4b94-c516-4c901683c7a4"
+    "outputId": "8584501d-8152-4b94-c516-4c901683c7a4",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "# models\n",
-    "extraflex.y <- lwage ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2 # model for Y\n",
-    "extraflex.d <- sex ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2 # model for D\n",
+    "# model for Y\n",
+    "extraflex.y <- lwage ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2\n",
+    "# model for D\n",
+    "extraflex.d <- sex ~ (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2))^2\n",
     "\n",
     "# partialling-out the linear effect of W from Y\n",
-    "t.Y <- rlasso(extraflex.y, data=subset)$res\n",
+    "t.Y <- rlasso(extraflex.y, data = subset)$res\n",
     "# partialling-out the linear effect of W from D\n",
-    "t.D <- rlasso(extraflex.d, data=subset)$res\n",
+    "t.D <- rlasso(extraflex.d, data = subset)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
     "partial.lasso.fit <- lm(t.Y ~ t.D)\n",
@@ -719,7 +778,10 @@
      "height": 442
     },
     "id": "X9z2zpVtyosL",
-    "outputId": "e68c579d-e447-45fd-ce6f-ee15b04f3055"
+    "outputId": "e68c579d-e447-45fd-ce6f-ee15b04f3055",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -728,14 +790,14 @@
     "table[1, 2] <- control.se.HC0\n",
     "table[2, 1] <- control.est\n",
     "table[2, 2] <- control.se.HC3\n",
-    "table[3, 1] <-  partial.lasso.est\n",
+    "table[3, 1] <- partial.lasso.est\n",
     "table[3, 2] <- partial.lasso.se\n",
     "colnames(table) <- c(\"Estimate\", \"Std. Error\")\n",
     "rownames(table) <- c(\"full reg, HC0\", \"full reg, HC3\", \"partial reg via lasso\")\n",
-    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab <- xtable(table, digits = c(3, 3, 4))\n",
     "tab\n",
     "\n",
-    "print(tab, type=\"latex\")"
+    "print(tab, type = \"latex\")"
    ]
   },
   {
