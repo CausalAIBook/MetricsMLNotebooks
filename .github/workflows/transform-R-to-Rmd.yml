@@ -1,10 +1,10 @@
-name: Convert R Notebooks to Rmd and R Scripts
+name: Convert and Lint R Notebooks
 
 on:
   push
 
 jobs:
-  convert-irnb-to-rmd:
+  convert-lint-notebooks:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,18 +21,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install nbstripout
 
-    - name: Strip outputs from notebooks
-      run: |
-        for notebook in PM1/*.irnb; do
-          nbstripout "$notebook"
-        done
-
     - name: Set up R
       uses: r-lib/actions/setup-r@v2
 
-    - name: Install rmarkdown and knitr packages
+    - name: Install rmarkdown, knitr, and lintr packages
       run: |
-        R -e 'install.packages(c("rmarkdown", "knitr", "xfun"), repos="https://cloud.r-project.org")'
+        R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun"), repos="https://cloud.r-project.org")'
+
+    - name: Strip outputs from .irnb files
+      run: |
+        for notebook in PM1/*.irnb; do
+          ipynb_notebook="${notebook%.irnb}.ipynb"
+          mv "$notebook" "$ipynb_notebook"
+          nbstripout "$ipynb_notebook"
+          mv "$ipynb_notebook" "$notebook"
+        done
 
     - name: Convert .irnb to .Rmd and .R
       run: |
@@ -42,6 +45,17 @@ jobs:
             rmarkdown::convert_ipynb(input)
             rmd_file <- xfun::with_ext(input, "Rmd")
             knitr::purl(rmd_file, output = xfun::with_ext(input, "R"))
+          })
+        '
+
+    - name: Lint .Rmd files
+      run: |
+        R -e '
+          library(lintr)
+          linters <- with_defaults(line_length_linter = line_length_linter(120))
+          rmd_files <- list.files(path = "PM1", pattern = "\\.Rmd$", full.names = TRUE)
+          lapply(rmd_files, function(file) {
+            lint(file, linters)
           })
         '
 
@@ -57,12 +71,12 @@ jobs:
         name: r-scripts
         path: r_scripts.zip
 
-    - name: Commit and push stripped notebooks and .Rmd files
+    - name: Commit and push stripped .irnb and .Rmd files
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git add PM1/*.irnb PM1/*.Rmd
-        git commit -m 'Strip outputs from .irnb and convert to .Rmd'
+        git commit -m 'Strip outputs from .irnb, convert to .Rmd, and lint .Rmd files'
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
