@@ -301,7 +301,7 @@ Next we motivate the usage of lasso. We try an "extra" flexible model, where we 
 ```{r}
 set.seed(2724)
 subset_size <- 1000
-random <- sample(1:seq_len(nrow(data)), subset_size)
+random <- sample(seq_len(nrow(data)), subset_size)
 subset <- data[random, ]
 ```
 
