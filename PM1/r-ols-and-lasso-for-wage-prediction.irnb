@@ -50,7 +50,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "_zAzi7q14V1f"
+    "id": "_zAzi7q14V1f",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -85,11 +88,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "eQ7eG0JTykao"
+    "id": "eQ7eG0JTykao",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
+    "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
     "data <- read.csv(file)\n",
     "dim(data)"
    ]
@@ -107,7 +113,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "T1JH0uaXykat"
+    "id": "T1JH0uaXykat",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -127,14 +136,17 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "b8SdPks-ykau"
+    "id": "b8SdPks-ykau",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# construct matrices for estimation from the data\n",
     "Y <- log(data$wage)\n",
     "n <- length(Y)\n",
-    "Z <- data[-which(colnames(data) %in% c(\"wage\",\"lwage\"))]\n",
+    "Z <- data[- which(colnames(data) %in% c(\"wage\", \"lwage\"))]\n",
     "p <- dim(Z)[2]\n",
     "\n",
     "cat(\"Number of observations:\", n, '\\n')\n",
@@ -154,17 +166,23 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "mLttnFeKykav"
+    "id": "mLttnFeKykav",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# generate a table of means of variables\n",
-    "Z_subset <- data[which(colnames(data) %in% c(\"lwage\",\"sex\",\"shs\",\"hsg\",\"scl\",\"clg\",\"ad\",\"mw\",\"so\",\"we\",\"ne\",\"exp1\"))]\n",
+    "z_subset <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\",\n",
+    "                                             \"clg\", \"ad\", \"mw\", \"so\", \"we\", \"ne\", \"exp1\"))]\n",
     "table <- matrix(0, 12, 1)\n",
-    "table[1:12,1]   <- as.numeric(lapply(Z_subset,mean))\n",
-    "rownames(table) <- c(\"Log Wage\",\"Sex\",\"Some High School\",\"High School Graduate\",\"Some College\",\"College Graduate\", \"Advanced Degree\",\"Midwest\",\"South\",\"West\",\"Northeast\",\"Experience\")\n",
+    "table[1:12, 1] <- as.numeric(lapply(z_subset, mean))\n",
+    "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Some High School\",\n",
+    "                     \"High School Graduate\", \"Some College\", \"College Graduate\",\n",
+    "                     \"Advanced Degree\", \"Midwest\", \"South\", \"West\", \"Northeast\", \"Experience\")\n",
     "colnames(table) <- c(\"Sample mean\")\n",
-    "tab<- xtable(table, digits = 2)\n",
+    "tab <- xtable(table, digits = 2)\n",
     "tab"
    ]
   },
@@ -190,11 +208,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "wIojwGx4ykaw"
+    "id": "wIojwGx4ykaw",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print(tab, type=\"latex\") # type=\"latex\" for printing table in LaTeX"
+    "print(tab, type = \"latex\") # type=\"latex\" for printing table in LaTeX"
    ]
   },
   {
@@ -214,7 +235,7 @@
    "source": [
     "Now, we will construct a prediction rule for (log) hourly wage $Y$, which depends linearly on job-relevant characteristics $X$:\n",
     "\n",
-    "\\begin{equation}\\label{decompose}\n",
+    "\\begin{equation}\n",
     "Y = \\beta'X+ \\epsilon.\n",
     "\\end{equation}"
    ]
@@ -243,15 +264,18 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "cArtOhBOWaNs"
+    "id": "cArtOhBOWaNs",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# splitting the data\n",
     "set.seed(1) # to make the results replicable (we will generate random numbers)\n",
-    "random <- sample(1:n, floor(n*4/5)) # draw (4/5)*n random numbers from 1 to n without replacing\n",
-    "train <- data[random,]\n",
-    "test <- data[-random,]"
+    "random <- sample(1:n, floor(n * 4 / 5)) # draw (4/5)*n random numbers from 1 to n without replacing\n",
+    "train <- data[random, ]\n",
+    "test <- data[-random, ]"
    ]
   },
   {
@@ -294,14 +318,17 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "BhaBGtEBykax"
+    "id": "BhaBGtEBykax",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# 1. basic model\n",
-    "basic <- lwage~ (sex + exp1 + shs + hsg+ scl + clg + mw + so + we +C(occ2) + C(ind2))\n",
-    "regbasic <- lm(basic, data=train) # perform ols using the defined model\n",
-    "cat( \"Number of regressors in the basic model:\",length(regbasic$coef), '\\n') # number of regressors in the Basic Model\n"
+    "basic <- lwage ~ (sex + exp1 + shs + hsg+ scl + clg + mw + so + we +C(occ2) + C(ind2))\n",
+    "regbasic <- lm(basic, data = train) # perform ols using the defined model\n",
+    "cat(\"Number of regressors in the basic model:\", length(regbasic$coef), '\\n') # number of regressors in the Basic Model"
    ]
   },
   {
@@ -317,14 +344,18 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "y74aI4bhykax"
+    "id": "y74aI4bhykax",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# 2. flexible model\n",
-    "flex <- lwage ~ sex + shs+hsg+scl+clg+mw+so+we+C(occ2)+C(ind2) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
-    "regflex <- lm(flex, data=train)\n",
-    "cat( \"Number of regressors in the flexible model:\",length(regflex$coef)) # number of regressors in the Flexible Model"
+    "flex <- lwage ~ sex + shs + hsg + scl + clg + mw + so + we + C(occ2) + C(ind2) +\n",
+    "                (exp1 + exp2 + exp3 + exp4) * (shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\n",
+    "regflex <- lm(flex, data = train)\n",
+    "cat( \"Number of regressors in the flexible model:\", length(regflex$coef)) # number of regressors in the Flexible Model"
    ]
   },
   {
@@ -350,14 +381,18 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "Nx21IQPrykay"
+    "id": "Nx21IQPrykay",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Flexible model using Lasso, in-sample fit\n",
-    "train_flex <- model.matrix(flex,train) # all regressors\n",
-    "fit.lasso.cv  <- cv.glmnet(as.matrix(train_flex), train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
-    "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = as.matrix(train_flex), s = \"lambda.min\") # in-sample fit right now, not out-of-sample using \"test\""
+    "train_flex <- model.matrix(flex, train) # all regressors\n",
+    "fit.lasso.cv <- cv.glmnet(as.matrix(train_flex), train$lwage, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "# in-sample fit right now, not out-of-sample using \"test\"\n",
+    "yhat.lasso.cv <- predict(fit.lasso.cv, newx = as.matrix(train_flex), s = \"lambda.min\")"
    ]
   },
   {
@@ -374,7 +409,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "cSuifUPiykay"
+    "id": "cSuifUPiykay",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -397,28 +435,28 @@
     "cat(\"adjusted R-squared for the flexible model: \", R2.adj2, \"\\n\")\n",
     "\n",
     "pL <- fit.lasso.cv$nzero[fit.lasso.cv$index[1]]\n",
-    "R2.L <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
+    "R2.L <- 1 - sum((yhat.lasso.cv - train$lwage)^2) / sum((train$lwage - mean(train$lwage))^2)\n",
     "cat(\"R-squared for the lasso with flexible model: \", R2.L, \"\\n\")\n",
-    "R2.adjL <- 1-(sum((yhat.lasso.cv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
+    "R2.adjL <- 1 - (sum((yhat.lasso.cv - train$lwage)^2) / (ntrain - pL - 1)) / (sum((train$lwage - mean(train$lwage))^2) / (ntrain - 1))\n",
     "cat(\"adjusted R-squared for the flexible model: \", R2.adjL, \"\\n\")\n",
     "\n",
     "# MSE and adjusted MSE\n",
     "MSE1 <- mean(sumbasic$res^2)\n",
     "cat(\"MSE for the basic model: \", MSE1, \"\\n\")\n",
     "p1 <- sumbasic$df[1] # number of regressors\n",
-    "MSE.adj1 <- (ntrain/(ntrain-p1))*MSE1\n",
+    "MSE.adj1 <- (ntrain / (ntrain - p1)) * MSE1\n",
     "cat(\"adjusted MSE for the basic model: \", MSE.adj1, \"\\n\")\n",
     "\n",
     "MSE2 <-mean(sumflex$res^2)\n",
     "cat(\"MSE for the flexible model: \", MSE2, \"\\n\")\n",
     "p2 <- sumflex$df[1]\n",
-    "MSE.adj2 <- (ntrain/(ntrain-p2))*MSE2\n",
+    "MSE.adj2 <- (ntrain / (ntrain - p2)) * MSE2\n",
     "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adj2, \"\\n\")\n",
     "\n",
     "lasso.res <- train$lwage - yhat.lasso.cv\n",
     "MSEL <-mean(lasso.res^2)\n",
     "cat(\"MSE for the lasso flexible model: \", MSEL, \"\\n\")\n",
-    "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
+    "MSE.adjL <- (ntrain / (ntrain - pL - 1)) * MSEL\n",
     "cat(\"adjusted MSE for the lasso flexible model: \", MSE.adjL, \"\\n\")"
    ]
   },
@@ -426,19 +464,22 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "lo8UazUiykay"
+    "id": "lo8UazUiykay",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Output the table\n",
     "table <- matrix(0, 3, 5)\n",
-    "table[1,1:5]   <- c(p1,R2.1,MSE1,R2.adj1,MSE.adj1)\n",
-    "table[2,1:5]   <- c(p2,R2.2,MSE2,R2.adj2,MSE.adj2)\n",
-    "table[3,1:5]   <- c(pL,R2.L,MSEL,R2.adjL,MSE.adjL)\n",
-    "colnames(table)<- c(\"p\",\"$R^2_{sample}$\",\"$MSE_{sample}$\",\"$R^2_{adjusted}$\", \"$MSE_{adjusted}$\")\n",
-    "rownames(table)<- c(\"basic reg\",\"flexible reg\", \"lasso flex\")\n",
-    "tab<- xtable(table, digits =c(0,0,2,2,2,2))\n",
-    "print(tab,type=\"latex\")\n",
+    "table[1, 1:5] <- c(p1, R2.1, MSE1, R2.adj1, MSE.adj1)\n",
+    "table[2, 1:5] <- c(p2, R2.2, MSE2, R2.adj2, MSE.adj2)\n",
+    "table[3, 1:5] <- c(pL, R2.L, MSEL, R2.adjL, MSE.adjL)\n",
+    "colnames(table) <- c(\"p\", \"$R^2_{sample}$\", \"$MSE_{sample}$\", \"$R^2_{adjusted}$\", \"$MSE_{adjusted}$\")\n",
+    "rownames(table) <- c(\"basic reg\", \"flexible reg\", \"lasso flex\")\n",
+    "tab <- xtable(table, digits = c(0, 0, 2, 2, 2, 2))\n",
+    "print(tab, type = \"latex\")\n",
     "tab"
    ]
   },
@@ -470,20 +511,23 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "kwdlZV-iykaz"
+    "id": "kwdlZV-iykaz",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# basic model\n",
-    "options(warn=-1) # ignore warnings\n",
-    "regbasic <- lm(basic, data=train)\n",
+    "options(warn = -1) # ignore warnings\n",
+    "regbasic <- lm(basic, data = train)\n",
     "\n",
     "# calculating the out-of-sample MSE\n",
-    "yhat.bas <- predict(regbasic, newdata=test)\n",
+    "yhat.bas <- predict(regbasic, newdata = test)\n",
     "y.test <- test$lwage\n",
-    "mean.train = mean(train$lwage)\n",
-    "MSE.test1 <- sum((y.test-yhat.bas)^2)/length(y.test)\n",
-    "R2.test1<- 1- MSE.test1/mean((y.test-mean.train)^2)\n",
+    "mean.train <- mean(train$lwage)\n",
+    "MSE.test1 <- sum((y.test - yhat.bas)^2) / length(y.test)\n",
+    "R2.test1 <- 1 - MSE.test1 / mean((y.test - mean.train)^2)\n",
     "\n",
     "cat(\"Test MSE for the basic model: \", MSE.test1, \" \")\n",
     "cat(\"Test R2 for the basic model: \", R2.test1)"
@@ -502,20 +546,23 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "U2lQCgJeyka0"
+    "id": "U2lQCgJeyka0",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# flexible model\n",
-    "options(warn=-1) # ignore warnings\n",
-    "regflex <- lm(flex, data=train)\n",
+    "options(warn = -1) # ignore warnings\n",
+    "regflex <- lm(flex, data = train)\n",
     "\n",
     "# calculating the out-of-sample MSE\n",
-    "yhat.flex<- predict(regflex, newdata=test)\n",
+    "yhat.flex<- predict(regflex, newdata = test)\n",
     "y.test <- test$lwage\n",
-    "mean.train = mean(train$lwage)\n",
-    "MSE.test2 <- sum((y.test-yhat.flex)^2)/length(y.test)\n",
-    "R2.test2<- 1- MSE.test2/mean((y.test-mean.train)^2)\n",
+    "mean.train <- mean(train$lwage)\n",
+    "MSE.test2 <- sum((y.test - yhat.flex)^2) / length(y.test)\n",
+    "R2.test2 <- 1 - MSE.test2 / mean((y.test - mean.train)^2)\n",
     "\n",
     "cat(\"Test MSE for the flexible model: \", MSE.test2, \" \")\n",
     "\n",
@@ -548,22 +595,25 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "5xFTH78Kyka1"
+    "id": "5xFTH78Kyka1",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Flexible model using Lasso\n",
     "# model matrix should be formed before train/test as some levels dropped\n",
-    "flex_data = model.matrix(flex,data)\n",
-    "train_flex <- flex_data[random,]\n",
-    "test_flex <- flex_data[-random,]\n",
+    "flex_data <- model.matrix(flex, data)\n",
+    "train_flex <- flex_data[random, ]\n",
+    "test_flex <- flex_data[-random, ]\n",
     "\n",
-    "fit.lasso.cv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
-    "yhat.lasso.cv  <- predict(fit.lasso.cv, newx = test_flex, s = \"lambda.min\")\n",
+    "fit.lasso.cv <- cv.glmnet(train_flex, train$lwage, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "yhat.lasso.cv <- predict(fit.lasso.cv, newx = test_flex, s = \"lambda.min\")\n",
     "\n",
     "# calculating the out-of-sample MSE\n",
-    "MSE.lasso <- sum((y.test-yhat.lasso.cv)^2)/length(y.test)\n",
-    "R2.lasso<- 1- MSE.lasso/mean((y.test-mean(train$lwage))^2)\n",
+    "MSE.lasso <- sum((y.test - yhat.lasso.cv)^2) / length(y.test)\n",
+    "R2.lasso <- 1 - MSE.lasso / mean((y.test - mean(train$lwage))^2)\n",
     "\n",
     "cat(\"Test MSE for the lasso on flexible model: \", MSE.lasso, \" \")\n",
     "\n",
@@ -583,22 +633,25 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "PS3YeUT_yka2"
+    "id": "PS3YeUT_yka2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Output the comparison table\n",
-    "table2 <- matrix(0, 3,2)\n",
-    "table2[1,1]   <- MSE.test1\n",
-    "table2[2,1]   <- MSE.test2\n",
-    "table2[3,1]   <- MSE.lasso\n",
-    "table2[1,2]   <- R2.test1\n",
-    "table2[2,2]   <- R2.test2\n",
-    "table2[3,2]   <- R2.lasso\n",
+    "table2 <- matrix(0, 3, 2)\n",
+    "table2[1, 1] <- MSE.test1\n",
+    "table2[2, 1] <- MSE.test2\n",
+    "table2[3, 1] <- MSE.lasso\n",
+    "table2[1, 2] <- R2.test1\n",
+    "table2[2, 2] <- R2.test2\n",
+    "table2[3, 2] <- R2.lasso\n",
     "\n",
-    "rownames(table2)<- c(\"basic reg\",\"flexible reg\",\"lasso regression\")\n",
-    "colnames(table2)<- c(\"$MSE_{test}$\", \"$R^2_{test}$\")\n",
-    "tab2 <- xtable(table2, digits =3)\n",
+    "rownames(table2) <- c(\"basic reg\", \"flexible reg\", \"lasso regression\")\n",
+    "colnames(table2) <- c(\"$MSE_{test}$\", \"$R^2_{test}$\")\n",
+    "tab2 <- xtable(table2, digits = 3)\n",
     "tab2"
    ]
   },
@@ -606,11 +659,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "kFuPPNytyka2"
+    "id": "kFuPPNytyka2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print(tab2,type=\"latex\")"
+    "print(tab2, type = \"latex\")"
    ]
   },
   {
@@ -628,24 +684,31 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "G_Mm2gG3nwMn"
+    "id": "G_Mm2gG3nwMn",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# extra flexible model\n",
-    "extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\n",
-    "regextra <- lm(extraflex, data=train)\n",
+    "extraflex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2\n",
+    "regextra <- lm(extraflex, data = train)\n",
     "sumextra <- summary(regextra)\n",
-    "cat(\"Number of Extra-Flex Controls\", length(regextra$coef)-1, \"\\n\")\n",
-    "n= length(data$wage); p =length(regextra$coef);\n",
-    "ntrain = length(train$wage)"
+    "cat(\"Number of Extra-Flex Controls\", length(regextra$coef) - 1, \"\\n\")\n",
+    "n <- length(data$wage)\n",
+    "p <- length(regextra$coef);\n",
+    "ntrain <- length(train$wage)"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "OXSNAxauoJ3h"
+    "id": "OXSNAxauoJ3h",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -659,7 +722,7 @@
     "# MSE and adjusted MSE\n",
     "MSE.extra <- mean(sumextra$res^2)\n",
     "cat(\"MSE for the extra flexible model (in-sample): \", MSE.extra, \"\\n\")\n",
-    "MSE.adjextra <- (ntrain/(ntrain-p))*MSE.extra\n",
+    "MSE.adjextra <- (ntrain / (ntrain - p)) * MSE.extra\n",
     "cat(\"adjusted MSE for the basic model (in-sample): \", MSE.adj1, \"\\n\")"
    ]
   },
@@ -667,15 +730,18 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "vFrRnnlmo9yG"
+    "id": "vFrRnnlmo9yG",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "## Out-of-sample\n",
     "yhat.ex <- predict(regextra, newdata=test)\n",
     "y.test.ex <- test$lwage\n",
-    "MSE.test.ex <- sum((y.test.ex-yhat.ex)^2)/length(y.test.ex)\n",
-    "R2.test.ex<- 1- MSE.test.ex/mean((y.test.ex-mean(train$lwage))^2)\n",
+    "MSE.test.ex <- sum((y.test.ex - yhat.ex)^2) / length(y.test.ex)\n",
+    "R2.test.ex <- 1 - MSE.test.ex / mean((y.test.ex - mean(train$lwage))^2)\n",
     "\n",
     "cat(\"Test MSE for the basic model: \", MSE.test.ex, \" \")\n",
     "cat(\"Test R2 for the basic model: \", R2.test.ex)"
@@ -696,28 +762,31 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "TYvDJ3QepUgl"
+    "id": "TYvDJ3QepUgl",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# model matrix should be formed before train/test as some levels dropped\n",
-    "flex_data = model.matrix(extraflex,data)\n",
-    "train_flex <- flex_data[random,]\n",
-    "test_flex <- flex_data[-random,]\n",
+    "flex_data <- model.matrix(extraflex, data)\n",
+    "train_flex <- flex_data[random, ]\n",
+    "test_flex <- flex_data[-random, ]\n",
     "\n",
     "# fit model\n",
-    "fit.lcv  <- cv.glmnet(train_flex, train$lwage, family=\"gaussian\", alpha=1, nfolds=5)\n",
+    "fit.lcv <- cv.glmnet(train_flex, train$lwage, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
     "\n",
     "# in-sample\n",
     "yhat.lcv <- predict(fit.lcv, newx = train_flex, s = \"lambda.min\")\n",
     "\n",
-    "R2.L <- 1-(sum((yhat.lcv - train$lwage) ^ 2))/(sum((train$lwage - mean(train$lwage)) ^ 2)) # fit.lasso.cv$glmnet.fit$dev.ratio #\n",
+    "R2.L <- 1 - sum((yhat.lcv - train$lwage)^2) / sum((train$lwage - mean(train$lwage))^2)\n",
     "pL <- fit.lcv$nzero[fit.lcv$index[1]]\n",
-    "R2.adjL <- 1-(sum((yhat.lcv - train$lwage) ^ 2)/(ntrain-pL-1))/(sum((train$lwage - mean(train$lwage)) ^ 2)/(ntrain-1))\n",
+    "R2.adjL <- 1 - (sum((yhat.lcv - train$lwage) ^ 2) / (ntrain - pL - 1)) / (sum((train$lwage - mean(train$lwage))^2) / (ntrain - 1))\n",
     "\n",
     "lasso.res <- train$lwage - yhat.lcv\n",
-    "MSEL <-mean(lasso.res^2)\n",
-    "MSE.adjL <- (ntrain/(ntrain-pL-1))*MSEL\n",
+    "MSEL <- mean(lasso.res^2)\n",
+    "MSE.adjL <- (ntrain / (ntrain - pL - 1)) * MSEL\n",
     "\n",
     "cat(\"R-squared for the lasso with the extra flexible model (in-sample): \", R2.L, \"\\n\")\n",
     "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", R2.adjL, \"\\n\")\n",
@@ -726,8 +795,8 @@
     "\n",
     "# out-of-sample\n",
     "yhat.lcv.test <- predict(fit.lcv, newx = test_flex, s = \"lambda.min\")\n",
-    "MSE.lasso <- sum((test$lwage-yhat.lcv.test)^2)/length(test$lwage)\n",
-    "R2.lasso <- 1- MSE.lasso/mean((test$lwage-mean(train$lwage))^2)\n",
+    "MSE.lasso <- sum((test$lwage - yhat.lcv.test)^2) / length(test$lwage)\n",
+    "R2.lasso <- 1 - MSE.lasso / mean((test$lwage - mean(train$lwage))^2)\n",
     "\n",
     "cat(\"\\n\")\n",
     "cat(\"Test R2 for the lasso the extra flexible model: \", R2.lasso,\"\\n\")\n",
