@@ -127,7 +127,8 @@
    },
    "outputs": [],
    "source": [
-    "z <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
+    "z <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\",\n",
+    "                                      \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
     "\n",
     "data_female <- data[data$sex == 1, ]\n",
     "z_female <- data_female[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\",\n",
@@ -268,12 +269,12 @@
     "nocontrol_fit <- lm(lwage ~ sex, data = data)\n",
     "nocontrol_est <- summary(nocontrol_fit)$coef[\"sex\", 1]\n",
     "# HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
-    "hcv_coefs <- vcovHC(nocontrol_fit, type = 'HC3')\n",
+    "hcv_coefs <- vcovHC(nocontrol_fit, type = \"HC3\")\n",
     "nocontrol_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
     "\n",
     "# print unconditional effect of gender and the corresponding standard error\n",
-    "cat (\"The estimated coefficient on the dummy for gender is\", nocontrol_est,\n",
-    "     \" and the corresponding robust standard error is\", nocontrol_se)\n"
+    "cat(\"The estimated coefficient on the dummy for gender is\", nocontrol_est,\n",
+    "    \" and the corresponding robust standard error is\", nocontrol_se)\n"
    ]
   },
   {
@@ -330,8 +331,8 @@
     "flex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
     "\n",
     "# Note that ()*() operation in formula objects in R creates a formula of the sort:\n",
-    "#   (exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we) \n",
-    "#    + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "#   '(exp1+exp2+exp3+exp4) + (shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
+    "#     + (exp1+exp2+exp3+exp4) * (shs+hsg+scl+clg+occ2+ind2+mw+so+we)'\n",
     "# This is not intuitive at all, but that's what it does.\n",
     "\n",
     "control_fit <- lm(flex, data = data)\n",
@@ -341,7 +342,7 @@
     "\n",
     "cat(\"Coefficient for OLS with controls\", control_est)\n",
     "\n",
-    "hcv_coefs <- vcovHC(control_fit, type = 'HC3');\n",
+    "hcv_coefs <- vcovHC(control_fit, type = \"HC3\")\n",
     "control_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors"
    ]
   },
@@ -373,10 +374,10 @@
    "outputs": [],
    "source": [
     "xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
-    "                    data=data[data$sex == 0, ])\n",
+    "                    data = data[data$sex == 0, ])\n",
     "y0 <- data[data$sex == 0, ]$lwage\n",
     "xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
-    "                    data=data[data$sex == 1, ])\n",
+    "                    data = data[data$sex == 1, ])\n",
     "y1 <- data[data$sex == 1, ]$lwage\n",
     "mu1 <- colMeans(xx1)\n",
     "mu0 <- colMeans(xx0)\n",
@@ -409,8 +410,8 @@
    "source": [
     "svd0 <- svd(xx0)\n",
     "svd1 <- svd(xx1)\n",
-    "svd0$d[svd0$d <= 1e-10] = 0\n",
-    "svd0$d[svd0$d > 1e-10] = 1 / svd0$d[svd0$d > 1e-10]\n",
+    "svd0$d[svd0$d <= 1e-10] <- 0\n",
+    "svd0$d[svd0$d > 1e-10] <- 1 / svd0$d[svd0$d > 1e-10]\n",
     "beta0 <- (svd0$v %*% (svd0$d * svd0$d * t(svd0$v))) %*% t(xx0) %*% y0\n",
     "svd1$d[svd1$d <= 1e-10] <- 0\n",
     "svd1$d[svd1$d > 1e-10] <- 1 / svd1$d[svd1$d > 1e-10]\n",
@@ -463,17 +464,17 @@
     "t_d <- lm(flex_d, data = data)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
-    "partial.fit <- lm(t_y ~ t_d)\n",
-    "partial_est <- summary(partial.fit)$coef[2, 1]\n",
+    "partial_fit <- lm(t_y ~ t_d)\n",
+    "partial_est <- summary(partial_fit)$coef[2, 1]\n",
     "\n",
     "cat(\"Coefficient for D via partialling-out\", partial_est)\n",
     "\n",
     "# standard error\n",
-    "hcv_coefs <- vcovHC(partial.fit, type = 'HC3')\n",
+    "hcv_coefs <- vcovHC(partial_fit, type = \"HC3\")\n",
     "partial_se <- sqrt(diag(hcv_coefs))[2]\n",
     "\n",
     "# confidence interval\n",
-    "confint(partial.fit)[2, ]"
+    "confint(partial_fit)[2, ]"
    ]
   },
   {
@@ -526,13 +527,13 @@
     "t_d <- rlasso(flex_d, data = data)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
-    "partial.lasso.fit <- lm(t_y ~ t_d)\n",
-    "partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]\n",
+    "partial_lasso_fit <- lm(t_y ~ t_d)\n",
+    "partial_lasso_est <- summary(partial_lasso_fit)$coef[2, 1]\n",
     "\n",
     "cat(\"Coefficient for D via partialling-out using lasso\", partial_lasso_est)\n",
     "\n",
     "# standard error\n",
-    "hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
+    "hcv_coefs <- vcovHC(partial_lasso_fit, type = \"HC3\")\n",
     "partial_lasso_se <- sqrt(diag(hcv_coefs))[2]"
    ]
   },
@@ -581,7 +582,7 @@
     "table[4, 2] <- partial_lasso_se\n",
     "colnames(table) <- c(\"Estimate\", \"Std. Error\")\n",
     "rownames(table) <- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\n",
-    "tab<- xtable(table, digits = c(3, 3, 4))\n",
+    "tab <- xtable(table, digits = c(3, 3, 4))\n",
     "tab"
    ]
   },
@@ -663,7 +664,7 @@
    "source": [
     "set.seed(2724)\n",
     "subset_size <- 1000\n",
-    "random <- sample(1:nrow(data), subset_size)\n",
+    "random <- sample(1:seq_len(nrow(data)), subset_size)\n",
     "subset <- data[random, ]"
    ]
   },
@@ -717,7 +718,7 @@
     "p <- length(control_fit$coef)\n",
     "\n",
     "# HC0 SE\n",
-    "hcv_coefs_hc0 <- vcovHC(control_fit, type = 'HC0')\n",
+    "hcv_coefs_hc0 <- vcovHC(control_fit, type = \"HC0\")\n",
     "control_se_hc0 <- sqrt(diag(hcv_coefs_hc0))[2]\n",
     "\n",
     "# For a more correct approach, we\n",
@@ -727,9 +728,9 @@
     "# really work here.\n",
     "coefs <- hatvalues(control_fit)\n",
     "trim <- 0.99999999999\n",
-    "coefs_trimmed <- coefs*(coefs < trim) + trim * (coefs >= trim)\n",
+    "coefs_trimmed <- coefs * (coefs < trim) + trim * (coefs >= trim)\n",
     "omega <- (control_fit$residuals^2) / ((1 - coefs_trimmed)^2)\n",
-    "hcv_coefs <- vcovHC(control_fit, omega = as.vector(omega), type = 'HC3')\n",
+    "hcv_coefs <- vcovHC(control_fit, omega = as.vector(omega), type = \"HC3\")\n",
     "control_se_hc3 <- sqrt(diag(hcv_coefs))[2]"
    ]
   },
@@ -759,13 +760,13 @@
     "t_d <- rlasso(extraflex_d, data = subset)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
-    "partial.lasso.fit <- lm(t_y ~ t_d)\n",
-    "partial_lasso_est <- summary(partial.lasso.fit)$coef[2, 1]\n",
+    "partial_lasso_fit <- lm(t_y ~ t_d)\n",
+    "partial_lasso_est <- summary(partial_lasso_fit)$coef[2, 1]\n",
     "\n",
     "cat(\"Coefficient for D via partialling-out using lasso\", partial_lasso_est)\n",
     "\n",
     "# standard error\n",
-    "hcv_coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
+    "hcv_coefs <- vcovHC(partial_lasso_fit, type = \"HC3\")\n",
     "partial_lasso_se <- sqrt(diag(hcv_coefs))[2]"
    ]
   },
