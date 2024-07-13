@@ -128,12 +128,12 @@
     "z_male <- data_male[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\", \"clg\", \"ad\", \"ne\", \"mw\", \"so\", \"we\", \"exp1\"))]\n",
     "\n",
     "table <- matrix(0, 12, 3)\n",
-    "table[1:12,1] <- as.numeric(lapply(z, mean))\n",
-    "table[1:12,2] <- as.numeric(lapply(z_male, mean))\n",
-    "table[1:12,3] <- as.numeric(lapply(z_female, mean))\n",
+    "table[1:12, 1] <- as.numeric(lapply(z, mean))\n",
+    "table[1:12, 2] <- as.numeric(lapply(z_male, mean))\n",
+    "table[1:12, 3] <- as.numeric(lapply(z_female, mean))\n",
     "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Less then High School\", \"High School Graduate\", \"Some College\", \"College Graduate\", \"Advanced Degree\", \"Northeast\", \"Midwest\", \"South\", \"West\", \"Experience\")\n",
     "colnames(table) <- c(\"All\", \"Men\", \"Women\")\n",
-    "tab <- xtable(table, digits=4)\n",
+    "tab <- xtable(table, digits = 4)\n",
     "tab"
    ]
   },
@@ -149,7 +149,7 @@
    },
    "outputs": [],
    "source": [
-    "print(tab,type=\"html\") # set type=\"latex\" for printing table in LaTeX"
+    "print(tab, type = \"html\") # set type=\"latex\" for printing table in LaTeX"
    ]
   },
   {
@@ -245,9 +245,9 @@
    },
    "outputs": [],
    "source": [
-    "nocontrol.fit <- lm(lwage ~ sex, data=data)\n",
+    "nocontrol.fit <- lm(lwage ~ sex, data = data)\n",
     "nocontrol.est <- summary(nocontrol.fit)$coef[\"sex\", 1]\n",
-    "HCV.coefs <- vcovHC(nocontrol.fit, type='HC3'); # HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
+    "HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC3'); # HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
     "nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
     "\n",
     "# print unconditional effect of gender and the corresponding standard error\n",
@@ -308,7 +308,7 @@
     "#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)\n",
     "#  This is not intuitive at all, but that's what it does.\n",
     "\n",
-    "control.fit <- lm(flex, data=data)\n",
+    "control.fit <- lm(flex, data = data)\n",
     "control.est <- summary(control.fit)$coef[2,1]\n",
     "\n",
     "summary(control.fit)\n",
@@ -416,9 +416,9 @@
     "flex.d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we) # model for D\n",
     "\n",
     "# partialling-out the linear effect of W from Y\n",
-    "t.Y <- lm(flex.y, data=data)$res\n",
+    "t.Y <- lm(flex.y, data = data)$res\n",
     "# partialling-out the linear effect of W from D\n",
-    "t.D <- lm(flex.d, data=data)$res\n",
+    "t.D <- lm(flex.d, data = data)$res\n",
     "\n",
     "# regression of Y on D after partialling-out the effect of W\n",
     "partial.fit <- lm(t.Y ~ t.D)\n",
@@ -427,7 +427,7 @@
     "cat(\"Coefficient for D via partialling-out\", partial.est)\n",
     "\n",
     "# standard error\n",
-    "HCV.coefs <- vcovHC(partial.fit, type='HC3')\n",
+    "HCV.coefs <- vcovHC(partial.fit, type = 'HC3')\n",
     "partial.se <- sqrt(diag(HCV.coefs))[2]\n",
     "\n",
     "# confidence interval\n",
@@ -486,7 +486,7 @@
     "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
     "\n",
     "# standard error\n",
-    "HCV.coefs <- vcovHC(partial.lasso.fit, type='HC3')\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
     "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
    ]
   },
@@ -532,7 +532,7 @@
     "table[4, 2] <- partial.lasso.se\n",
     "colnames(table) <- c(\"Estimate\", \"Std. Error\")\n",
     "rownames(table) <- c(\"Without controls\", \"full reg\", \"partial reg\", \"partial reg via lasso\")\n",
-    "tab<- xtable(table, digits=c(3, 3, 4))\n",
+    "tab<- xtable(table, digits = c(3, 3, 4))\n",
     "tab"
    ]
   },
@@ -649,7 +649,7 @@
     "# extra flexible model\n",
     "extraflex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2\n",
     "\n",
-    "control.fit <- lm(extraflex, data=subset)\n",
+    "control.fit <- lm(extraflex, data = subset)\n",
     "#summary(control.fit)\n",
     "control.est <- summary(control.fit)$coef[2, 1]\n",
     "cat(\"Number of Extra-Flex Controls\", length(control.fit$coef) - 1, \"\\n\")\n",
@@ -660,7 +660,7 @@
     "p <- length(control.fit$coef)\n",
     "\n",
     "# HC0 SE\n",
-    "HCV.coefs_HC0 <- vcovHC(control.fit, type='HC0')\n",
+    "HCV.coefs_HC0 <- vcovHC(control.fit, type = 'HC0')\n",
     "control.se.HC0 <- sqrt(diag(HCV.coefs_HC0))[2]\n",
     "\n",
     "# For a more correct approach, we\n",
@@ -674,7 +674,7 @@
     "trim <- 0.99999999999\n",
     "coefs_trimmed <- coefs*(coefs < trim) + trim * (coefs >= trim)\n",
     "omega <- (control.fit$residuals^2) / ((1 - coefs_trimmed)^2)\n",
-    "HCV.coefs <- vcovHC(control.fit, omega=as.vector(omega), type='HC3')\n",
+    "HCV.coefs <- vcovHC(control.fit, omega = as.vector(omega), type = 'HC3')\n",
     "control.se.HC3 <- sqrt(diag(HCV.coefs))[2]"
    ]
   },
@@ -706,7 +706,7 @@
     "cat(\"Coefficient for D via partialling-out using lasso\", partial.lasso.est)\n",
     "\n",
     "# standard error\n",
-    "HCV.coefs <- vcovHC(partial.lasso.fit, type='HC3')\n",
+    "HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')\n",
     "partial.lasso.se <- sqrt(diag(HCV.coefs))[2]"
    ]
   },
