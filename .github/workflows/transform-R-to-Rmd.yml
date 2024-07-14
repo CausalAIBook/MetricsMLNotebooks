@@ -4,6 +4,7 @@ on:
   push:
   schedule:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
+name: Convert and Lint R Notebooks
 
 concurrency:
   group: convert-lint-notebooks
@@ -56,144 +57,164 @@ jobs:
             PM5:
               - 'PM5/*.irnb'
 
-  convert-lint-notebooks:
+  determine-dirs:
     needs: [set-vars]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine directories to process
+        id: determine
+        run: |
+          directories=$(jq -n \
+            --arg pm1 ${{ needs.set-vars.outputs.PM1_changed }} \
+            --arg pm2 ${{ needs.set-vars.outputs.PM2_changed }} \
+            --arg pm3 ${{ needs.set-vars.outputs.PM3_changed }} \
+            --arg pm4 ${{ needs.set-vars.outputs.PM4_changed }} \
+            --arg pm5 ${{ needs.set-vars.outputs.PM5_changed }} \
+            '{
+              PM1: $pm1,
+              PM2: $pm2,
+              PM3: $pm3,
+              PM4: $pm4,
+              PM5: $pm5
+            } | to_entries | map(select(.value == "true")) | map(.key)')
+          echo "$directories" > directories.json
+      - name: Upload directories json
+        uses: actions/upload-artifact@v2
+        with:
+          name: directories-json
+          path: directories.json
+
+  convert-lint-notebooks:
+    needs: [determine-dirs]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5']
-    if: |
-      (github.event_name == 'push' && (needs.set-vars.outputs[env.MATRIX_DIRECTORY + '_changed'] == 'true')) ||
-      (github.event_name == 'schedule')
-
+        directory: ${{ fromJson(needs.determine-dirs.outputs.directories) }}
     steps:
-    - name: Set matrix directory environment variable
-      run: echo "MATRIX_DIRECTORY=${{ matrix.directory }}" >> $GITHUB_ENV
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'  # Specify your Python version here
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'  # Specify your Python version here
+      - name: Install nbstripout
+        run: |
+          python -m pip install --upgrade pip
+          pip install nbstripout
 
-    - name: Install nbstripout
-      run: |
-        python -m pip install --upgrade pip
-        pip install nbstripout
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
 
-    - name: Set up R
-      uses: r-lib/actions/setup-r@v2
+      - name: Install rmarkdown, knitr, and lintr packages
+        run: |
+          R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun"), repos="https://cloud.r-project.org")'
 
-    - name: Install rmarkdown, knitr, and lintr packages
-      run: |
-        R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun"), repos="https://cloud.r-project.org")'
+      - name: Strip outputs from .irnb files
+        run: |
+          for notebook in ${{ matrix.directory }}/*.irnb; do
+            ipynb_notebook="${notebook%.irnb}.ipynb"
+            mv "$notebook" "$ipynb_notebook"
+            nbstripout "$ipynb_notebook"
+            mv "$ipynb_notebook" "$notebook"
+          done
 
-    - name: Strip outputs from .irnb files
-      run: |
-        for notebook in ${{ matrix.directory }}/*.irnb; do
-          ipynb_notebook="${notebook%.irnb}.ipynb"
-          mv "$notebook" "$ipynb_notebook"
-          nbstripout "$ipynb_notebook"
-          mv "$ipynb_notebook" "$notebook"
-        done
+      - name: Convert .irnb to .Rmd and .R
+        run: |
+          R -e '
+            files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
+            lapply(files, function(input) {
+              rmarkdown::convert_ipynb(input)
+              rmd_file <- xfun::with_ext(input, "Rmd")
+              knitr::purl(rmd_file, output = xfun::with_ext(input, "R"))
+            })
+          '
 
-    - name: Convert .irnb to .Rmd and .R
-      run: |
-        R -e '
-          files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
-          lapply(files, function(input) {
-            rmarkdown::convert_ipynb(input)
-            rmd_file <- xfun::with_ext(input, "Rmd")
-            knitr::purl(rmd_file, output = xfun::with_ext(input, "R"))
-          })
-        '
-
-    - name: Lint .Rmd files
-      id: lint
-      run: |
-        R -e '
-          library(lintr)
-          linters <- with_defaults(line_length_linter = line_length_linter(120))
-          rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
-          results <- lapply(rmd_files, function(file) {
-            lints <- lint(file, linters)
-            if (length(lints) > 0) {
-              cat("Warnings found during linting:\n")
-              print(lints)
-              stop("Linting failed with warnings")
-            }
-          })
-        '
-
-    - name: Execute R scripts and log output
-      id: execute
-      continue-on-error: true
-      run: |
-        log_file="${{ matrix.directory }}_r_script_execution.log"
-        R -e '
-          files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
-          log_con <- file("'$log_file'", open = "wt")
-          sink(log_con, type = "output")
-          sink(log_con, type = "message")
-          errors <- list()
-          for (file in files) {
-            tryCatch(
-              {
-                source(file)
-              },
-              error = function(e) {
-                errors[[length(errors) + 1]] <<- list(file = file, message = e$message)
+      - name: Lint .Rmd files
+        id: lint
+        run: |
+          R -e '
+            library(lintr)
+            linters <- with_defaults(line_length_linter = line_length_linter(120))
+            rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
+            results <- lapply(rmd_files, function(file) {
+              lints <- lint(file, linters)
+              if (length(lints) > 0) {
+                cat("Warnings found during linting:\n")
+                print(lints)
+                stop("Linting failed with warnings")
               }
-            )
-          }
-          sink(type = "output")
-          sink(type = "message")
-          close(log_con)
-          if (length(errors) > 0) {
-            for (error in errors) {
-              cat("Error found in file:", error$file, "\n")
-              cat("Error message:", error$message, "\n")
+            })
+          '
+
+      - name: Execute R scripts and log output
+        id: execute
+        continue-on-error: true
+        run: |
+          log_file="${{ matrix.directory }}_r_script_execution.log"
+          R -e '
+            files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
+            log_con <- file("'$log_file'", open = "wt")
+            sink(log_con, type = "output")
+            sink(log_con, type = "message")
+            errors <- list()
+            for (file in files) {
+              tryCatch(
+                {
+                  source(file)
+                },
+                error = function(e) {
+                  errors[[length(errors) + 1]] <<- list(file = file, message = e$message)
+                }
+              )
             }
-          }
-        '
-    - name: Upload execution log
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ matrix.directory }}-r-script-execution-log
-        path: ${{ matrix.directory }}_r_script_execution.log
+            sink(type = "output")
+            sink(type = "message")
+            close(log_con)
+            if (length(errors) > 0) {
+              for (error in errors) {
+                cat("Error found in file:", error$file, "\n")
+                cat("Error message:", error$message, "\n")
+              }
+            }
+          '
+      - name: Upload execution log
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.directory }}-r-script-execution-log
+          path: ${{ matrix.directory }}_r_script_execution.log
 
-    - name: Fail if errors found
-      if: failure()
-      run: exit 1
+      - name: Fail if errors found
+        if: failure()
+        run: exit 1
 
-    - name: Delete execution log
-      run: rm ${{ matrix.directory }}_r_script_execution.log
+      - name: Delete execution log
+        run: rm ${{ matrix.directory }}_r_script_execution.log
 
-    - name: Zip .R files
-      run: |
-        mkdir r_scripts
-        mv ${{ matrix.directory }}/*.R r_scripts/
-        zip -r ${{ matrix.directory }}_r_scripts.zip r_scripts
+      - name: Zip .R files
+        run: |
+          mkdir r_scripts
+          mv ${{ matrix.directory }}/*.R r_scripts/
+          zip -r ${{ matrix.directory }}_r_scripts.zip r_scripts
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ matrix.directory }}-r-scripts
-        path: ${{ matrix.directory }}_r_scripts.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.directory }}-r-scripts
+          path: ${{ matrix.directory }}_r_scripts.zip
 
-    - name: Delete .R files and zip
-      run: |
-        rm -rf r_scripts
-        rm ${{ matrix.directory }}_r_scripts.zip
+      - name: Delete .R files and zip
+        run: |
+          rm -rf r_scripts
+          rm ${{ matrix.directory }}_r_scripts.zip
 
-    - name: Commit and push stripped .irnb and .Rmd files
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
-        git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }}'
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and push stripped .irnb and .Rmd files
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
+          git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }}'
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
