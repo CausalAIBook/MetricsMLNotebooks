@@ -13,6 +13,12 @@ jobs:
   set-vars:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    outputs:
+      PM1_changed: ${{ steps.check_PM1.outputs.matched }}
+      PM2_changed: ${{ steps.check_PM2.outputs.matched }}
+      PM3_changed: ${{ steps.check_PM3.outputs.matched }}
+      PM4_changed: ${{ steps.check_PM4.outputs.matched }}
+      PM5_changed: ${{ steps.check_PM5.outputs.matched }}
     steps:
       - name: Check if PM1 files changed
         id: check_PM1
@@ -57,10 +63,13 @@ jobs:
       matrix:
         directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5']
     if: |
-      (github.event_name == 'push' && fromJSON(needs.set-vars.outputs['check_' + matrix.directory + '_matched']).matched == 'true') ||
+      (github.event_name == 'push' && (needs.set-vars.outputs[env.MATRIX_DIRECTORY + '_changed'] == 'true')) ||
       (github.event_name == 'schedule')
 
     steps:
+    - name: Set matrix directory environment variable
+      run: echo "MATRIX_DIRECTORY=${{ matrix.directory }}" >> $GITHUB_ENV
+
     - name: Checkout repository
       uses: actions/checkout@v2
 
@@ -183,4 +192,8 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.R
+        git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
+        git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }}'
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
