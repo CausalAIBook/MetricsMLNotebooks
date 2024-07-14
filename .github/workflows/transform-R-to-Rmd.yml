@@ -13,12 +13,6 @@ jobs:
   set-vars:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    outputs:
-      PM1_changed: ${{ steps.check_PM1.outputs.matched }}
-      PM2_changed: ${{ steps.check_PM2.outputs.matched }}
-      PM3_changed: ${{ steps.check_PM3.outputs.matched }}
-      PM4_changed: ${{ steps.check_PM4.outputs.matched }}
-      PM5_changed: ${{ steps.check_PM5.outputs.matched }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -58,16 +52,6 @@ jobs:
           filters: |
             PM5:
               - 'PM5/*.irnb'
-      
-      - name: Set output variables
-        id: set_output
-        run: |
-          echo "::set-output name=PM1_changed::${{ steps.check_PM1.outputs.matched }}"
-          echo "::set-output name=PM2_changed::${{ steps.check_PM2.outputs.matched }}"
-          echo "::set-output name=PM3_changed::${{ steps.check_PM3.outputs.matched }}"
-          echo "::set-output name=PM4_changed::${{ steps.check_PM4.outputs.matched }}"
-          echo "::set-output name=PM5_changed::${{ steps.check_PM5.outputs.matched }}"
-
 
   determine-dirs:
     needs: [set-vars]
@@ -76,28 +60,21 @@ jobs:
       - name: Determine directories to process
         id: determine
         run: |
-          directories=""
-          [ "${{ needs.set-vars.outputs.PM1_changed }}" == "true" ] && directories="$directories PM1"
-          [ "${{ needs.set-vars.outputs.PM2_changed }}" == "true" ] && directories="$directories PM2"
-          [ "${{ needs.set-vars.outputs.PM3_changed }}" == "true" ] && directories="$directories PM3"
-          [ "${{ needs.set-vars.outputs.PM4_changed }}" == "true" ] && directories="$directories PM4"
-          [ "${{ needs.set-vars.outputs.PM5_changed }}" == "true" ] && directories="$directories PM5"
-          echo "directories=$(echo $directories | jq -R -s -c 'split(" ")')" > directories.json
-          cat directories.json
-          echo "::set-output name=directories::$(cat directories.json)"
+          directories="["
+          [ "${{ needs.set-vars.outputs.PM1_changed }}" == "true" ] && directories="$directories, PM1"
+          [ "${{ needs.set-vars.outputs.PM2_changed }}" == "true" ] && directories="$directories, PM2"
+          [ "${{ needs.set-vars.outputs.PM3_changed }}" == "true" ] && directories="$directories, PM3"
+          [ "${{ needs.set-vars.outputs.PM4_changed }}" == "true" ] && directories="$directories, PM4"
+          [ "${{ needs.set-vars.outputs.PM5_changed }}" == "true" ] && directories="$directories, PM5"
+          directories="$directories ]"
+          echo "directories=$directories"
   
-      - name: Upload directories json
-        uses: actions/upload-artifact@v2
-        with:
-          name: directories-json
-          path: directories.json
-
   convert-lint-notebooks:
     needs: [determine-dirs]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ${{ fromJson(needs.determine-dirs.outputs.directories) }}
+        directory: ${{ needs.determine-dirs.outputs.directories) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
