@@ -57,7 +57,7 @@ jobs:
       matrix:
         directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5']
     if: |
-      (github.event_name == 'push' && (needs.set-vars.outputs['check_' + matrix.directory].matched == 'true')) ||
+      (github.event_name == 'push' && fromJSON(needs.set-vars.outputs['check_' + matrix.directory + '_matched']).matched == 'true') ||
       (github.event_name == 'schedule')
 
     steps:
@@ -183,9 +183,4 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
-        git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }}'
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.R
