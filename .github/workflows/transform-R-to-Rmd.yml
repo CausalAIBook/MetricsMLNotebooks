@@ -84,13 +84,13 @@ jobs:
             sink(log_con, type = "output")
             sink(log_con, type = "message")
             errors <- list()
-            for (file in files) {
+            for (gitrfile in files) {
               tryCatch(
                 {
-                  source(file)
+                  source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(file = file, message = e$message)
+                  errors[[length(errors) + 1]] <<- list(file = gitrfile, message = e$message)
                 }
               )
             }
@@ -99,7 +99,7 @@ jobs:
             close(log_con)
             if (length(errors) > 0) {
               for (error in errors) {
-                cat("Error found in file:", error$file, "\n")
+                cat("Error found in file:", error$gitrfile, "\n")
                 cat("Error message:", error$message, "\n")
               }
             }
