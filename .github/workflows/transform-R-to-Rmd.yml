@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ${{ needs.determine-dirs.outputs.directories) }}
+        directory: ${{ needs.determine-dirs.outputs.directories }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
