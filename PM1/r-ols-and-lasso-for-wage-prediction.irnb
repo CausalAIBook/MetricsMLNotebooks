@@ -479,7 +479,7 @@
     "table <- matrix(0, 3, 5)\n",
     "table[1, 1:5] <- c(p1, r2_1, mse1, r2_adj1, mse_adj1)\n",
     "table[2, 1:5] <- c(p2, r2_2, mse2, r2_adj2, mse_adj2)\n",
-    "table[3, 1:5] <- c(pl, r2_l, mse_l, r2_adj_l, mse_adj_l)\n",
+    "table[3, 1:5] <- c(p_l, r2_l, mse_l, r2_adj_l, mse_adj_l)\n",
     "colnames(table) <- c(\"p\", \"$R^2_{sample}$\", \"$MSE_{sample}$\", \"$R^2_{adjusted}$\", \"$MSE_{adjusted}$\")\n",
     "rownames(table) <- c(\"basic reg\", \"flexible reg\", \"lasso flex\")\n",
     "tab <- xtable(table, digits = c(0, 0, 2, 2, 2, 2))\n",
