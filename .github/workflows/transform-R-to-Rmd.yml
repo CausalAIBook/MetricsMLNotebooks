@@ -4,7 +4,6 @@ on:
   push:
   schedule:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
-name: Convert and Lint R Notebooks
 
 concurrency:
   group: convert-lint-notebooks
