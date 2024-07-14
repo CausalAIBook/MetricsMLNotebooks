@@ -76,20 +76,16 @@ jobs:
       - name: Determine directories to process
         id: determine
         run: |
-          directories=$(jq -n \
-            --arg pm1 ${{ needs.set-vars.outputs.PM1_changed }} \
-            --arg pm2 ${{ needs.set-vars.outputs.PM2_changed }} \
-            --arg pm3 ${{ needs.set-vars.outputs.PM3_changed }} \
-            --arg pm4 ${{ needs.set-vars.outputs.PM4_changed }} \
-            --arg pm5 ${{ needs.set-vars.outputs.PM5_changed }} \
-            '{
-              PM1: $pm1,
-              PM2: $pm2,
-              PM3: $pm3,
-              PM4: $pm4,
-              PM5: $pm5
-            } | to_entries | map(select(.value == "true")) | map(.key)')
-          echo "$directories" > directories.json
+          directories=""
+          [ "${{ needs.set-vars.outputs.PM1_changed }}" == "true" ] && directories="$directories PM1"
+          [ "${{ needs.set-vars.outputs.PM2_changed }}" == "true" ] && directories="$directories PM2"
+          [ "${{ needs.set-vars.outputs.PM3_changed }}" == "true" ] && directories="$directories PM3"
+          [ "${{ needs.set-vars.outputs.PM4_changed }}" == "true" ] && directories="$directories PM4"
+          [ "${{ needs.set-vars.outputs.PM5_changed }}" == "true" ] && directories="$directories PM5"
+          echo "directories=$(echo $directories | jq -R -s -c 'split(" ")')" > directories.json
+          cat directories.json
+          echo "::set-output name=directories::$(cat directories.json)"
+  
       - name: Upload directories json
         uses: actions/upload-artifact@v2
         with:
