@@ -58,6 +58,16 @@ jobs:
           filters: |
             PM5:
               - 'PM5/*.irnb'
+      
+      - name: Set output variables
+        id: set_output
+        run: |
+          echo "::set-output name=PM1_changed::${{ steps.check_PM1.outputs.matched }}"
+          echo "::set-output name=PM2_changed::${{ steps.check_PM2.outputs.matched }}"
+          echo "::set-output name=PM3_changed::${{ steps.check_PM3.outputs.matched }}"
+          echo "::set-output name=PM4_changed::${{ steps.check_PM4.outputs.matched }}"
+          echo "::set-output name=PM5_changed::${{ steps.check_PM5.outputs.matched }}"
+
 
   determine-dirs:
     needs: [set-vars]
