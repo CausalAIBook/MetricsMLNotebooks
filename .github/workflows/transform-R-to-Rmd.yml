@@ -4,92 +4,17 @@ on:
   push:
   schedule:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
-name: Convert and Lint R Notebooks
 
 concurrency:
   group: convert-lint-notebooks
   cancel-in-progress: true
 
 jobs:
-  set-vars:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    outputs:
-      PM1_changed: ${{ steps.check_PM1.outputs.matched }}
-      PM2_changed: ${{ steps.check_PM2.outputs.matched }}
-      PM3_changed: ${{ steps.check_PM3.outputs.matched }}
-      PM4_changed: ${{ steps.check_PM4.outputs.matched }}
-      PM5_changed: ${{ steps.check_PM5.outputs.matched }}
-    steps:
-      - name: Check if PM1 files changed
-        id: check_PM1
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM1:
-              - 'PM1/*.irnb'
-      - name: Check if PM2 files changed
-        id: check_PM2
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM2:
-              - 'PM2/*.irnb'
-      - name: Check if PM3 files changed
-        id: check_PM3
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM3:
-              - 'PM3/*.irnb'
-      - name: Check if PM4 files changed
-        id: check_PM4
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM4:
-              - 'PM4/*.irnb'
-      - name: Check if PM5 files changed
-        id: check_PM5
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM5:
-              - 'PM5/*.irnb'
-
-  determine-dirs:
-    needs: [set-vars]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Determine directories to process
-        id: determine
-        run: |
-          directories=$(jq -n \
-            --arg pm1 ${{ needs.set-vars.outputs.PM1_changed }} \
-            --arg pm2 ${{ needs.set-vars.outputs.PM2_changed }} \
-            --arg pm3 ${{ needs.set-vars.outputs.PM3_changed }} \
-            --arg pm4 ${{ needs.set-vars.outputs.PM4_changed }} \
-            --arg pm5 ${{ needs.set-vars.outputs.PM5_changed }} \
-            '{
-              PM1: $pm1,
-              PM2: $pm2,
-              PM3: $pm3,
-              PM4: $pm4,
-              PM5: $pm5
-            } | to_entries | map(select(.value == "true")) | map(.key)')
-          echo "$directories" > directories.json
-      - name: Upload directories json
-        uses: actions/upload-artifact@v2
-        with:
-          name: directories-json
-          path: directories.json
-
   convert-lint-notebooks:
-    needs: [determine-dirs]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ${{ fromJson(needs.determine-dirs.outputs.directories) }}
+        directory: ['PM1']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -159,13 +84,13 @@ jobs:
             sink(log_con, type = "output")
             sink(log_con, type = "message")
             errors <- list()
-            for (file in files) {
+            for (gitrfile in files) {
               tryCatch(
                 {
-                  source(file)
+                  source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(file = file, message = e$message)
+                  errors[[length(errors) + 1]] <<- list(file = gitrfile, message = e$message)
                 }
               )
             }
@@ -174,7 +99,7 @@ jobs:
             close(log_con)
             if (length(errors) > 0) {
               for (error in errors) {
-                cat("Error found in file:", error$file, "\n")
+                cat("Error found in file:", error$gitrfile, "\n")
                 cat("Error message:", error$message, "\n")
               }
             }
