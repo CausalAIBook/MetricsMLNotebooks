@@ -55,9 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ['PM1']
+        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5']
     if: |
-      (github.event_name == 'push' && needs.set-vars.outputs.PM${{ matrix.directory#[-1] }}.matched == 'true') ||
+      (github.event_name == 'push' && (needs.set-vars.outputs['check_' + matrix.directory].matched == 'true')) ||
       (github.event_name == 'schedule')
 
     steps:
@@ -188,3 +188,4 @@ jobs:
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
