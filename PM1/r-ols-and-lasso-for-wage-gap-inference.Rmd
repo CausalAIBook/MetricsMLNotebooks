@@ -200,7 +200,7 @@ Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out
 # Partialling-out using ols
 
 # model for Y
-flex_y <- lwage ~  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
+flex_y <- lwage ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 # model for D
 flex_d <- sex ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
 
