@@ -10,71 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  set-vars:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Check if PM1 files changed
-        id: check_PM1
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM1:
-              - 'PM1/*.irnb'
-      - name: Check if PM2 files changed
-        id: check_PM2
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM2:
-              - 'PM2/*.irnb'
-      - name: Check if PM3 files changed
-        id: check_PM3
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM3:
-              - 'PM3/*.irnb'
-      - name: Check if PM4 files changed
-        id: check_PM4
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM4:
-              - 'PM4/*.irnb'
-      - name: Check if PM5 files changed
-        id: check_PM5
-        uses: dorny/paths-filter@v2
-        with:
-          filters: |
-            PM5:
-              - 'PM5/*.irnb'
-
-  determine-dirs:
-    needs: [set-vars]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Determine directories to process
-        id: determine
-        run: |
-          directories="["
-          [ "${{ needs.set-vars.outputs.PM1_changed }}" == "true" ] && directories="$directories, PM1"
-          [ "${{ needs.set-vars.outputs.PM2_changed }}" == "true" ] && directories="$directories, PM2"
-          [ "${{ needs.set-vars.outputs.PM3_changed }}" == "true" ] && directories="$directories, PM3"
-          [ "${{ needs.set-vars.outputs.PM4_changed }}" == "true" ] && directories="$directories, PM4"
-          [ "${{ needs.set-vars.outputs.PM5_changed }}" == "true" ] && directories="$directories, PM5"
-          directories="$directories ]"
-          echo "directories=$directories"
-  
   convert-lint-notebooks:
-    needs: [determine-dirs]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ${{ needs.determine-dirs.outputs.directories }}
+        directory: ['PM1']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
