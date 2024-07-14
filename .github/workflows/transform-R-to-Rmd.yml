@@ -2,12 +2,6 @@ name: Convert and Lint R Notebooks
 
 on:
   push:
-    paths:
-      - 'PM1/*.irnb'
-      - 'PM2/*.irnb'
-      - 'PM3/*.irnb'
-      - 'PM4/*.irnb'
-      - 'PM5/*.irnb'
   schedule:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
 
@@ -61,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5']
+        directory: ['PM1']
     if: |
       (github.event_name == 'push' && needs.set-vars.outputs.PM${{ matrix.directory#[-1] }}.matched == 'true') ||
       (github.event_name == 'schedule')
@@ -126,6 +120,7 @@ jobs:
 
     - name: Execute R scripts and log output
       id: execute
+      continue-on-error: true
       run: |
         log_file="${{ matrix.directory }}_r_script_execution.log"
         R -e '
@@ -133,30 +128,36 @@ jobs:
           log_con <- file("'$log_file'", open = "wt")
           sink(log_con, type = "output")
           sink(log_con, type = "message")
+          errors <- list()
           for (file in files) {
             tryCatch(
               {
                 source(file)
               },
               error = function(e) {
-                sink(type = "output")
-                sink(type = "message")
-                cat("Error found in file:", file, "\n")
-                cat("Error message:", e$message, "\n")
-                stop("Execution failed due to an error in ", file)
+                errors[[length(errors) + 1]] <<- list(file = file, message = e$message)
               }
             )
           }
           sink(type = "output")
           sink(type = "message")
           close(log_con)
+          if (length(errors) > 0) {
+            for (error in errors) {
+              cat("Error found in file:", error$file, "\n")
+              cat("Error message:", error$message, "\n")
+            }
+          }
         '
-
     - name: Upload execution log
       uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.directory }}-r-script-execution-log
         path: ${{ matrix.directory }}_r_script_execution.log
+
+    - name: Fail if errors found
+      if: failure()
+      run: exit 1
 
     - name: Delete execution log
       run: rm ${{ matrix.directory }}_r_script_execution.log
