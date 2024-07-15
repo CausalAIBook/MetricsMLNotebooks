@@ -762,6 +762,8 @@
       "outputs": [],
       "source": [
         "double_lasso <- function(y, D, W) {\n",
+        "  require(hdm)\n",
+        "\n",
         "  # residualize outcome with Lasso\n",
         "  yfit_rlasso <- rlasso(W, y, post = FALSE)\n",
         "  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))\n",
