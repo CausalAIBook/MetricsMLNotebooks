@@ -1,492 +1,402 @@
 {
-  "cells": [
-    {
-      "metadata": {
-        "id": "GckAu5W7kzXS"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "# Dosearch for Causal Identification in DAGs.\n",
-        "\n",
-        "\n",
-        "This a simple notebook for teaching that illustrates capabilites of the \"dosearch\" package, which is a great tool.\n",
-        "\n",
-        "NB. In my experience, the commands are sensitive to syntax ( e.g. spacing when -> are used), so be careful when changing to other examples."
-      ]
-    },
-    {
-      "metadata": {
-        "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
-        "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
-        "trusted": true,
-        "id": "_67DDyL8kzXV",
-        "outputId": "8c8ac5d4-b0b1-4a10-ed14-ddb50956add0",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "install.packages(\"dosearch\")\n",
-        "library(\"dosearch\")"
-      ],
-      "execution_count": 1,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "also installing the dependency ‘Rcpp’\n",
-            "\n",
-            "\n"
-          ]
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "8ov_tpHJkzXY"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "We start with the simplest graph, with the simplest example\n",
-        "where $D$ is policy, $Y$ is outcomes, $X$ is a confounder:\n",
-        "$$\n",
-        "D\\to Y, \\quad X \\to (D,Y)\n",
-        "$$\n"
-      ]
-    },
-    {
-      "metadata": {
-        "id": "YS75qAvjkzXY"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "Now suppose we want conditional average policy effect."
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "0vvfKbSzkzXZ",
-        "outputId": "2c8dd4d2-ba1b-42ea-fb02-a326b6cc62ec",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 35
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "data <- \"p(y,d,x)\"  #data structure\n",
-        "\n",
-        "query <- \"p(y | do(d),x)\" #query -- target parameter\n",
-        "\n",
-        "graph <- \"x -> y\n",
-        "  x -> d\n",
-        "  d -> y\"\n",
-        "\n",
-        "dosearch(data, query, graph)"
-      ],
-      "execution_count": 2,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "p(y|d,x) "
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "LxrtjzV6kzXZ"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "This recovers the correct identification formula for law of the counterfactual $Y(d)$ induced by $do(D=d)$:\n",
-        "$$\n",
-        "p_{Y(d)|X}(y|x) := p(y|do(d),x) = p(y|d,x).\n",
-        "$$"
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "tXw8HnV2kzXZ",
-        "outputId": "29481c74-cc2e-4042-f39d-5612862bfb68",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 35
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "data <- \"p(y,d,x)\"\n",
-        "\n",
-        "query <- \"p(y | do(d))\"\n",
-        "\n",
-        "graph <- \"x -> y\n",
-        "  x -> d\n",
-        "  d -> y\"\n",
-        "\n",
-        "\n",
-        "dosearch(data, query, graph)\n"
-      ],
-      "execution_count": 3,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "\\sum_{x}\\left(p(x)p(y|d,x)\\right) "
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "8zR2Xks0kzXZ"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "This recovers the correct identification formula:\n",
-        "$$\n",
-        "p_{Y(d)}(y) := p(y: do(d)) = \\sum_{x}\\left(p(x)p(y|d,x)\\right)\n",
-        "$$\n",
-        "We integrate out $x$ in the previous formula.\n"
-      ]
-    },
-    {
-      "metadata": {
-        "id": "0CFswGBmkzXZ"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "Suppose we don't observe the confounder. The effect is generally not identified.\n"
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "cjis082KkzXa",
-        "outputId": "c803c856-acab-4cc7-9e20-f6e5c790ffc1",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 35
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "data <- \"p(y,d)\"\n",
-        "\n",
-        "query <- \"p(y | do(d))\"\n",
-        "\n",
-        "graph <- \"x -> y\n",
-        "  x -> d\n",
-        "  d -> y\"\n",
-        "\n",
-        "dosearch(data, query, graph)"
-      ],
-      "execution_count": 4,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "The query p(y | do(d)) is non-identifiable. "
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "BHgbhd8pkzXa"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "The next graph is an example of J. Pearl (different notation), where the graph is considerably more complicated. See \"Pearl's Example\" in the book - e.g. Figure 7.14. We are interested in $D \\to Y$.\n",
-        "\n",
-        "Here we try conditioning on $X_2$. This would block one backdoor path from $D$ to $Y$, but would open another path on which $X_2$ is a collider, so this shouldn't work. The application below gave a correct answer (after I put the spacings carefully).\n"
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "J4mz88VZkzXa",
-        "outputId": "30f73953-79de-448d-ddc2-aa470a97840e",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 35
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "\n",
-        "data <- \"p(y,d,x2)\"   #observed only (Y, D, X_2)\n",
-        "\n",
-        "query<- \"p(y|do(d))\"   #target parameter\n",
-        "\n",
-        "graph<- \"z1 -> x1\n",
-        "z1 -> x2\n",
-        "z2 -> x2\n",
-        "z2 -> x3\n",
-        "x2 -> d\n",
-        "x2 -> y\n",
-        "x3 -> y\n",
-        "x1 -> d\n",
-        "d -> m\n",
-        "m -> y\n",
-        "\"\n",
-        "\n",
-        "dosearch(data, query, graph)\n"
-      ],
-      "execution_count": 5,
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "The query p(y|do(d)) is non-identifiable. "
-            ]
-          },
-          "metadata": {}
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "w_JQY9sPkzXa"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "Intuitively, we should add more common causes. For example, adding $X_3$ and using $S = (X_2, X_3)$ should work."
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "wGIVqPAIkzXb",
-        "outputId": "0402b81b-ca16-4274-df93-33c0c2ae2327",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "\n",
-        "data <- \"p(y,d,x2,x3)\"\n",
-        "\n",
-        "conditional.query<- \"p(y|do(d),x2, x3)\"  #can ID conditional average effect?\n",
-        "query<- \"p(y|do(d))\"  #can ID unconditional effect?\n",
-        "\n",
-        "graph<- \"z1 -> x1\n",
-        "z1 -> x2\n",
-        "z2 -> x2\n",
-        "z2 -> x3\n",
-        "x2 -> d\n",
-        "x2 -> y\n",
-        "x3 -> y\n",
-        "x1 -> d\n",
-        "d -> m\n",
-        "m -> y\n",
-        "\"\n",
-        "\n",
-        "print(dosearch(data, conditional.query, graph))\n",
-        "print(dosearch(data, query, graph))\n"
-      ],
-      "execution_count": 6,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "p(y|x2,x3,d) \n",
-            "\\sum_{x2,x3}\\left(p(x2,x3)p(y|x2,x3,d)\\right) \n"
-          ]
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "kAAC1aPokzXb"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "This retrieves the correct formulas for counterfactual distributions of $Y(d)$ induced by $Do(D=d)$:\n",
-        "\n",
-        "The conditional distribution is identified by\n",
-        "$$\n",
-        "p_{Y(d) \\mid X_2, X_3}(y) := p(y |x_2, x_3: do(d)) = p(y|x_2,x_3,d).\n",
-        "$$\n",
-        "\n",
-        "The unconditional distribution is obtained by integration out over $x_2$ and $x_3$:\n",
-        "\n",
-        "$$\n",
-        "p_{Y(d) }(y) :=  p(y do(d)) = \\sum_{x2,x3}\\left(p(x_2,x_3)p(y|x_2,x_3,d)\\right).\n",
-        "$$\n",
-        "\n",
-        "\n"
-      ]
-    },
-    {
-      "metadata": {
-        "id": "6D9XRwyFkzXb"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "Next we suppose that we observe only $(Y,D, M)$. Can we identify the effect $D \\to Y$?  Can we use back-door-criterion twice to get $D \\to M$ and $M \\to Y$ affect? Yes, that's called front-door criterion -- so we just need to remember only the back-door and the fact that we can use it iteratively."
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "eaPrMHWTkzXb",
-        "outputId": "4cc25d7c-75ba-44a6-93df-41359b55495b",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "data <- \"p(y,d, m)\"\n",
-        "\n",
-        "query.dm<- \"p(m|do(d))\"\n",
-        "query.md<- \"p(y|do(m))\"\n",
-        "query<- \"p(y|do(d))\"\n",
-        "\n",
-        "graph<- \"z1 -> x1\n",
-        "z1 -> x2\n",
-        "z2 -> x2\n",
-        "z2 -> x3\n",
-        "x2 -> d\n",
-        "x2 -> y\n",
-        "x3 -> y\n",
-        "x1 -> d\n",
-        "d -> m\n",
-        "m -> y\n",
-        "\"\n",
-        "print(dosearch(data, query.dm, graph))\n",
-        "print(dosearch(data, query.md, graph))\n",
-        "print(dosearch(data, query, graph))\n"
-      ],
-      "execution_count": 7,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "p(m|d) \n",
-            "\\sum_{d}\\left(p(d)p(y|d,m)\\right) \n",
-            "\\sum_{m}\\left(p(m|d)\\sum_{d}\\left(p(d)p(y|d,m)\\right)\\right) \n"
-          ]
-        }
-      ]
-    },
-    {
-      "metadata": {
-        "id": "Khy7jCIJkzXb"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "So we get identification results:\n",
-        "First,\n",
-        "$$\n",
-        "p_{M(d)}(m)  := p(m|do(d)) = p(m|d).\n",
-        "$$\n",
-        "Second,\n",
-        "$$\n",
-        "p_{Y(m)}(y) := p(y|do(m)) = \\sum_{d}\\left(p(d)p(y|d,m)\\right),\n",
-        "$$\n",
-        "and the last by integrating the product of these two formulas:\n",
-        "$$\n",
-        "p_{Y(d)}(y) := p(y|do(d)) = \\sum_{m}\\left(p(m|d)\\sum_{d}\\left(p(d)p(y|d,m)\\right)\\right)\n",
-        "$$\n"
-      ]
-    },
-    {
-      "metadata": {
-        "id": "hpL6jYtPkzXb"
-      },
-      "cell_type": "markdown",
-      "source": [
-        "The package is very rich and allows identification analysis, when the data comes from multiple sources. Suppose we observe marginal distributions $(Y,D)$  and $(D,M)$ only. Can we identify the effect of $D \\to Y$. The answer is (guess) and the package correctly recovers it."
-      ]
-    },
-    {
-      "metadata": {
-        "trusted": true,
-        "id": "x-ACaOv_kzXc",
-        "outputId": "e5ba4476-2eb2-4806-fa2d-71c73dac986d",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        }
-      },
-      "cell_type": "code",
-      "source": [
-        "data <- \"p(y,m)\n",
-        "         p(m,d)\"\n",
-        "\n",
-        "query.dm<- \"p(m|do(d))\"\n",
-        "query.md<- \"p(y|do(m))\"\n",
-        "query<- \"p(y|do(d))\"\n",
-        "\n",
-        "graph<- \"z1 -> x1\n",
-        "z1 -> x2\n",
-        "z2 -> x2\n",
-        "z2 -> x3\n",
-        "x2 -> d\n",
-        "x2 -> y\n",
-        "x3 -> y\n",
-        "x1 -> d\n",
-        "d -> m\n",
-        "m -> y\n",
-        "\"\n",
-        "print(dosearch(data, query.dm, graph))\n",
-        "print(dosearch(data, query.md, graph))\n",
-        "print(dosearch(data, query, graph))"
-      ],
-      "execution_count": 8,
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "p(m|d) \n",
-            "The query p(y|do(m)) is non-identifiable. \n",
-            "The query p(y|do(d)) is non-identifiable. \n"
-          ]
-        }
-      ]
-    }
-  ],
-  "metadata": {
-    "kernelspec": {
-      "name": "ir",
-      "display_name": "R",
-      "language": "R"
-    },
-    "language_info": {
-      "name": "R",
-      "codemirror_mode": "r",
-      "pygments_lexer": "r",
-      "mimetype": "text/x-r-source",
-      "file_extension": ".r",
-      "version": "3.6.3"
-    },
-    "colab": {
-      "provenance": []
-    }
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "GckAu5W7kzXS"
+   },
+   "source": [
+    "# Dosearch for Causal Identification in DAGs.\n",
+    "\n",
+    "\n",
+    "This a simple notebook for teaching that illustrates capabilites of the \"dosearch\" package, which is a great tool.\n",
+    "\n",
+    "NB. In my experience, the commands are sensitive to syntax ( e.g. spacing when -> are used), so be careful when changing to other examples."
+   ]
   },
-  "nbformat": 4,
-  "nbformat_minor": 0
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "_67DDyL8kzXV",
+    "outputId": "8c8ac5d4-b0b1-4a10-ed14-ddb50956add0"
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"dosearch\")\n",
+    "library(\"dosearch\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "8ov_tpHJkzXY"
+   },
+   "source": [
+    "We start with the simplest graph, with the simplest example\n",
+    "where $D$ is policy, $Y$ is outcomes, $X$ is a confounder:\n",
+    "$$\n",
+    "D\\to Y, \\quad X \\to (D,Y)\n",
+    "$$\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "YS75qAvjkzXY"
+   },
+   "source": [
+    "Now suppose we want conditional average policy effect."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 35
+    },
+    "id": "0vvfKbSzkzXZ",
+    "outputId": "2c8dd4d2-ba1b-42ea-fb02-a326b6cc62ec"
+   },
+   "outputs": [],
+   "source": [
+    "data <- \"p(y,d,x)\"  #data structure\n",
+    "\n",
+    "query <- \"p(y | do(d),x)\" #query -- target parameter\n",
+    "\n",
+    "graph <- \"x -> y\n",
+    "  x -> d\n",
+    "  d -> y\"\n",
+    "\n",
+    "dosearch(data, query, graph)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "LxrtjzV6kzXZ"
+   },
+   "source": [
+    "This recovers the correct identification formula for law of the counterfactual $Y(d)$ induced by $do(D=d)$:\n",
+    "$$\n",
+    "p_{Y(d)|X}(y|x) := p(y|do(d),x) = p(y|d,x).\n",
+    "$$"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 35
+    },
+    "id": "tXw8HnV2kzXZ",
+    "outputId": "29481c74-cc2e-4042-f39d-5612862bfb68"
+   },
+   "outputs": [],
+   "source": [
+    "data <- \"p(y,d,x)\"\n",
+    "\n",
+    "query <- \"p(y | do(d))\"\n",
+    "\n",
+    "graph <- \"x -> y\n",
+    "  x -> d\n",
+    "  d -> y\"\n",
+    "\n",
+    "\n",
+    "dosearch(data, query, graph)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "8zR2Xks0kzXZ"
+   },
+   "source": [
+    "This recovers the correct identification formula:\n",
+    "$$\n",
+    "p_{Y(d)}(y) := p(y: do(d)) = \\sum_{x}\\left(p(x)p(y|d,x)\\right)\n",
+    "$$\n",
+    "We integrate out $x$ in the previous formula.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "0CFswGBmkzXZ"
+   },
+   "source": [
+    "Suppose we don't observe the confounder. The effect is generally not identified.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 35
+    },
+    "id": "cjis082KkzXa",
+    "outputId": "c803c856-acab-4cc7-9e20-f6e5c790ffc1"
+   },
+   "outputs": [],
+   "source": [
+    "data <- \"p(y,d)\"\n",
+    "\n",
+    "query <- \"p(y | do(d))\"\n",
+    "\n",
+    "graph <- \"x -> y\n",
+    "  x -> d\n",
+    "  d -> y\"\n",
+    "\n",
+    "dosearch(data, query, graph)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "BHgbhd8pkzXa"
+   },
+   "source": [
+    "The next graph is an example of J. Pearl (different notation), where the graph is considerably more complicated. See \"Pearl's Example\" in the book - e.g. Figure 7.14. We are interested in $D \\to Y$.\n",
+    "\n",
+    "Here we try conditioning on $X_2$. This would block one backdoor path from $D$ to $Y$, but would open another path on which $X_2$ is a collider, so this shouldn't work. The application below gave a correct answer (after I put the spacings carefully).\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 35
+    },
+    "id": "J4mz88VZkzXa",
+    "outputId": "30f73953-79de-448d-ddc2-aa470a97840e"
+   },
+   "outputs": [],
+   "source": [
+    "\n",
+    "data <- \"p(y,d,x2)\"   #observed only (Y, D, X_2)\n",
+    "\n",
+    "query<- \"p(y|do(d))\"   #target parameter\n",
+    "\n",
+    "graph<- \"z1 -> x1\n",
+    "z1 -> x2\n",
+    "z2 -> x2\n",
+    "z2 -> x3\n",
+    "x2 -> d\n",
+    "x2 -> y\n",
+    "x3 -> y\n",
+    "x1 -> d\n",
+    "d -> m\n",
+    "m -> y\n",
+    "\"\n",
+    "\n",
+    "dosearch(data, query, graph)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "w_JQY9sPkzXa"
+   },
+   "source": [
+    "Intuitively, we should add more common causes. For example, adding $X_3$ and using $S = (X_2, X_3)$ should work."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "wGIVqPAIkzXb",
+    "outputId": "0402b81b-ca16-4274-df93-33c0c2ae2327"
+   },
+   "outputs": [],
+   "source": [
+    "\n",
+    "data <- \"p(y,d,x2,x3)\"\n",
+    "\n",
+    "conditional.query<- \"p(y|do(d),x2, x3)\"  #can ID conditional average effect?\n",
+    "query<- \"p(y|do(d))\"  #can ID unconditional effect?\n",
+    "\n",
+    "graph<- \"z1 -> x1\n",
+    "z1 -> x2\n",
+    "z2 -> x2\n",
+    "z2 -> x3\n",
+    "x2 -> d\n",
+    "x2 -> y\n",
+    "x3 -> y\n",
+    "x1 -> d\n",
+    "d -> m\n",
+    "m -> y\n",
+    "\"\n",
+    "\n",
+    "print(dosearch(data, conditional.query, graph))\n",
+    "print(dosearch(data, query, graph))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "kAAC1aPokzXb"
+   },
+   "source": [
+    "This retrieves the correct formulas for counterfactual distributions of $Y(d)$ induced by $Do(D=d)$:\n",
+    "\n",
+    "The conditional distribution is identified by\n",
+    "$$\n",
+    "p_{Y(d) \\mid X_2, X_3}(y) := p(y |x_2, x_3: do(d)) = p(y|x_2,x_3,d).\n",
+    "$$\n",
+    "\n",
+    "The unconditional distribution is obtained by integration out over $x_2$ and $x_3$:\n",
+    "\n",
+    "$$\n",
+    "p_{Y(d) }(y) :=  p(y do(d)) = \\sum_{x2,x3}\\left(p(x_2,x_3)p(y|x_2,x_3,d)\\right).\n",
+    "$$\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "6D9XRwyFkzXb"
+   },
+   "source": [
+    "Next we suppose that we observe only $(Y,D, M)$. Can we identify the effect $D \\to Y$?  Can we use back-door-criterion twice to get $D \\to M$ and $M \\to Y$ affect? Yes, that's called front-door criterion -- so we just need to remember only the back-door and the fact that we can use it iteratively."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "eaPrMHWTkzXb",
+    "outputId": "4cc25d7c-75ba-44a6-93df-41359b55495b"
+   },
+   "outputs": [],
+   "source": [
+    "data <- \"p(y,d, m)\"\n",
+    "\n",
+    "query.dm<- \"p(m|do(d))\"\n",
+    "query.md<- \"p(y|do(m))\"\n",
+    "query<- \"p(y|do(d))\"\n",
+    "\n",
+    "graph<- \"z1 -> x1\n",
+    "z1 -> x2\n",
+    "z2 -> x2\n",
+    "z2 -> x3\n",
+    "x2 -> d\n",
+    "x2 -> y\n",
+    "x3 -> y\n",
+    "x1 -> d\n",
+    "d -> m\n",
+    "m -> y\n",
+    "\"\n",
+    "print(dosearch(data, query.dm, graph))\n",
+    "print(dosearch(data, query.md, graph))\n",
+    "print(dosearch(data, query, graph))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Khy7jCIJkzXb"
+   },
+   "source": [
+    "So we get identification results:\n",
+    "First,\n",
+    "$$\n",
+    "p_{M(d)}(m)  := p(m|do(d)) = p(m|d).\n",
+    "$$\n",
+    "Second,\n",
+    "$$\n",
+    "p_{Y(m)}(y) := p(y|do(m)) = \\sum_{d}\\left(p(d)p(y|d,m)\\right),\n",
+    "$$\n",
+    "and the last by integrating the product of these two formulas:\n",
+    "$$\n",
+    "p_{Y(d)}(y) := p(y|do(d)) = \\sum_{m}\\left(p(m|d)\\sum_{d}\\left(p(d)p(y|d,m)\\right)\\right)\n",
+    "$$\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "hpL6jYtPkzXb"
+   },
+   "source": [
+    "The package is very rich and allows identification analysis, when the data comes from multiple sources. Suppose we observe marginal distributions $(Y,D)$  and $(D,M)$ only. Can we identify the effect of $D \\to Y$. The answer is (guess) and the package correctly recovers it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "x-ACaOv_kzXc",
+    "outputId": "e5ba4476-2eb2-4806-fa2d-71c73dac986d"
+   },
+   "outputs": [],
+   "source": [
+    "data <- \"p(y,m)\n",
+    "         p(m,d)\"\n",
+    "\n",
+    "query.dm<- \"p(m|do(d))\"\n",
+    "query.md<- \"p(y|do(m))\"\n",
+    "query<- \"p(y|do(d))\"\n",
+    "\n",
+    "graph<- \"z1 -> x1\n",
+    "z1 -> x2\n",
+    "z2 -> x2\n",
+    "z2 -> x3\n",
+    "x2 -> d\n",
+    "x2 -> y\n",
+    "x3 -> y\n",
+    "x1 -> d\n",
+    "d -> m\n",
+    "m -> y\n",
+    "\"\n",
+    "print(dosearch(data, query.dm, graph))\n",
+    "print(dosearch(data, query.md, graph))\n",
+    "print(dosearch(data, query, graph))"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "3.6.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
 }
