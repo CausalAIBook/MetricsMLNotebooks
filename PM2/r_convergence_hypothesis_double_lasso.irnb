@@ -605,7 +605,7 @@
       "source": [
         "## Create the outcome variable y and covariates x\n",
         "y <- growth$Outcome\n",
-        "x <- growth[-which(colnames(growth) %in% c(\"intercept\"))]"
+        "X <- growth[-which(colnames(growth) %in% c(\"intercept\"))]"
       ]
     },
     {
@@ -631,21 +631,21 @@
         }
       ],
       "source": [
-        "fit <- lm(Outcome ~ ., data=x)\n",
+        "fit <- lm(Outcome ~ ., data=X)\n",
         "est <- summary(fit)$coef[\"gdpsh465\", 1]\n",
         "\n",
-        "HCV.coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
-        "se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors\n",
+        "hcv.coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
+        "se <- sqrt(diag(hcv.coefs))[2] # Estimated std errors\n",
         "\n",
         "# print unconditional effect of gdpsh465 and the corresponding standard error\n",
         "cat (\"The estimated coefficient on gdpsh465 is\", est,\n",
         "     \" and the corresponding robust standard error is\", se)\n",
         "\n",
         "# Calculate the 95% confidence interval for 'gdpsh465'\n",
-        "lower_ci <- est - 1.96 * se\n",
-        "upper_ci <- est + 1.96 * se\n",
+        "lower.ci <- est - 1.96 * se\n",
+        "upper.ci <- est + 1.96 * se\n",
         "\n",
-        "cat (\"95% Confidence Interval: [\", lower_ci, \",\", upper_ci, \"]\")"
+        "cat (\"95% Confidence Interval: [\", lower.ci, \",\", upper.ci, \"]\")"
       ]
     },
     {
@@ -727,8 +727,8 @@
       "outputs": [],
       "source": [
         "y <- growth$Outcome\n",
-        "w <- growth[-which(colnames(growth) %in% c('Outcome', 'intercept', 'gdpsh465'))]\n",
-        "d <- growth$gdpsh465"
+        "W <- growth[-which(colnames(growth) %in% c('Outcome', 'intercept', 'gdpsh465'))]\n",
+        "D <- growth$gdpsh465"
       ]
     },
     {
@@ -762,23 +762,23 @@
       },
       "outputs": [],
       "source": [
-        "double_lasso <- function(y, d, w) {\n",
+        "double_lasso <- function(y, D, W) {\n",
         "  # residualize outcome with Lasso\n",
-        "  yfit_rlasso <- rlasso(w, y, post = FALSE)\n",
-        "  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(w))\n",
+        "  yfit_rlasso <- rlasso(W, y, post = FALSE)\n",
+        "  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))\n",
         "  yres <- y - as.numeric(yhat_rlasso)\n",
         "\n",
         "\n",
         "  # residualize treatment with Lasso\n",
-        "  dfit_rlasso <- rlasso(w, d, post = FALSE)\n",
-        "  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(w))\n",
-        "  dres <- d - as.numeric(dhat_rlasso)\n",
+        "  dfit_rlasso <- rlasso(W, D, post = FALSE)\n",
+        "  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))\n",
+        "  dres <- D - as.numeric(dhat_rlasso)\n",
         "\n",
         "  # rest is the same as in the OLS case\n",
         "  hat <- mean(yres * dres) / mean(dres^2)\n",
         "  epsilon <- yres - hat * dres\n",
-        "  v <- mean(epsilon^2 * dres^2) / mean(dres^2)^2\n",
-        "  stderr <- sqrt(v / length(y))\n",
+        "  V <- mean(epsilon^2 * dres^2) / mean(dres^2)^2\n",
+        "  stderr <- sqrt(V / length(y))\n",
         "\n",
         "  return(list(hat = hat, stderr = stderr))\n",
         "}"
@@ -795,7 +795,7 @@
       },
       "outputs": [],
       "source": [
-        "results <- double_lasso(y, d, w)\n",
+        "results <- double_lasso(y, D, W)\n",
         "hat <- results$hat\n",
         "stderr <- results$stderr\n",
         "# Calculate the 95% confidence interval\n",
@@ -886,7 +886,7 @@
         "\n",
         "# Define LassoCV models for y and D\n",
         "model_y <- cv.glmnet(\n",
-        "  x = as.matrix(w),\n",
+        "  x = as.matrix(W),\n",
         "  y = y,\n",
         "  alpha = 1, # Lasso penalty\n",
         "  nfolds = n_folds,\n",
@@ -894,8 +894,8 @@
         ")\n",
         "\n",
         "model_d <- cv.glmnet(\n",
-        "  x = as.matrix(w),\n",
-        "  y = d,\n",
+        "  x = as.matrix(W),\n",
+        "  y = D,\n",
         "  alpha = 1, # Lasso penalty\n",
         "  nfolds = n_folds,\n",
         "  family = \"gaussian\"\n",
@@ -906,12 +906,12 @@
         "best_lambda_d <- model_d$lambda.min\n",
         "\n",
         "# Fit Lasso models with the best lambda values\n",
-        "lasso_model_y <- glmnet(as.matrix(w), y, alpha = 1, lambda = best_lambda_y)\n",
-        "lasso_model_d <- glmnet(as.matrix(w), d, alpha = 1, lambda = best_lambda_d)\n",
+        "lasso_model_y <- glmnet(as.matrix(W), y, alpha = 1, lambda = best_lambda_y)\n",
+        "lasso_model_d <- glmnet(as.matrix(W), D, alpha = 1, lambda = best_lambda_d)\n",
         "\n",
         "# Calculate the residuals\n",
-        "res_y <- y - predict(lasso_model_y, s = best_lambda_y, newx = as.matrix(w))\n",
-        "res_d <- d - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(w))"
+        "res_y <- y - predict(lasso_model_y, s = best_lambda_y, newx = as.matrix(W))\n",
+        "res_d <- D - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(W))"
       ]
     },
     {
@@ -1052,7 +1052,7 @@
         "\n",
         "results_d <- data.frame(\n",
         "  Alphas = model_d$lambda,\n",
-        "  OutOfSampleR2 = 1 - model_d$cvm / var(d)\n",
+        "  OutOfSampleR2 = 1 - model_d$cvm / var(D)\n",
         ")\n",
         "\n",
         "# Plot Outcome Lasso-CV Model\n",
@@ -1073,18 +1073,6 @@
         "      y = \"Out-of-sample R-squared\"\n",
         "    )\n"
       ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "id": "Mw8BaZ621Zvp",
-        "vscode": {
-          "languageId": "r"
-        }
-      },
-      "outputs": [],
-      "source": []
     }
   ],
   "metadata": {
