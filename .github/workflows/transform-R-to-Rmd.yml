@@ -135,7 +135,14 @@ jobs:
           rm -rf r_scripts
           rm ${{ matrix.directory }}_r_scripts.zip
 
+      - name: Check if there are any changes
+        id: verify_diff
+        run: |
+          git pull
+          git diff --quiet ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd || echo "changed=true" >> $GITHUB_OUTPUT
+
       - name: Commit and push stripped .irnb and .Rmd files
+        if: steps.verify_diff.outputs.changed == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
