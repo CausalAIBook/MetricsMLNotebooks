@@ -86,8 +86,8 @@
    "outputs": [],
    "source": [
     "center_colmeans <- function(x) {\n",
-    "    xcenter <- colMeans(x)\n",
-    "    x - rep(xcenter, rep.int(nrow(x), ncol(x)))\n",
+    "  xcenter <- colMeans(x)\n",
+    "  x - rep(xcenter, rep.int(nrow(x), ncol(x)))\n",
     "}"
    ]
   },
@@ -103,7 +103,7 @@
    "outputs": [],
    "source": [
     "# create the model matrix for the covariates\n",
-    "controls_formula <- '~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2'\n",
+    "controls_formula <- \"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2\"\n",
     "Zcontrols <- model.matrix(as.formula(controls_formula), data = Z)\n",
     "Zcontrols <- center_colmeans(Zcontrols)"
    ]
@@ -129,7 +129,7 @@
    "outputs": [],
    "source": [
     "# create the model matrix for the linear heterogeneity\n",
-    "linear_het_formula <- '~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)'\n",
+    "linear_het_formula <- \"~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
     "Zhet <- model.matrix(as.formula(linear_het_formula), data = Z)\n",
     "Zhet <- center_colmeans(Zhet)"
    ]
@@ -156,7 +156,7 @@
    "source": [
     "# create the model matrix for the higher order heterogeneity\n",
     "Zhet <- as.data.frame(cbind(Zhet, \"sex\" = Z$sex))\n",
-    "nonlin_het_formula <- '~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)'\n",
+    "nonlin_het_formula <- \"~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
     "Zinteractions <- model.matrix(as.formula(nonlin_het_formula), data = Zhet)\n",
     "interaction_cols <- Zinteractions[, grepl(\"sex\", colnames(Zinteractions))]"
    ]
