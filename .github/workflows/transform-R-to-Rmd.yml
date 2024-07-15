@@ -76,7 +76,6 @@ jobs:
 
       - name: Execute R scripts and log output
         id: execute
-        continue-on-error: true
         run: |
           log_file="${{ matrix.directory }}_r_script_execution.log"
           R -e '
@@ -91,7 +90,7 @@ jobs:
                   source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(file = gitrfile, message = e$message)
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message)
                 }
               )
             }
@@ -103,20 +102,15 @@ jobs:
                 cat("Error found in file:", error$gitrfile, "\n")
                 cat("Error message:", error$message, "\n")
               }
+              quit(status = 1, save = "no")  # Exit with an error status if errors are found
             }
           '
+
       - name: Upload execution log
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.directory }}-r-script-execution-log
           path: ${{ matrix.directory }}_r_script_execution.log
-
-      - name: Fail if errors found
-        if: failure()
-        run: exit 1
-
-      - name: Delete execution log
-        run: rm ${{ matrix.directory }}_r_script_execution.log
 
       - name: Zip .R files
         run: |
