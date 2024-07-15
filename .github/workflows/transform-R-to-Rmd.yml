@@ -61,7 +61,8 @@ jobs:
         run: |
           R -e '
             library(lintr)
-            linters <- with_defaults(line_length_linter = line_length_linter(120))
+            linters <- with_defaults(line_length_linter = line_length_linter(120),
+                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase")))
             rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
             results <- lapply(rmd_files, function(file) {
               lints <- lint(file, linters)
@@ -140,6 +141,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
           git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }}'
+          git pull
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
