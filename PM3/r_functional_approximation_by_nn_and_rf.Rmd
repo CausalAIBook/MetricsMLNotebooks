@@ -1,0 +1,184 @@
+---
+title: An R Markdown document converted from "PM3/r_functional_approximation_by_nn_and_rf.irnb"
+output: html_document
+---
+
+# Functional Approximations by Trees and Neural Networks
+
+Here we show how the function
+$$
+x \mapsto exp(4 x)
+$$
+can be easily approximated by a tree-based methods (Trees, Random Forest) and a neural network (2 Layered Neural Network)
+
+```{r}
+install.packages("randomForest")
+install.packages("rpart")
+install.packages("gbm")
+install.packages("keras")
+
+
+library(randomForest)
+library(rpart)
+library(gbm)
+library(keras)
+```
+
+# Functional Approximation by a Tree
+
+We play around with the penalty level $cp$ below to illustrate how it affects the complexity of tree. Recall we may use this to prune the tree to improve predictive performance and lessen the noise in our final estimate. A simple penalty would be the number of leaves times a penalty level $\alpha$.
+
+Specifics on the penalty can be found [here](https://cran.r-project.org/web/packages/rpart/rpart.pdf).
+
+```{r}
+set.seed(1)
+X_train <- matrix(runif(1000),1000,1)
+Y_train <- exp(4*X_train)  #Noiseless case  Y=g(X)
+dim(X_train)
+
+
+# shallow tree
+TreeModel<- rpart(Y_train~X_train, cp=.01)  #cp is penalty level
+pred.TM<- predict(TreeModel, newx=X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.TM, col=3, pch=19)
+```
+
+```{r}
+set.seed(1)
+X_train <- matrix(runif(1000),1000,1)
+Y_train <- exp(4*X_train)  #Noiseless case  Y=g(X)
+dim(X_train)
+
+
+TreeModel<- rpart(Y_train~X_train, cp=.0005)  #cp is penalty level
+pred.TM<- predict(TreeModel, newx=X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.TM, col=3, pch=19)
+```
+
+# Functional Approximation by RF
+
+Here we show how the function
+$$
+x \mapsto exp(4 x)
+$$
+can be easily approximated by a tree-based method (Random Forest) and a neural network (2 Layered Neural Network)
+
+```{r}
+RFmodel<- randomForest(Y_train~X_train)
+pred.RF<- predict(RFmodel, newdata=X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.RF, col=4,  pch=19,)
+```
+
+# Boosted Trees
+
+```{r}
+data_train = as.data.frame(cbind(X_train, Y_train))
+BoostTreemodel<- gbm(Y_train~X_train, distribution= "gaussian",  n.trees=100, shrinkage=.01, interaction.depth
+=3)
+# shrinkage is "learning rate"
+# n.trees is the number of boosting steps
+# interaction.depth is the max depth of each tree
+pred.BT<- predict(BoostTreemodel, newdata=data_train, n.trees=100)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.BT, col=4,  pch=19,)
+```
+
+```{r}
+data_train = as.data.frame(cbind(X_train, Y_train))
+BoostTreemodel<- gbm(Y_train~X_train, distribution= "gaussian",  n.trees=1000, shrinkage=.01, interaction.depth
+=3)
+# shrinkage is "learning rate"
+# n.trees is the number of boosting steps
+# interaction.depth is the max depth of each tree
+pred.BT<- predict(BoostTreemodel, newdata=data_train, n.trees=1000)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.BT, col=4,  pch=19,)
+```
+
+# Same Example with a Neural Network
+
+```{r}
+build_model <- function() {
+  model <- keras_model_sequential() %>%
+    layer_dense(units = 200, activation = "relu",
+                input_shape = 1)%>%
+   layer_dense(units = 20, activation = "relu") %>%
+    layer_dense(units = 1)
+
+  model %>% compile(
+    optimizer = optimizer_adam(lr = 0.01),
+    loss = "mse",
+    metrics = c("mae"),
+  )
+}
+```
+
+```{r}
+model <- build_model()
+summary(model)
+```
+
+```{r}
+num_epochs <- 1
+model %>% fit(X_train, Y_train,
+                    epochs = num_epochs, batch_size = 10, verbose = 0)
+pred.NN <- model %>% predict(X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.NN, col=4,  pch=19,)
+
+```
+
+```{r}
+num_epochs <- 100
+model %>% fit(X_train, Y_train,
+                    epochs = num_epochs, batch_size = 10, verbose = 0)
+pred.NN <- model %>% predict(X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.NN, col=4,  pch=19,)
+
+
+```
+
+### Using Early Stopping
+
+```{r}
+# Define the neural network architecture
+model <- keras_model_sequential() %>%
+  layer_dense(units = 200, activation = 'relu', input_shape = 1) %>%
+  layer_dense(units = 20, activation = 'relu') %>%
+  layer_dense(units = 1)  # Output layer with 1 unit for regression task
+
+# Compile the model
+model %>% compile(
+  optimizer = optimizer_adam(lr = 0.01),
+  loss = "mse",
+  metrics = c("mae"),
+)
+
+summary(model)
+```
+
+```{r}
+num_epochs <- 100
+
+# Define early stopping based on validation set (20%) performance
+early_stopping <- callback_early_stopping(monitor = 'val_loss', patience = 5)  # Patience set to 5 epochs (default in skorch is 5)
+
+# Train the model
+model %>% fit(
+  X_train, Y_train,
+  epochs = num_epochs,
+  batch_size = 10,
+  validation_split = 0.2,  # 20% validation set
+  verbose = 0,
+  callbacks = list(early_stopping)
+)
+
+pred.NN <- model %>% predict(X_train)
+plot(X_train, Y_train, type="p", pch=19, xlab="z", ylab="g(z)")
+points(X_train, pred.NN, col=4,  pch=19,)
+```
+
