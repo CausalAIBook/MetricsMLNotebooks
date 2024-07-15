@@ -40,14 +40,12 @@
     "install.packages(\"rpart\")\n",
     "install.packages(\"gbm\")\n",
     "install.packages(\"keras\")\n",
-    "install.packages(\"magrittr\")\n",
     "\n",
     "\n",
     "library(randomForest)\n",
     "library(rpart)\n",
     "library(gbm)\n",
-    "library(keras)\n",
-    "library(magrittr)"
+    "library(keras)"
    ]
   },
   {
