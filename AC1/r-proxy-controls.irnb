@@ -1,338 +1,338 @@
 {
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": []
-    },
-    "kernelspec": {
-      "name": "ir",
-      "display_name": "R"
-    },
-    "language_info": {
-      "name": "R"
-    }
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "6GIJSF7hQ544"
+   },
+   "source": [
+    "# Negative (Proxy) Controls for Unobserved Confounding"
+   ]
   },
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# Negative (Proxy) Controls for Unobserved Confounding"
-      ],
-      "metadata": {
-        "id": "6GIJSF7hQ544"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Consider the following SEM, where $Y$ is the outcome, $D$ is the treatment, $A$ is some unobserved confounding, and $Q$, $X$, $S$ are the observed covariates. In particular, $Q$ is considered to be the proxy control treatment as it a priori has no effect on the actual outcome $Y$, and $S$ is considered to be the proxy control outcome as it a priori is not affected by the actual treatment $D$. See also [An Introduction to Proximal Causal Learning](https://arxiv.org/pdf/2009.10982.pdf), for more information on this setting.\n",
-        "\n",
-        "![proxy_dag.png](https://raw.githubusercontent.com/stanford-msande228/winter23/main/proxy_dag.png)"
-      ],
-      "metadata": {
-        "id": "fJom98ALQ7oY"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Under linearity assumptions, the average treatment effect can be estimated by solving the vector of moment equations:\n",
-        "\\begin{align}\n",
-        "E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) \\left(\\begin{aligned}\\tilde{D}\\\\ \\tilde{Q}\\end{aligned}\\right) \\right] = 0\n",
-        "\\end{align}\n",
-        "where for every variable $V$ we denote with $\\tilde{V} = V - E[V|X]$.\n",
-        "\n",
-        "When the dimension of the proxy treatment variables $Q$ is larger than the dimension of proxy outcome variables $S$, then the above system of equations is over-identified. In these settings, we first project the \"technical instrument\" variables $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$ onto the space of \"technical treatment\" variables $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ and use the projected $\\tilde{V}$ as a new \"technical instrument\". In particular, we run an OLS regression of $\\tilde{W}$ on $\\tilde{V},$ and define $\\tilde{Z} = E[\\tilde{W}\\mid \\tilde{V}] = B \\tilde{V}$, where the $t$-th row $\\beta_t$ of the matrix $B$ is the OLS coefficient in the regression of $\\tilde{W}_t$ on $\\tilde{V}$. These new variables $\\tilde{Z}$, can also be viewed as engineered technical instrumental variables. Then we have the exactly identified system of equations:\n",
-        "\\begin{align}\n",
-        "E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) \\tilde{Z} \\right] := E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) B \\left(\\begin{aligned}\\tilde{D}\\\\ \\tilde{Q}\\end{aligned}\\right) \\right] = 0\n",
-        "\\end{align}\n",
-        "\n",
-        "The solution to this system of equations is numerically equivalent to the following two stage algorithm:\n",
-        "- Run OLS of $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ on $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$\n",
-        "- Define $\\tilde{Z}$ as the predictions of the OLS model\n",
-        "- Run OLS of $\\tilde{Y}$ on $\\tilde{Z}$.\n",
-        "This is the well-known Two-Stage-Least-Squares (2SLS) algorithm for instrumental variable regression."
-      ],
-      "metadata": {
-        "id": "KM447zRQREMP"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Since we're considering only linear models and in a low-dimensional setting, we'll focus on just using linear IV methods."
-      ],
-      "metadata": {
-        "id": "WC_ssbHee1bO"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "install.packages(\"hdm\")\n",
-        "\n",
-        "library(hdm)\n",
-        "\n",
-        "set.seed(1)"
-      ],
-      "metadata": {
-        "id": "s8ANZZ8sRF3C"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# Analyzing Simulated Data\n",
-        "\n",
-        "First, let's evaluate the methods on simulated data generated from a linear SEM characterized by the above DAG. For this simulation, we'll set the ATE to 2."
-      ],
-      "metadata": {
-        "id": "TYBp5cB3fTVB"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "gen_data <- function(n, ate) {\n",
-        "  X <- matrix(rnorm(n * 10), ncol = 10)\n",
-        "  A <- 2 * X[, 1] + rnorm(n)\n",
-        "  Q <- 10 * A + 2 * X[, 1] + rnorm(n)\n",
-        "  S <- 5 * A + X[, 1] + rnorm(n)\n",
-        "  D <- Q - A + 2 * X[, 1] + rnorm(n)\n",
-        "  Y <- ate * D + 5 * A + 2 * S + 0.5 * X[, 1] + rnorm(n)\n",
-        "  return(list(X, A, Q, S, D, Y))\n",
-        "}"
-      ],
-      "metadata": {
-        "id": "hLFCX0YnfUfv"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "data_list <- gen_data(5000, 2)\n",
-        "X <- data_list[[1]]\n",
-        "A <- data_list[[2]]\n",
-        "Q <- data_list[[3]]\n",
-        "S <- data_list[[4]]\n",
-        "D <- data_list[[5]]\n",
-        "Y <- data_list[[6]]"
-      ],
-      "metadata": {
-        "id": "jwNPCZT8fxDW"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We define the technical instrument $V=(D, Q)$ and technical treatment $W=(D, S)$. Estimating the treatement effect is then just a matter of solving an instrument variable regression problem with instruments $V$ and treatments $W$ and looking at the first coefficient associated with $D$."
-      ],
-      "metadata": {
-        "id": "64UHEtu1f8BU"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "W = cbind(D,S)\n",
-        "V = cbind(D,Q)"
-      ],
-      "metadata": {
-        "id": "fSZ0AyGyf7Mn"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "piv <- tsls(X, W, Y, V, homoscedastic = FALSE)\n",
-        "cat('Estimated coefficient:',piv$coefficients['D',1],'\\n')\n",
-        "cat('Standard error:',piv$se['D'],'\\n')"
-      ],
-      "metadata": {
-        "id": "9inuCWFCg8pc"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# With Cross-Fitting\n",
-        "\n",
-        "We can also consider partialling out the controls using DML with cross-fitting"
-      ],
-      "metadata": {
-        "id": "ewgCBYN6lCu4"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "lm.DML.for.PROXYIV <- function(x, d, q, s, y, dreg, qreg, yreg, sreg, nfold=5) {\n",
-        "  # this implements DML for a partially linear IV model\n",
-        "  nobs <- nrow(x)\n",
-        "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)]\n",
-        "  I <- split(1:nobs, foldid)\n",
-        "  # create residualized objects to fill\n",
-        "  ytil <- dtil <- qtil<- stil <- rep(NA, nobs)\n",
-        "  # obtain cross-fitted residuals\n",
-        "  cat(\"fold: \")\n",
-        "  for(b in 1:length(I)){\n",
-        "    dfit <- dreg(x[-I[[b]],], d[-I[[b]]])  #take a fold out\n",
-        "    qfit <- qreg(x[-I[[b]],], q[-I[[b]]])  #take a fold out\n",
-        "    yfit <- yreg(x[-I[[b]],], y[-I[[b]]])  #take a fold out\n",
-        "    sfit <- sreg(x[-I[[b]],], s[-I[[b]]])  #take a fold out\n",
-        "    dtil[I[[b]]] <- (d[I[[b]]] - x[I[[b]],]%*%as.matrix(dfit$coefficients)) #record residual\n",
-        "    qtil[I[[b]]] <- (q[I[[b]]] - x[I[[b]],]%*%as.matrix(qfit$coefficients)) #record residual\n",
-        "    ytil[I[[b]]] <- (y[I[[b]]] - x[I[[b]],]%*%as.matrix(yfit$coefficients)) #record residial\n",
-        "    stil[I[[b]]] <- (s[I[[b]]] - x[I[[b]],]%*%as.matrix(sfit$coefficients)) #record residual\n",
-        "    cat(b,\" \")\n",
-        "  }\n",
-        "  ivfit= tsls(y=ytil,d=cbind(dtil,stil), x=NULL, z=cbind(dtil,qtil), intercept=FALSE, homoscedastic = FALSE)\n",
-        "  coef.est <-  ivfit$coef[1]          #extract coefficient\n",
-        "  se <-  ivfit$se[1]                  #record standard error\n",
-        "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))\n",
-        "  return( list(coef.est =coef.est , se=se, dtil=dtil, qtil = qtil, ytil=ytil, stil=stil, foldid=foldid, spI = I) )\n",
-        "}"
-      ],
-      "metadata": {
-        "id": "59a2apIRlImz"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "We'll just use OLS for partialling out again. We could of course try something more elaborate if we wanted."
-      ],
-      "metadata": {
-        "id": "wcytUEblmIB6"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
-        "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
-        "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
-        "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
-        "\n",
-        "DML.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)\n"
-      ],
-      "metadata": {
-        "id": "oYx9OoxnmAYq"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "## Real Data - Effects of Smoking on Birth Weight"
-      ],
-      "metadata": {
-        "id": "23OIAhYa84ng"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "In this study, we will be studying the effects of smoking on baby weight. We will consider the following stylized setup:\n",
-        "\n",
-        "Outcome ($Y$): baby weight\n",
-        "\n",
-        "Treatment ($D$): smoking\n",
-        "\n",
-        "Unobserved confounding ($A$): family income\n",
-        "\n",
-        "The observed covariates are put in to 3 groups:\n",
-        "\n",
-        "\n",
-        "*   Proxy treatment control ($Q$): mother's education\n",
-        "*   Proxy outcome control ($S$): parity (total number of previous pregnancies)\n",
-        "*   Other observed covariates ($X$): mother's race and age\n",
-        "\n",
-        "\n",
-        "Education serves as a proxy treatment control $Q$ because it reflects unobserved confounding due to household income $A$ but has no direct medical effect on birth weight $Y$. Parity serves as a proxy outcome control $S$ because family size reflects household income $A$ but is not directly caused by smoking $D$ or education $Q$.\n",
-        "\n",
-        "A description of the data used can be found [here](https://www.stat.berkeley.edu/users/statlabs/data/babies.readme)."
-      ],
-      "metadata": {
-        "id": "qFG-RtmR85rv"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "data <- read.table(\"https://www.stat.berkeley.edu/users/statlabs/data/babies23.data\", header = TRUE)\n",
-        "summary(data)"
-      ],
-      "metadata": {
-        "id": "6FjiuPrt8_rk"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Filter data to exclude entries where income, number of cigarettes smoked,\n",
-        "# race, age are not asked or not known\n",
-        "data = data[data$race != 99, ]\n",
-        "data = data[!(data$number %in% c(98,99)), ]\n",
-        "data = data[!(data$inc %in% c(98,99)), ]\n",
-        "data = data[data$age != 99, ]\n",
-        "dim(data)"
-      ],
-      "metadata": {
-        "id": "ooZVwo0y-H9E"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Create matrices for X, D, Q, S, A, Y\n",
-        "X <- model.matrix(~0 + C(race) + age, data)\n",
-        "D <- model.matrix(~0 + number, data)\n",
-        "Q <- model.matrix(~0 + ed, data)\n",
-        "S <- model.matrix(~0 + parity, data)\n",
-        "A <- model.matrix(~0 + inc, data)\n",
-        "Y <- model.matrix(~0 + wt, data)"
-      ],
-      "metadata": {
-        "id": "8vv9F6fe_AoI"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Use cross-fitting with OLS to estimate treatment effect within linear model context\n",
-        "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
-        "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
-        "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
-        "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
-        "\n",
-        "DML.bw.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)"
-      ],
-      "metadata": {
-        "id": "E-KCdxFH_TtC"
-      },
-      "execution_count": null,
-      "outputs": []
-    }
-  ]
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "fJom98ALQ7oY"
+   },
+   "source": [
+    "Consider the following SEM, where $Y$ is the outcome, $D$ is the treatment, $A$ is some unobserved confounding, and $Q$, $X$, $S$ are the observed covariates. In particular, $Q$ is considered to be the proxy control treatment as it a priori has no effect on the actual outcome $Y$, and $S$ is considered to be the proxy control outcome as it a priori is not affected by the actual treatment $D$. See also [An Introduction to Proximal Causal Learning](https://arxiv.org/pdf/2009.10982.pdf), for more information on this setting.\n",
+    "\n",
+    "![proxy_dag.png](https://raw.githubusercontent.com/stanford-msande228/winter23/main/proxy_dag.png)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "KM447zRQREMP"
+   },
+   "source": [
+    "Under linearity assumptions, the average treatment effect can be estimated by solving the vector of moment equations:\n",
+    "\\begin{align}\n",
+    "E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) \\left(\\begin{aligned}\\tilde{D}\\\\ \\tilde{Q}\\end{aligned}\\right) \\right] = 0\n",
+    "\\end{align}\n",
+    "where for every variable $V$ we denote with $\\tilde{V} = V - E[V|X]$.\n",
+    "\n",
+    "When the dimension of the proxy treatment variables $Q$ is larger than the dimension of proxy outcome variables $S$, then the above system of equations is over-identified. In these settings, we first project the \"technical instrument\" variables $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$ onto the space of \"technical treatment\" variables $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ and use the projected $\\tilde{V}$ as a new \"technical instrument\". In particular, we run an OLS regression of $\\tilde{W}$ on $\\tilde{V},$ and define $\\tilde{Z} = E[\\tilde{W}\\mid \\tilde{V}] = B \\tilde{V}$, where the $t$-th row $\\beta_t$ of the matrix $B$ is the OLS coefficient in the regression of $\\tilde{W}_t$ on $\\tilde{V}$. These new variables $\\tilde{Z}$, can also be viewed as engineered technical instrumental variables. Then we have the exactly identified system of equations:\n",
+    "\\begin{align}\n",
+    "E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) \\tilde{Z} \\right] := E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) B \\left(\\begin{aligned}\\tilde{D}\\\\ \\tilde{Q}\\end{aligned}\\right) \\right] = 0\n",
+    "\\end{align}\n",
+    "\n",
+    "The solution to this system of equations is numerically equivalent to the following two stage algorithm:\n",
+    "- Run OLS of $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ on $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$\n",
+    "- Define $\\tilde{Z}$ as the predictions of the OLS model\n",
+    "- Run OLS of $\\tilde{Y}$ on $\\tilde{Z}$.\n",
+    "This is the well-known Two-Stage-Least-Squares (2SLS) algorithm for instrumental variable regression."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "WC_ssbHee1bO"
+   },
+   "source": [
+    "Since we're considering only linear models and in a low-dimensional setting, we'll focus on just using linear IV methods."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "s8ANZZ8sRF3C"
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"hdm\")\n",
+    "\n",
+    "library(hdm)\n",
+    "\n",
+    "set.seed(1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "TYBp5cB3fTVB"
+   },
+   "source": [
+    "# Analyzing Simulated Data\n",
+    "\n",
+    "First, let's evaluate the methods on simulated data generated from a linear SEM characterized by the above DAG. For this simulation, we'll set the ATE to 2."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "hLFCX0YnfUfv"
+   },
+   "outputs": [],
+   "source": [
+    "gen_data <- function(n, ate) {\n",
+    "  X <- matrix(rnorm(n * 10), ncol = 10)\n",
+    "  A <- 2 * X[, 1] + rnorm(n)\n",
+    "  Q <- 10 * A + 2 * X[, 1] + rnorm(n)\n",
+    "  S <- 5 * A + X[, 1] + rnorm(n)\n",
+    "  D <- Q - A + 2 * X[, 1] + rnorm(n)\n",
+    "  Y <- ate * D + 5 * A + 2 * S + 0.5 * X[, 1] + rnorm(n)\n",
+    "  return(list(X, A, Q, S, D, Y))\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "jwNPCZT8fxDW"
+   },
+   "outputs": [],
+   "source": [
+    "data_list <- gen_data(5000, 2)\n",
+    "X <- data_list[[1]]\n",
+    "A <- data_list[[2]]\n",
+    "Q <- data_list[[3]]\n",
+    "S <- data_list[[4]]\n",
+    "D <- data_list[[5]]\n",
+    "Y <- data_list[[6]]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "64UHEtu1f8BU"
+   },
+   "source": [
+    "We define the technical instrument $V=(D, Q)$ and technical treatment $W=(D, S)$. Estimating the treatement effect is then just a matter of solving an instrument variable regression problem with instruments $V$ and treatments $W$ and looking at the first coefficient associated with $D$."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "fSZ0AyGyf7Mn"
+   },
+   "outputs": [],
+   "source": [
+    "W = cbind(D,S)\n",
+    "V = cbind(D,Q)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "9inuCWFCg8pc"
+   },
+   "outputs": [],
+   "source": [
+    "piv <- tsls(X, W, Y, V, homoscedastic = FALSE)\n",
+    "cat('Estimated coefficient:',piv$coefficients['D',1],'\\n')\n",
+    "cat('Standard error:',piv$se['D'],'\\n')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "ewgCBYN6lCu4"
+   },
+   "source": [
+    "# With Cross-Fitting\n",
+    "\n",
+    "We can also consider partialling out the controls using DML with cross-fitting"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "59a2apIRlImz"
+   },
+   "outputs": [],
+   "source": [
+    "lm.DML.for.PROXYIV <- function(x, d, q, s, y, dreg, qreg, yreg, sreg, nfold=5) {\n",
+    "  # this implements DML for a partially linear IV model\n",
+    "  nobs <- nrow(x)\n",
+    "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)]\n",
+    "  I <- split(1:nobs, foldid)\n",
+    "  # create residualized objects to fill\n",
+    "  ytil <- dtil <- qtil<- stil <- rep(NA, nobs)\n",
+    "  # obtain cross-fitted residuals\n",
+    "  cat(\"fold: \")\n",
+    "  for(b in 1:length(I)){\n",
+    "    dfit <- dreg(x[-I[[b]],], d[-I[[b]]])  #take a fold out\n",
+    "    qfit <- qreg(x[-I[[b]],], q[-I[[b]]])  #take a fold out\n",
+    "    yfit <- yreg(x[-I[[b]],], y[-I[[b]]])  #take a fold out\n",
+    "    sfit <- sreg(x[-I[[b]],], s[-I[[b]]])  #take a fold out\n",
+    "    dtil[I[[b]]] <- (d[I[[b]]] - x[I[[b]],]%*%as.matrix(dfit$coefficients)) #record residual\n",
+    "    qtil[I[[b]]] <- (q[I[[b]]] - x[I[[b]],]%*%as.matrix(qfit$coefficients)) #record residual\n",
+    "    ytil[I[[b]]] <- (y[I[[b]]] - x[I[[b]],]%*%as.matrix(yfit$coefficients)) #record residial\n",
+    "    stil[I[[b]]] <- (s[I[[b]]] - x[I[[b]],]%*%as.matrix(sfit$coefficients)) #record residual\n",
+    "    cat(b,\" \")\n",
+    "  }\n",
+    "  ivfit= tsls(y=ytil,d=cbind(dtil,stil), x=NULL, z=cbind(dtil,qtil), intercept=FALSE, homoscedastic = FALSE)\n",
+    "  coef.est <-  ivfit$coef[1]          #extract coefficient\n",
+    "  se <-  ivfit$se[1]                  #record standard error\n",
+    "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))\n",
+    "  return( list(coef.est =coef.est , se=se, dtil=dtil, qtil = qtil, ytil=ytil, stil=stil, foldid=foldid, spI = I) )\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "wcytUEblmIB6"
+   },
+   "source": [
+    "We'll just use OLS for partialling out again. We could of course try something more elaborate if we wanted."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "oYx9OoxnmAYq"
+   },
+   "outputs": [],
+   "source": [
+    "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
+    "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
+    "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
+    "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
+    "\n",
+    "DML.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "23OIAhYa84ng"
+   },
+   "source": [
+    "## Real Data - Effects of Smoking on Birth Weight"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "qFG-RtmR85rv"
+   },
+   "source": [
+    "In this study, we will be studying the effects of smoking on baby weight. We will consider the following stylized setup:\n",
+    "\n",
+    "Outcome ($Y$): baby weight\n",
+    "\n",
+    "Treatment ($D$): smoking\n",
+    "\n",
+    "Unobserved confounding ($A$): family income\n",
+    "\n",
+    "The observed covariates are put in to 3 groups:\n",
+    "\n",
+    "\n",
+    "*   Proxy treatment control ($Q$): mother's education\n",
+    "*   Proxy outcome control ($S$): parity (total number of previous pregnancies)\n",
+    "*   Other observed covariates ($X$): mother's race and age\n",
+    "\n",
+    "\n",
+    "Education serves as a proxy treatment control $Q$ because it reflects unobserved confounding due to household income $A$ but has no direct medical effect on birth weight $Y$. Parity serves as a proxy outcome control $S$ because family size reflects household income $A$ but is not directly caused by smoking $D$ or education $Q$.\n",
+    "\n",
+    "A description of the data used can be found [here](https://www.stat.berkeley.edu/users/statlabs/data/babies.readme)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "6FjiuPrt8_rk"
+   },
+   "outputs": [],
+   "source": [
+    "data <- read.table(\"https://www.stat.berkeley.edu/users/statlabs/data/babies23.data\", header = TRUE)\n",
+    "summary(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "ooZVwo0y-H9E"
+   },
+   "outputs": [],
+   "source": [
+    "# Filter data to exclude entries where income, number of cigarettes smoked,\n",
+    "# race, age are not asked or not known\n",
+    "data = data[data$race != 99, ]\n",
+    "data = data[!(data$number %in% c(98,99)), ]\n",
+    "data = data[!(data$inc %in% c(98,99)), ]\n",
+    "data = data[data$age != 99, ]\n",
+    "dim(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "8vv9F6fe_AoI"
+   },
+   "outputs": [],
+   "source": [
+    "# Create matrices for X, D, Q, S, A, Y\n",
+    "X <- model.matrix(~0 + C(race) + age, data)\n",
+    "D <- model.matrix(~0 + number, data)\n",
+    "Q <- model.matrix(~0 + ed, data)\n",
+    "S <- model.matrix(~0 + parity, data)\n",
+    "A <- model.matrix(~0 + inc, data)\n",
+    "Y <- model.matrix(~0 + wt, data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "E-KCdxFH_TtC"
+   },
+   "outputs": [],
+   "source": [
+    "# Use cross-fitting with OLS to estimate treatment effect within linear model context\n",
+    "dreg <- function(x,d){ lm.fit(x, d) }  #ML method=ols\n",
+    "qreg <- function(x,q){ lm.fit(x, q) }  #ML method=ols\n",
+    "yreg <- function(x,y){ lm.fit(x, y) }  #ML method=ols\n",
+    "sreg <- function(x,s){ lm.fit(x, s) }  #ML method=ols\n",
+    "\n",
+    "DML.bw.piv = lm.DML.for.PROXYIV(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold=5)"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "name": "R"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
 }
