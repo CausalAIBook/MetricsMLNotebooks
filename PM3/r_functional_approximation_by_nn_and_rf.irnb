@@ -337,7 +337,6 @@
    "outputs": [],
    "source": [
     "build_model <- function() {\n",
-    "  require(magrittr)\n",
     "\n",
     "  model <- keras::keras_model_sequential() %>%\n",
     "    keras::layer_dense(\n",
