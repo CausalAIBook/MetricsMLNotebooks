@@ -80,7 +80,7 @@
         "library(xtable)\n",
         "library(lmtest)\n",
         "library(sandwich)\n",
-        "library(glmnet)  # For LassoCV\n",
+        "library(glmnet) # For LassoCV\n",
         "library(ggplot2)"
       ]
     },
@@ -138,8 +138,7 @@
       },
       "outputs": [],
       "source": [
-        "getdata <- function(...)\n",
-        "{\n",
+        "getdata <- function(...) {\n",
         "  e <- new.env()\n",
         "  name <- data(..., envir = e)[1]\n",
         "  e[[name]]\n",
@@ -631,21 +630,21 @@
         }
       ],
       "source": [
-        "fit <- lm(Outcome ~ ., data=X)\n",
+        "fit <- lm(Outcome ~ ., data = X)\n",
         "est <- summary(fit)$coef[\"gdpsh465\", 1]\n",
         "\n",
-        "hcv.coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
-        "se <- sqrt(diag(hcv.coefs))[2] # Estimated std errors\n",
+        "hcv_coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
+        "se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
         "\n",
         "# print unconditional effect of gdpsh465 and the corresponding standard error\n",
         "cat (\"The estimated coefficient on gdpsh465 is\", est,\n",
         "     \" and the corresponding robust standard error is\", se)\n",
         "\n",
         "# Calculate the 95% confidence interval for 'gdpsh465'\n",
-        "lower.ci <- est - 1.96 * se\n",
-        "upper.ci <- est + 1.96 * se\n",
+        "lower_ci <- est - 1.96 * se\n",
+        "upper_ci <- est + 1.96 * se\n",
         "\n",
-        "cat (\"95% Confidence Interval: [\", lower.ci, \",\", upper.ci, \"]\")"
+        "cat(\"95% Confidence Interval: [\", lower_ci, \",\", upper_ci, \"]\")"
       ]
     },
     {
@@ -727,7 +726,7 @@
       "outputs": [],
       "source": [
         "y <- growth$Outcome\n",
-        "W <- growth[-which(colnames(growth) %in% c('Outcome', 'intercept', 'gdpsh465'))]\n",
+        "W <- growth[-which(colnames(growth) %in% c(\"Outcome\", \"intercept\", \"gdpsh465\"))]\n",
         "D <- growth$gdpsh465"
       ]
     },
@@ -925,7 +924,7 @@
       },
       "outputs": [],
       "source": [
-        "tmp_df = as.data.frame(cbind(res_y, res_d))\n",
+        "tmp_df <- as.data.frame(cbind(res_y, res_d))\n",
         "colnames(tmp_df) = c(\"res_y\", \"res_D\")"
       ]
     },
@@ -1058,20 +1057,20 @@
         "# Plot Outcome Lasso-CV Model\n",
         "ggplot(data = results_y, aes(x = Alphas, y = OutOfSampleR2)) +\n",
         "  geom_line() +\n",
-        "    labs(\n",
-        "      title = \"Outcome Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
-        "      x = \"Penalty Level\",\n",
-        "      y = \"Out-of-sample R-squared\"\n",
-        "    )\n",
+        "  labs(\n",
+        "    title = \"Outcome Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
+        "    x = \"Penalty Level\",\n",
+        "    y = \"Out-of-sample R-squared\"\n",
+        "  )\n",
         "\n",
         "# Plot Treatment Lasso-CV Model\n",
         "ggplot(data = results_d, aes(x = (Alphas), y = OutOfSampleR2)) +\n",
         "  geom_line() +\n",
-        "    labs(\n",
-        "      title = \"Treatment Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
-        "      x = \"Penalty Level\",\n",
-        "      y = \"Out-of-sample R-squared\"\n",
-        "    )\n"
+        "  labs(\n",
+        "    title = \"Treatment Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
+        "    x = \"Penalty Level\",\n",
+        "    y = \"Out-of-sample R-squared\"\n",
+        "  )\n"
       ]
     }
   ],
