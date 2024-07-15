@@ -5,6 +5,7 @@
       "metadata": {
         "_execution_state": "idle",
         "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
+        "id": "dtt9U13qNGOn",
         "papermill": {
           "duration": 0.036479,
           "end_time": "2021-02-13T18:19:43.396666",
@@ -12,8 +13,7 @@
           "start_time": "2021-02-13T18:19:43.360187",
           "status": "completed"
         },
-        "tags": [],
-        "id": "dtt9U13qNGOn"
+        "tags": []
       },
       "source": [
         "# A Simple Case Study using Wage Data from 2015"
@@ -22,6 +22,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "LCKYnHWrNGOn",
         "papermill": {
           "duration": 0.036639,
           "end_time": "2021-02-13T18:19:43.468425",
@@ -29,8 +30,7 @@
           "start_time": "2021-02-13T18:19:43.431786",
           "status": "completed"
         },
-        "tags": [],
-        "id": "LCKYnHWrNGOn"
+        "tags": []
       },
       "source": [
         "We illustrate how to predict an outcome variable $Y$ in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. We use linear prediction rules for estimation, including OLS and the penalized linear methods we've studied. Later, we will also consider nonlinear prediction rules including tree-based methods and neural nets."
@@ -38,6 +38,14 @@
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "VPwV7nNDS_nz",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
         "install.packages(\"xtable\")\n",
         "install.packages(\"hdm\")\n",
@@ -48,16 +56,12 @@
         "library(xtable)\n",
         "library(glmnet)\n",
         "library(MLmetrics)"
-      ],
-      "metadata": {
-        "id": "VPwV7nNDS_nz"
-      },
-      "execution_count": null,
-      "outputs": []
+      ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "gRYGynhrNGOo",
         "papermill": {
           "duration": 0.034705,
           "end_time": "2021-02-13T18:19:43.537814",
@@ -65,8 +69,7 @@
           "start_time": "2021-02-13T18:19:43.503109",
           "status": "completed"
         },
-        "tags": [],
-        "id": "gRYGynhrNGOo"
+        "tags": []
       },
       "source": [
         "## Data"
@@ -75,6 +78,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "S_YMURKqNGOo",
         "papermill": {
           "duration": 0.036082,
           "end_time": "2021-02-13T18:19:43.609347",
@@ -82,8 +86,7 @@
           "start_time": "2021-02-13T18:19:43.573265",
           "status": "completed"
         },
-        "tags": [],
-        "id": "S_YMURKqNGOo"
+        "tags": []
       },
       "source": [
         "Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.\n",
@@ -94,6 +97,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "B09_5wrUNGOo",
         "papermill": {
           "duration": 0.279387,
           "end_time": "2021-02-13T18:19:43.923823",
@@ -102,18 +106,21 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "B09_5wrUNGOo"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
+        "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
         "data <- read.csv(file)\n",
-        "dim(data)\n"
+        "dim(data)"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "Ol9dToMQNGOq",
         "papermill": {
           "duration": 0.034902,
           "end_time": "2021-02-13T18:19:43.994834",
@@ -121,8 +128,7 @@
           "start_time": "2021-02-13T18:19:43.959932",
           "status": "completed"
         },
-        "tags": [],
-        "id": "Ol9dToMQNGOq"
+        "tags": []
       },
       "source": [
         "The outcomes $Y_i$'s are hourly (log) wages of never-married workers living in the U.S. The raw regressors $Z_i$'s consist of a variety of characteristics, including experience, education and industry and occupation indicators."
@@ -132,6 +138,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "bsqnI6d0NGOq",
         "papermill": {
           "duration": 0.091723,
           "end_time": "2021-02-13T18:19:44.123394",
@@ -140,17 +147,20 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "bsqnI6d0NGOq"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "Z <- subset(data,select=-c(lwage,wage)) # regressors\n",
+        "Z <- subset(data, select = -c(lwage, wage)) # regressors\n",
         "colnames(Z)"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "VeU2XMYENGOr",
         "papermill": {
           "duration": 0.037074,
           "end_time": "2021-02-13T18:19:44.196749",
@@ -158,8 +168,7 @@
           "start_time": "2021-02-13T18:19:44.159675",
           "status": "completed"
         },
-        "tags": [],
-        "id": "VeU2XMYENGOr"
+        "tags": []
       },
       "source": [
         "The following figure shows the weekly wage distribution from the US survey data."
@@ -169,6 +178,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "d3sbTfpRNGOr",
         "papermill": {
           "duration": 0.443391,
           "end_time": "2021-02-13T18:19:44.677379",
@@ -177,16 +187,19 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "d3sbTfpRNGOr"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "hist(data$wage, xlab= \"hourly wage\", main=\"Empirical wage distribution from the US survey data\", breaks= 35)\n"
+        "hist(data$wage, xlab = \"hourly wage\", main = \"Empirical wage distribution from the US survey data\", breaks = 35)"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "BmGfrWFNNGOs",
         "papermill": {
           "duration": 0.036602,
           "end_time": "2021-02-13T18:19:44.752465",
@@ -194,8 +207,7 @@
           "start_time": "2021-02-13T18:19:44.715863",
           "status": "completed"
         },
-        "tags": [],
-        "id": "BmGfrWFNNGOs"
+        "tags": []
       },
       "source": [
         "Wages show a high degree of skewness. Hence, wages are transformed in almost all studies by\n",
@@ -205,6 +217,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "msBSjtuKNGOs",
         "papermill": {
           "duration": 0.036009,
           "end_time": "2021-02-13T18:19:44.826260",
@@ -212,8 +225,7 @@
           "start_time": "2021-02-13T18:19:44.790251",
           "status": "completed"
         },
-        "tags": [],
-        "id": "msBSjtuKNGOs"
+        "tags": []
       },
       "source": [
         "## Analysis"
@@ -222,6 +234,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "B-XZMCogNGOs",
         "papermill": {
           "duration": 0.036925,
           "end_time": "2021-02-13T18:19:44.899159",
@@ -229,8 +242,7 @@
           "start_time": "2021-02-13T18:19:44.862234",
           "status": "completed"
         },
-        "tags": [],
-        "id": "B-XZMCogNGOs"
+        "tags": []
       },
       "source": [
         "Due to the skewness of the data, we are considering log wages which leads to the following regression model\n",
@@ -241,6 +253,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "pNLS-C_7NGOt",
         "papermill": {
           "duration": 0.036183,
           "end_time": "2021-02-13T18:19:44.971528",
@@ -248,8 +261,7 @@
           "start_time": "2021-02-13T18:19:44.935345",
           "status": "completed"
         },
-        "tags": [],
-        "id": "pNLS-C_7NGOt"
+        "tags": []
       },
       "source": [
         "In this notebook, we will evaluate *linear* prediction rules. In later notebooks, we will also utilize nonlinear prediction methods. In linear models, we estimate the prediction rule of the form\n",
@@ -269,6 +281,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "-kGLyGXvNGOt",
         "papermill": {
           "duration": 0.037318,
           "end_time": "2021-02-13T18:19:45.044959",
@@ -276,8 +289,7 @@
           "start_time": "2021-02-13T18:19:45.007641",
           "status": "completed"
         },
-        "tags": [],
-        "id": "-kGLyGXvNGOt"
+        "tags": []
       },
       "source": [
         "To evaluate the out-of-sample performance, we split the data first."
@@ -287,6 +299,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "oAqJIgmlNGOt",
         "papermill": {
           "duration": 0.062188,
           "end_time": "2021-02-13T18:19:45.143118",
@@ -295,21 +308,24 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "oAqJIgmlNGOt"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
         "set.seed(1234)\n",
-        "training <- sample(nrow(data), nrow(data)*(3/4), replace=FALSE)\n",
+        "training <- sample(nrow(data), nrow(data) * (3 / 4), replace = FALSE)\n",
         "\n",
-        "data_train <- data[training,]\n",
-        "data_test <- data[-training,]"
+        "data_train <- data[training, ]\n",
+        "data_test <- data[-training, ]"
       ]
     },
     {
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "C6qC_wyjNGOu",
         "papermill": {
           "duration": 0.060969,
           "end_time": "2021-02-13T18:19:45.445389",
@@ -318,17 +334,20 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "C6qC_wyjNGOu"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "Y_train <- data_train$lwage\n",
-        "Y_test <- data_test$lwage"
+        "y_train <- data_train$lwage\n",
+        "y_test <- data_test$lwage"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "5-CCjJnbNGOt",
         "papermill": {
           "duration": 0.038774,
           "end_time": "2021-02-13T18:19:45.217757",
@@ -336,8 +355,7 @@
           "start_time": "2021-02-13T18:19:45.178983",
           "status": "completed"
         },
-        "tags": [],
-        "id": "5-CCjJnbNGOt"
+        "tags": []
       },
       "source": [
         "We are starting by running a simple OLS regression. We fit the basic and flexible model to our training data by running an ols regression and compute the R-squared on the test sample"
@@ -346,6 +364,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "qbummAR-NGOu",
         "papermill": {
           "duration": 0.037704,
           "end_time": "2021-02-13T18:19:45.622370",
@@ -353,8 +372,7 @@
           "start_time": "2021-02-13T18:19:45.584666",
           "status": "completed"
         },
-        "tags": [],
-        "id": "qbummAR-NGOu"
+        "tags": []
       },
       "source": [
         "As known from our first lab, the basic model consists of $51$ regressors and the flexible model of $246$ regressors. Let us fit our models to the training sample using the two different model specifications. We are starting by running a simple ols regression and computing the mean squared error and $R^2$ on the test sample."
@@ -362,17 +380,18 @@
     },
     {
       "cell_type": "markdown",
-      "source": [
-        "### Low dimensional specification (basic)"
-      ],
       "metadata": {
         "id": "4LNs__OcfmFV"
-      }
+      },
+      "source": [
+        "### Low dimensional specification (basic)"
+      ]
     },
     {
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "WD7tshOlNGOt",
         "papermill": {
           "duration": 0.094135,
           "end_time": "2021-02-13T18:19:45.347955",
@@ -381,15 +400,17 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "WD7tshOlNGOt"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "X_basic <-  \"sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)\"\n",
-        "formula_basic <- as.formula(paste(\"lwage\", \"~\", X_basic))\n",
-        "model_X_basic_train <- model.matrix(formula_basic,data_train)\n",
-        "model_X_basic_test <- model.matrix(formula_basic,data_test)\n",
-        "p_basic <- dim(model_X_basic_train)[2]\n",
+        "x_basic <- \"sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)\"\n",
+        "formula_basic <- as.formula(paste(\"lwage\", \"~\", x_basic))\n",
+        "model_x_basic_train <- model.matrix(formula_basic, data_train)\n",
+        "model_x_basic_test <- model.matrix(formula_basic, data_test)\n",
+        "p_basic <- dim(model_x_basic_train)[2]\n",
         "p_basic"
       ]
     },
@@ -397,6 +418,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "kx1xoWHFNGOv",
         "papermill": {
           "duration": 0.069537,
           "end_time": "2021-02-13T18:19:45.887169",
@@ -405,20 +427,23 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "kx1xoWHFNGOv"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
         "# ols (basic model)\n",
-        "fit.lm.basic <- lm(formula_basic, data_train)\n",
+        "fit_lm_basic <- lm(formula_basic, data_train)\n",
         "# Compute the Out-Of-Sample Performance\n",
-        "yhat.lm.basic <- predict(fit.lm.basic, newdata=data_test)\n",
-        "cat(\"Basic model MSE (OLS): \", mean((Y_test-yhat.lm.basic)^2)) # MSE OLS (basic model)"
+        "yhat_lm_basic <- predict(fit_lm_basic, newdata = data_test)\n",
+        "cat(\"Basic model MSE (OLS): \", mean((y_test - yhat_lm_basic)^2)) # MSE OLS (basic model)"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "hDlMXF0ANGOw",
         "papermill": {
           "duration": 0.052764,
           "end_time": "2021-02-13T18:19:46.122829",
@@ -426,8 +451,7 @@
           "start_time": "2021-02-13T18:19:46.070065",
           "status": "completed"
         },
-        "tags": [],
-        "id": "hDlMXF0ANGOw"
+        "tags": []
       },
       "source": [
         "To determine the out-of-sample $MSE$ and the standard error in one step, we can use the function *lm*:"
@@ -437,6 +461,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "ERCs22oDNGOw",
         "papermill": {
           "duration": 0.076484,
           "end_time": "2021-02-13T18:19:46.239015",
@@ -445,17 +470,20 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "ERCs22oDNGOw"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "MSE.lm.basic <- summary(lm((Y_test-yhat.lm.basic)^2~1))$coef[1:2]\n",
-        "MSE.lm.basic"
+        "mse_lm_basic <- summary(lm((y_test - yhat_lm_basic)^2 ~ 1))$coef[1:2]\n",
+        "mse_lm_basic"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "3PQ-f_waNGOw",
         "papermill": {
           "duration": 0.039088,
           "end_time": "2021-02-13T18:19:46.317915",
@@ -463,8 +491,7 @@
           "start_time": "2021-02-13T18:19:46.278827",
           "status": "completed"
         },
-        "tags": [],
-        "id": "3PQ-f_waNGOw"
+        "tags": []
       },
       "source": [
         "We also compute the out-of-sample $R^2$:"
@@ -474,6 +501,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "YLgvLE2BNGOw",
         "papermill": {
           "duration": 0.057098,
           "end_time": "2021-02-13T18:19:46.413754",
@@ -482,42 +510,49 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "YLgvLE2BNGOw"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "R2.lm.basic <- 1-MSE.lm.basic[1]/var(Y_test)\n",
-        "cat(\"Basic model R^2 (OLS): \",R2.lm.basic) # MSE OLS (basic model)"
+        "r2_lm_basic <- 1 - mse_lm_basic[1] / var(y_test)\n",
+        "cat(\"Basic model R^2 (OLS): \", r2_lm_basic) # MSE OLS (basic model)"
       ]
     },
     {
       "cell_type": "markdown",
-      "source": [
-        "### High-dimensional specification (flexible)"
-      ],
       "metadata": {
         "id": "tTZyELgyf51J"
-      }
+      },
+      "source": [
+        "### High-dimensional specification (flexible)"
+      ]
     },
     {
       "cell_type": "code",
-      "source": [
-        "X_flex <- \"sex + exp1 + shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)\"\n",
-        "formula_flex <- as.formula(paste(\"lwage\", \"~\", X_flex))\n",
-        "model_X_flex_train <- model.matrix(formula_flex,data_train)\n",
-        "model_X_flex_test <- model.matrix(formula_flex,data_test)\n",
-        "p_flex <- dim(model_X_flex_train)[2]\n",
-        "p_flex"
-      ],
-      "metadata": {
-        "id": "J8Rffx0ef3nM"
-      },
       "execution_count": null,
-      "outputs": []
+      "metadata": {
+        "id": "J8Rffx0ef3nM",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "x_flex <- \"sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we \" +\n",
+        "  \"+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\"\n",
+        "formula_flex <- as.formula(paste(\"lwage\", \"~\", x_flex))\n",
+        "model_x_flex_train <- model.matrix(formula_flex, data_train)\n",
+        "model_x_flex_test <- model.matrix(formula_flex, data_test)\n",
+        "p_flex <- dim(model_x_flex_train)[2]\n",
+        "p_flex"
+      ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "77G7YfbnNGOw",
         "papermill": {
           "duration": 0.039585,
           "end_time": "2021-02-13T18:19:46.492903",
@@ -525,8 +560,7 @@
           "start_time": "2021-02-13T18:19:46.453318",
           "status": "completed"
         },
-        "tags": [],
-        "id": "77G7YfbnNGOw"
+        "tags": []
       },
       "source": [
         "We repeat the same procedure for the flexible model."
@@ -536,6 +570,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "KpRtjaAlNGOw",
         "papermill": {
           "duration": 0.198636,
           "end_time": "2021-02-13T18:19:46.730717",
@@ -544,23 +579,26 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "KpRtjaAlNGOw"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
         "# ols (flexible model)\n",
-        "fit.lm.flex <- lm(formula_flex, data_train)\n",
+        "fit_lm_flex <- lm(formula_flex, data_train)\n",
         "# Compute the Out-Of-Sample Performance\n",
-        "options(warn=-1)\n",
-        "yhat.lm.flex <- predict(fit.lm.flex, newdata=data_test)\n",
-        "MSE.lm.flex <- summary(lm((Y_test-yhat.lm.flex)^2~1))$coef[1:2]\n",
-        "R2.lm.flex <- 1-MSE.lm.flex[1]/var(Y_test)\n",
-        "cat(\"Flexible model R^2 (OLS): \",R2.lm.flex) # MSE OLS (flexible model)"
+        "options(warn = -1)\n",
+        "yhat_lm_flex <- predict(fit_lm_flex, newdata = data_test)\n",
+        "mse_lm_flex <- summary(lm((y_test - yhat_lm_flex)^2 ~ 1))$coef[1:2]\n",
+        "r2_lm_flex <- 1 - mse_lm_flex[1] / var(y_test)\n",
+        "cat(\"Flexible model R^2 (OLS): \", r2_lm_flex) # MSE OLS (flexible model)"
       ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "sShiB-i9NGOx",
         "papermill": {
           "duration": 0.042521,
           "end_time": "2021-02-13T18:19:46.935859",
@@ -568,8 +606,7 @@
           "start_time": "2021-02-13T18:19:46.893338",
           "status": "completed"
         },
-        "tags": [],
-        "id": "sShiB-i9NGOx"
+        "tags": []
       },
       "source": [
         "### Penalized regressions (flexible model)\n",
@@ -581,6 +618,7 @@
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "5wgFVRkkNGOx",
         "papermill": {
           "duration": 0.051953,
           "end_time": "2021-02-13T18:19:46.853182",
@@ -588,8 +626,7 @@
           "start_time": "2021-02-13T18:19:46.801229",
           "status": "completed"
         },
-        "tags": [],
-        "id": "5wgFVRkkNGOx"
+        "tags": []
       },
       "source": [
         "We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We proceed by running penalized regressions first for the flexible model, tuned via cross-validation."
@@ -597,37 +634,41 @@
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "n3jvO5HQmzbf",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
-        "fit.lasso.cv.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=1)\n",
-        "fit.ridge.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=0)\n",
-        "fit.elnet.flex   <- cv.glmnet(model_X_flex_train, Y_train, family=\"gaussian\", alpha=.5)\n",
+        "fit_lasso_cv_flex <- cv.glmnet(model_x_flex_train, y_train, family = \"gaussian\", alpha = 1)\n",
+        "fit_ridge_flex <- cv.glmnet(model_x_flex_train, y_train, family = \"gaussian\", alpha = 0)\n",
+        "fit_elnet_flex <- cv.glmnet(model_x_flex_train, y_train, family = \"gaussian\", alpha = .5)\n",
         "\n",
-        "yhat.lasso.cv.flex    <- predict(fit.lasso.cv.flex , newx = model_X_flex_test)\n",
-        "yhat.ridge.flex    <- predict(fit.ridge.flex , newx = model_X_flex_test)\n",
-        "yhat.elnet.flex    <- predict(fit.elnet.flex , newx = model_X_flex_test)\n",
+        "yhat_lasso_cv_flex <- predict(fit_lasso_cv_flex, newx = model_x_flex_test)\n",
+        "yhat_ridge_flex <- predict(fit_ridge_flex, newx = model_x_flex_test)\n",
+        "yhat_elnet_flex <- predict(fit_elnet_flex, newx = model_x_flex_test)\n",
         "\n",
-        "MSE.lasso.cv.flex  <- summary(lm((Y_test-yhat.lasso.cv.flex )^2~1))$coef[1:2]\n",
-        "MSE.ridge.flex  <- summary(lm((Y_test-yhat.ridge.flex )^2~1))$coef[1:2]\n",
-        "MSE.elnet.flex  <- summary(lm((Y_test-yhat.elnet.flex )^2~1))$coef[1:2]\n",
+        "mse_lasso_cv_flex <- summary(lm((y_test - yhat_lasso_cv_flex)^2 ~ 1))$coef[1:2]\n",
+        "mse_ridge_flex <- summary(lm((y_test - yhat_ridge_flex)^2 ~ 1))$coef[1:2]\n",
+        "mse_elnet_flex <- summary(lm((y_test - yhat_elnet_flex)^2 ~ 1))$coef[1:2]\n",
         "\n",
-        "R2.lasso.cv.flex  <- 1-MSE.lasso.cv.flex [1]/var(Y_test)\n",
-        "R2.ridge.flex  <- 1-MSE.ridge.flex [1]/var(Y_test)\n",
-        "R2.elnet.flex  <- 1-MSE.elnet.flex [1]/var(Y_test)\n",
+        "r2_lasso_cv_flex <- 1 - mse_lasso_cv_flex[1] / var(y_test)\n",
+        "r2_ridge_flex <- 1 - mse_ridge_flex[1] / var(y_test)\n",
+        "r2_elnet_flex <- 1 - mse_elnet_flex[1] / var(y_test)\n",
         "\n",
         "# R^2 using cross-validation (flexible model)\n",
-        "cat('Flexible model R^2 (Lasso): ', R2.lasso.cv.flex)\n",
-        "cat('\\nFlexible model R^2 (Ridge): ', R2.ridge.flex)\n",
-        "cat('\\nFlexible model R^2 (Elastic Net): ', R2.elnet.flex)"
-      ],
-      "metadata": {
-        "id": "n3jvO5HQmzbf"
-      },
-      "execution_count": null,
-      "outputs": []
+        "cat(\"Flexible model R^2 (Lasso): \", r2_lasso_cv_flex)\n",
+        "cat(\"\\nFlexible model R^2 (Ridge): \", r2_ridge_flex)\n",
+        "cat(\"\\nFlexible model R^2 (Elastic Net): \", r2_elnet_flex)"
+      ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "ZytMS-aCNGOx",
         "papermill": {
           "duration": 0.040161,
           "end_time": "2021-02-13T18:19:47.015626",
@@ -635,8 +676,7 @@
           "start_time": "2021-02-13T18:19:46.975465",
           "status": "completed"
         },
-        "tags": [],
-        "id": "ZytMS-aCNGOx"
+        "tags": []
       },
       "source": [
         "We can also try a variant of the `l1` penalty, where the weight is chosen based on theoretical derivations. We use package *hdm* and the function *rlasso*, relying on a theoretical based choice of the penalty level $\\lambda$ in the lasso regression."
@@ -644,18 +684,19 @@
     },
     {
       "cell_type": "markdown",
+      "metadata": {
+        "id": "n-D_fRJBnkEH"
+      },
       "source": [
         "Specifically, we use \"plug-in\" tuning with a theoretically valid choice of penalty $\\lambda = 2 \\cdot c \\hat{\\sigma} \\sqrt{n} \\Phi^{-1}(1-\\alpha/2p)$, where $c>1$ and $1-\\alpha$ is a confidence level, $\\Phi^{-1}$ denotes the quantile function, and $\\hat{\\sigma}$ is estimated in an iterative manner (see corresponding notes in book). Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\\epsilon$ and $X$ in the regression equation decay quickly at the tails.\n",
         "\n",
         "In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks."
-      ],
-      "metadata": {
-        "id": "n-D_fRJBnkEH"
-      }
+      ]
     },
     {
       "cell_type": "markdown",
       "metadata": {
+        "id": "yBiZ3q3INGOy",
         "papermill": {
           "duration": 0.049543,
           "end_time": "2021-02-13T18:19:47.757271",
@@ -663,8 +704,7 @@
           "start_time": "2021-02-13T18:19:47.707728",
           "status": "completed"
         },
-        "tags": [],
-        "id": "yBiZ3q3INGOy"
+        "tags": []
       },
       "source": [
         "Now, we repeat the same procedure for the flexible model."
@@ -674,6 +714,7 @@
       "cell_type": "code",
       "execution_count": null,
       "metadata": {
+        "id": "PlTdJh5PNGOy",
         "papermill": {
           "duration": 3.430649,
           "end_time": "2021-02-13T18:19:51.229007",
@@ -682,241 +723,251 @@
           "status": "completed"
         },
         "tags": [],
-        "id": "PlTdJh5PNGOy"
+        "vscode": {
+          "languageId": "r"
+        }
       },
       "outputs": [],
       "source": [
-        "fit.rlasso.flex  <- rlasso(formula_flex, data_train, post=FALSE)\n",
-        "fit.rlasso.post.flex <- rlasso(formula_flex, data_train, post=TRUE)\n",
-        "yhat.rlasso.flex   <- predict(fit.rlasso.flex, newdata=data_test)\n",
-        "yhat.rlasso.post.flex   <- predict(fit.rlasso.post.flex, newdata=data_test)\n",
+        "fit_rlasso_flex <- rlasso(formula_flex, data_train, post = FALSE)\n",
+        "fit_rlasso_post_flex <- rlasso(formula_flex, data_train, post = TRUE)\n",
+        "yhat_rlasso_flex <- predict(fit_rlasso_flex, newdata = data_test)\n",
+        "yhat_rlasso_post_flex <- predict(fit_rlasso_post_flex, newdata = data_test)\n",
         "\n",
-        "MSE.lasso.flex <- summary(lm((Y_test-yhat.rlasso.flex)^2~1))$coef[1:2]\n",
-        "MSE.lasso.post.flex <- summary(lm((Y_test-yhat.rlasso.post.flex)^2~1))$coef[1:2]\n",
+        "mse_lasso_flex <- summary(lm((y_test - yhat_rlasso_flex)^2 ~ 1))$coef[1:2]\n",
+        "mse_lasso_post_flex <- summary(lm((y_test - yhat_rlasso_post_flex)^2 ~ 1))$coef[1:2]\n",
         "\n",
-        "R2.lasso.flex <- 1-MSE.lasso.flex[1]/var(Y_test)\n",
-        "R2.lasso.post.flex <- 1-MSE.lasso.post.flex[1]/var(Y_test)\n",
+        "r2_lasso_flex <- 1 - mse_lasso_flex[1] / var(y_test)\n",
+        "r2_lasso_post_flex <- 1 - mse_lasso_post_flex[1] / var(y_test)\n",
         "# R^2 theoretically chosen penalty (flexible model)\n",
-        "cat('Flexible model R^2 (RLasso): ', R2.lasso.flex)\n",
-        "cat('\\nFlexible model R^2 (RLasso post): ', R2.lasso.post.flex)"
+        "cat(\"Flexible model R^2 (RLasso): \", r2_lasso_flex)\n",
+        "cat(\"\\nFlexible model R^2 (RLasso post): \", r2_lasso_post_flex)"
       ]
     },
     {
       "cell_type": "markdown",
-      "source": [
-        "Finally, we try the combination of a sparse and a dense coefficient using the LAVA method"
-      ],
       "metadata": {
         "id": "aude922IfxBG"
-      }
+      },
+      "source": [
+        "Finally, we try the combination of a sparse and a dense coefficient using the LAVA method"
+      ]
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "WgBPFQ72ftBz",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
         "# Define function to compute lava estimator. Doing an iterative scheme with fixed\n",
         "# number of iteration. Could iterate until a convergence criterion is met.\n",
-        "lava.predict <- function(X, Y, newX, lambda1, lambda2, iter=5){\n",
+        "lava_predict <- function(X, Y, newX, lambda1, lambda2, iter = 5) {\n",
+        "  require(glmnet)\n",
         "\n",
         "  # Need to demean internally\n",
-        "  dy = Y - mean(Y)\n",
-        "  dx = scale(X, scale = FALSE)\n",
+        "  dy <- Y - mean(Y)\n",
+        "  dx <- scale(X, scale = FALSE)\n",
         "\n",
-        "  sp1 = glmnet(dx, dy, lambda = lambda1)  #lasso step fits \"sparse part\"\n",
-        "  de1 = glmnet(dx, dy-predict(sp1, newx = dx), alpha = 0, lambda = lambda2)\n",
+        "  sp1 <- glmnet(dx, dy, lambda = lambda1) # lasso step fits \"sparse part\"\n",
+        "  de1 <- glmnet(dx, dy - predict(sp1, newx = dx), alpha = 0, lambda = lambda2)\n",
         "\n",
-        "  i=1\n",
-        "  while(i<= iter) {\n",
-        "    sp1 = glmnet(dx, dy-predict(de1, newx = dx, s=\"lambda.min\"), lambda = lambda1)\n",
-        "    de1 = glmnet(dx, dy-predict(sp1, newx = dx, s=\"lambda.min\"), alpha = 0, lambda = lambda2)\n",
-        "    i = i+1 }\n",
+        "  i <- 1\n",
+        "  while (i <= iter) {\n",
+        "    sp1 <- glmnet(dx, dy - predict(de1, newx = dx, s = \"lambda.min\"), lambda = lambda1)\n",
+        "    de1 <- glmnet(dx, dy - predict(sp1, newx = dx, s = \"lambda.min\"), alpha = 0, lambda = lambda2)\n",
+        "    i <- i + 1\n",
+        "  }\n",
         "\n",
-        "  bhat = sp1$beta+de1$beta\n",
-        "  a0 = mean(Y)-sum(colMeans(X)*bhat)\n",
+        "  bhat <- sp1$beta + de1$beta\n",
+        "  a0 <- mean(Y) - sum(colMeans(X) * bhat)\n",
         "\n",
         "  # Need to add intercept to output\n",
         "\n",
-        "  yhat = newX%*%bhat + a0\n",
+        "  yhat <- newX %*% bhat + a0\n",
         "\n",
         "  return(yhat)\n",
         "}"
-      ],
-      "metadata": {
-        "id": "WgBPFQ72ftBz"
-      },
-      "execution_count": null,
-      "outputs": []
+      ]
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "2HFE2EbdkMjj",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
         "# define function to get predictions and r2 scores for lava estimator\n",
-        "lava_yhat_r2 <- function(xtr.mod, xte.mod, ytr, yte, num_folds = 5){\n",
+        "lava_yhat_r2 <- function(xtr_mod, xte_mod, ytr, yte, num_folds = 5) {\n",
+        "  # 5-fold CV. glmnet does cross-validation internally and\n",
+        "  # relatively efficiently. We're going to write out all the steps to make sure\n",
+        "  # we're using the same CV folds across all procedures in a transparent way and\n",
+        "  # to keep the overall structure clear as well.\n",
         "\n",
-        "    # 5-fold CV. glmnet does cross-validation internally and\n",
-        "    # relatively efficiently. We're going to write out all the steps to make sure\n",
-        "    # we're using the same CV folds across all procedures in a transparent way and\n",
-        "    # to keep the overall structure clear as well.\n",
-        "\n",
-        "    # Setup for brute force K-Fold CV\n",
-        "    n = length(ytr)\n",
-        "    Kf = num_folds  # Number of folds\n",
-        "    sampleframe <- rep(1:Kf, ceiling( n/Kf ) )\n",
-        "    cvgroup <- sample( sampleframe , size=n ,  replace=FALSE )  # CV groups\n",
-        "\n",
-        "\n",
-        "    ##------------------------------------------------------------\n",
-        "    # We're going to take a shortcut and use the range of lambda values that come out\n",
-        "    # of the default implementation in glmnet for everything. Could do better here - maybe\n",
-        "\n",
-        "    ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.\n",
-        "    ridge.mod = glmnet(xtr.mod,ytr,alpha=0)  # alpha = 0 gives ridge\n",
-        "    ridge.lambda = ridge.mod$lambda # values of penalty parameter\n",
-        "\n",
-        "    ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.\n",
-        "    lasso.mod = glmnet(xtr.mod,ytr)  # default is lasso (equivalent to alpha = 1)\n",
-        "    lasso.lambda = lasso.mod$lambda # values of penalty parameter\n",
-        "\n",
-        "    ##------------------------------------------------------------\n",
+        "  # Setup for brute force K-Fold CV\n",
+        "  n <- length(ytr)\n",
+        "  Kf <- num_folds # Number of folds\n",
+        "  sampleframe <- rep(1:Kf, ceiling(n / Kf))\n",
+        "  cvgroup <- sample(sampleframe, size = n, replace = FALSE) # CV groups\n",
         "\n",
         "\n",
-        "    # Lava - Using a double loop over candidate penalty parameter values.\n",
+        "  ## ------------------------------------------------------------\n",
+        "  # We're going to take a shortcut and use the range of lambda values that come out\n",
+        "  # of the default implementation in glmnet for everything. Could do better here - maybe\n",
         "\n",
-        "    lambda1.lava.mod = lasso.mod$lambda[seq(5,length(lasso.mod$lambda),10)]\n",
-        "    lambda2.lava.mod = ridge.mod$lambda[seq(5,length(ridge.mod$lambda),10)]\n",
+        "  ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.\n",
+        "  ridge_mod <- glmnet(xtr_mod, ytr, alpha = 0) # alpha = 0 gives ridge\n",
+        "  ridge_lambda <- ridge_mod$lambda # values of penalty parameter\n",
         "\n",
-        "    CV.mod.lava = matrix(0,length(lambda1.lava.mod),length(lambda2.lava.mod))\n",
+        "  ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.\n",
+        "  lasso_mod <- glmnet(xtr_mod, ytr) # default is lasso (equivalent to alpha = 1)\n",
+        "  lasso_lambda <- lasso_mod$lambda # values of penalty parameter\n",
         "\n",
-        "    for(k in 1:Kf) {\n",
-        "      indk = cvgroup == k\n",
+        "  ## ------------------------------------------------------------\n",
         "\n",
-        "      K.xtr.mod = xtr.mod[!indk,]\n",
-        "      K.ytr = ytr[!indk]\n",
-        "      K.xte.mod = xtr.mod[indk,]\n",
-        "      K.yte = ytr[indk]\n",
         "\n",
-        "      for(ii in 1:length(lambda1.lava.mod)) {\n",
-        "        for(jj in 1:length(lambda2.lava.mod)) {\n",
-        "          CV.mod.lava[ii,jj] = CV.mod.lava[ii,jj] +\n",
-        "            sum((K.yte - lava.predict(K.xtr.mod, K.ytr, newX = K.xte.mod ,\n",
-        "                                      lambda1 = lambda1.lava.mod[ii],\n",
-        "                                      lambda2 = lambda2.lava.mod[jj]))^2)\n",
-        "        }\n",
+        "  # Lava - Using a double loop over candidate penalty parameter values.\n",
+        "\n",
+        "  lambda1_lava_mod <- lasso_mod$lambda[seq(5, length(lasso_lambda), 10)]\n",
+        "  lambda2_lava_mod <- ridge_mod$lambda[seq(5, length(ridge_lambda), 10)]\n",
+        "\n",
+        "  cv_mod_lava <- matrix(0, length(lambda1_lava_mod), length(lambda2_lava_mod))\n",
+        "\n",
+        "  for (k in 1:Kf) {\n",
+        "    indk <- cvgroup == k\n",
+        "\n",
+        "    k_xtr_mod <- xtr_mod[!indk, ]\n",
+        "    k_ytr <- ytr[!indk]\n",
+        "    k_xte_mod <- xtr_mod[indk, ]\n",
+        "    k_yte <- ytr[indk]\n",
+        "\n",
+        "    for (ii in seq_along(lambda1_lava_mod)) {\n",
+        "      for (jj in seq_along(lambda2_lava_mod)) {\n",
+        "        cv_mod_lava[ii, jj] <- cv_mod_lava[ii, jj] +\n",
+        "          sum((k_yte - lava_predict(k_xtr_mod, k_ytr,\n",
+        "                                    newX = k_xte_mod,\n",
+        "                                    lambda1 = lambda1_lava_mod[ii],\n",
+        "                                    lambda2 = lambda2_lava_mod[jj]))^2)\n",
         "      }\n",
-        "\n",
         "    }\n",
+        "  }\n",
         "\n",
-        "    # Get CV min values of tuning parameters\n",
-        "    cvmin.lava.mod = which(CV.mod.lava == min(CV.mod.lava) , arr.ind = TRUE)\n",
-        "    cvlambda1.lava.mod = lambda1.lava.mod[cvmin.lava.mod[1]]\n",
-        "    cvlambda2.lava.mod = lambda2.lava.mod[cvmin.lava.mod[2]]\n",
+        "  # Get CV min values of tuning parameters\n",
+        "  cvmin_lava_mod <- which(cv_mod_lava == min(cv_mod_lava), arr.ind = TRUE)\n",
+        "  cvlambda1_lava_mod <- lambda1_lava_mod[cvmin_lava_mod[1]]\n",
+        "  cvlambda2_lava_mod <- lambda2_lava_mod[cvmin_lava_mod[2]]\n",
         "\n",
-        "    # cat(\"Min Lava Lasso CV Penalty: \", cvlambda1.lava.mod)\n",
-        "    # cat(\"\\nMin Lava Ridge CV Penalty: \", cvlambda2.lava.mod)\n",
+        "  #### Look at performance on test sample\n",
         "\n",
+        "  # Calculate R^2 in training data and in validation data as measures\n",
+        "  # Refit on entire training sample\n",
         "\n",
-        "    #### Look at performance on test sample\n",
+        "  #### CV-min model\n",
         "\n",
-        "    # Calculate R^2 in training data and in validation data as measures\n",
-        "    # Refit on entire training sample\n",
+        "  # In sample fit\n",
+        "  cvmin_yhat_lava_tr <- lava_predict(xtr_mod, ytr,\n",
+        "    newX = xtr_mod,\n",
+        "    lambda1 = cvlambda1_lava_mod,\n",
+        "    lambda2 = cvlambda2_lava_mod\n",
+        "  )\n",
+        "  r2_lava_mod <- 1 - sum((ytr - cvmin_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)\n",
         "\n",
+        "  # Out of sample fit\n",
+        "  cvmin_yhat_lava_test <- lava_predict(xtr_mod, ytr,\n",
+        "    newX = xte_mod,\n",
+        "    lambda1 = cvlambda1_lava_mod,\n",
+        "    lambda2 = cvlambda2_lava_mod\n",
+        "  )\n",
+        "  r2v_lava_mod <- 1 - sum((yte - cvmin_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)\n",
         "\n",
-        "    #### CV-min model\n",
-        "\n",
-        "    # In sample fit\n",
-        "    cvmin.yhat.lava.tr <- lava.predict(xtr.mod, ytr, newX = xtr.mod,\n",
-        "                                            lambda1 = cvlambda1.lava.mod,\n",
-        "                                            lambda2 = cvlambda2.lava.mod)\n",
-        "    r2.lava.mod = 1-sum((ytr-cvmin.yhat.lava.tr)^2)/sum((ytr-mean(ytr))^2)\n",
-        "\n",
-        "    # Out of sample fit\n",
-        "    cvmin.yhat.lava.test <- lava.predict(xtr.mod, ytr, newX = xte.mod,\n",
-        "                                            lambda1 = cvlambda1.lava.mod,\n",
-        "                                            lambda2 = cvlambda2.lava.mod)\n",
-        "    r2V.lava.mod = 1-sum((yte-cvmin.yhat.lava.test)^2)/sum((yte-mean(ytr))^2)\n",
-        "\n",
-        "\n",
-        "    # cat(\"\\nIn sample R2 (CV-min): \", r2.lava.mod)\n",
-        "    # cat(\"\\nOut of Sample R2 (CV-min): \", r2V.lava.mod)\n",
-        "\n",
-        "\n",
-        "    #### Use average model across cv-folds and refit model using all training data\n",
-        "    ###### we won't report these results.\n",
-        "    ###### Averaging is theoretically more solid, but cv-min is more practical.\n",
-        "    n.tr = length(ytr)\n",
-        "    n.te = length(yte)\n",
-        "    yhat.tr.lava.mod = matrix(0,n.tr,Kf)\n",
-        "    yhat.te.lava.mod = matrix(0,n.te,Kf)\n",
+        "  #### Use average model across cv-folds and refit model using all training data\n",
+        "  ###### we won't report these results.\n",
+        "  ###### Averaging is theoretically more solid, but cv-min is more practical.\n",
+        "  n_tr <- length(ytr)\n",
+        "  n_te <- length(yte)\n",
+        "  yhat_tr_lava_mod <- matrix(0, n_tr, Kf)\n",
+        "  yhat_te_lava_mod <- matrix(0, n_te, Kf)\n",
         "\n",
         "\n",
-        "    for(k in 1:Kf) {\n",
-        "      indk = cvgroup == k\n",
+        "  for (k in 1:Kf) {\n",
+        "    indk <- cvgroup == k\n",
         "\n",
-        "      K.xtr.mod = xtr.mod[!indk,]\n",
-        "      K.ytr = ytr[!indk]\n",
+        "    k_xtr_mod <- xtr_mod[!indk, ]\n",
+        "    k_ytr <- ytr[!indk]\n",
         "\n",
-        "      # Lava\n",
-        "      yhat.tr.lava.mod[,k] = as.vector(lava.predict(K.xtr.mod, K.ytr, newX = xtr.mod ,\n",
-        "                                            lambda1 = cvlambda1.lava.mod,\n",
-        "                                            lambda2 = cvlambda2.lava.mod))\n",
-        "      yhat.te.lava.mod[,k] = as.vector(lava.predict(K.xtr.mod, K.ytr, newX = xte.mod ,\n",
-        "                                            lambda1 = cvlambda1.lava.mod,\n",
-        "                                            lambda2 = cvlambda2.lava.mod))\n",
-        "    }\n",
+        "    # Lava\n",
+        "    yhat_tr_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,\n",
+        "      newX = xtr_mod,\n",
+        "      lambda1 = cvlambda1_lava_mod,\n",
+        "      lambda2 = cvlambda2_lava_mod\n",
+        "    ))\n",
+        "    yhat_te_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,\n",
+        "      newX = xte_mod,\n",
+        "      lambda1 = cvlambda1_lava_mod,\n",
+        "      lambda2 = cvlambda2_lava_mod\n",
+        "    ))\n",
+        "  }\n",
         "\n",
-        "    avg.yhat.lava.tr <- rowMeans(yhat.tr.lava.mod)\n",
-        "    avg.yhat.lava.test <- rowMeans(yhat.te.lava.mod)\n",
+        "  avg_yhat_lava_tr <- rowMeans(yhat_tr_lava_mod)\n",
+        "  avg_yhat_lava_test <- rowMeans(yhat_te_lava_mod)\n",
         "\n",
-        "    r2.CVave.lava.mod = 1-sum((ytr-avg.yhat.lava.tr)^2)/sum((ytr-mean(ytr))^2)\n",
-        "    r2V.CVave.lava.mod = 1-sum((yte-avg.yhat.lava.test)^2)/sum((yte-mean(ytr))^2)\n",
+        "  r2_cv_ave_lava_mod <- 1 - sum((ytr - avg_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)\n",
+        "  r2v_cv_ave_lava_mod <- 1 - sum((yte - avg_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)\n",
         "\n",
-        "    # cat(\"\\nIn sample R2 (Average Across Folds): \", r2.CVave.lava.mod)\n",
-        "    # cat(\"\\nOut of Sample R2 (Average Across Folds): \", r2V.CVave.lava.mod)\n",
-        "\n",
-        "    return(c(cvlambda1.lava.mod,\n",
-        "             cvlambda2.lava.mod,\n",
-        "             cvmin.yhat.lava.tr, # CV_min\n",
-        "             cvmin.yhat.lava.test, # CV_min\n",
-        "             r2.lava.mod,  # CV_min\n",
-        "             r2V.lava.mod, # CV_min\n",
-        "             avg.yhat.lava.tr, # Average across Folds\n",
-        "             avg.yhat.lava.test, # Average across Folds\n",
-        "             r2.CVave.lava.mod, # Average across Folds\n",
-        "             r2V.CVave.lava.mod  # Average across Folds\n",
-        "             )\n",
-        "          )\n",
+        "  return(c(\n",
+        "    cvlambda1_lava_mod,\n",
+        "    cvlambda2_lava_mod,\n",
+        "    cvmin_yhat_lava_tr, # CV_min\n",
+        "    cvmin_yhat_lava_test, # CV_min\n",
+        "    r2_lava_mod, # CV_min\n",
+        "    r2v_lava_mod, # CV_min\n",
+        "    avg_yhat_lava_tr, # Average across Folds\n",
+        "    avg_yhat_lava_test, # Average across Folds\n",
+        "    r2_cv_ave_lava_mod, # Average across Folds\n",
+        "    r2v_cv_ave_lava_mod # Average across Folds\n",
+        "  ))\n",
         "}"
-      ],
-      "metadata": {
-        "id": "2HFE2EbdkMjj"
-      },
-      "execution_count": null,
-      "outputs": []
+      ]
     },
     {
       "cell_type": "code",
-      "source": [
-        "fit.lava.flex <- lava_yhat_r2(model_X_flex_train, model_X_flex_test, Y_train, Y_test)\n",
-        "cat('Flexible model R^2 (LAVA): ', fit.lava.flex[[6]]) # using CV_min"
-      ],
-      "metadata": {
-        "id": "Uw3LMCiskJzV"
-      },
       "execution_count": null,
-      "outputs": []
+      "metadata": {
+        "id": "Uw3LMCiskJzV",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "fit_lava_flex <- lava_yhat_r2(model_x_flex_train, model_x_flex_test, y_train, y_test)\n",
+        "cat(\"Flexible model R^2 (LAVA): \", fit_lava_flex[[6]]) # using CV_min"
+      ]
     },
     {
       "cell_type": "markdown",
+      "metadata": {
+        "id": "f8lYhGaWfpYR"
+      },
       "source": [
         "<!-- We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase predictive power. -->\n",
         "\n",
         "We find that for this dataset the low dimensional OLS is sufficient. The high-dimensional approaches did not manage to substantively increase predictive power."
-      ],
-      "metadata": {
-        "id": "f8lYhGaWfpYR"
-      }
+      ]
     },
     {
       "cell_type": "markdown",
+      "metadata": {
+        "id": "bxuPZI4Zx0Vm"
+      },
       "source": [
         "### Extra high-dimensional specification (extra flexible)\n",
         "\n",
@@ -926,112 +977,121 @@
         "\n",
         "\n",
         "\n"
-      ],
-      "metadata": {
-        "id": "bxuPZI4Zx0Vm"
-      }
+      ]
     },
     {
       "cell_type": "code",
-      "source": [
-        "X_extra <- \" sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)^2\"\n",
-        "formula_extra <- as.formula(paste(\"lwage\", \"~\", X_extra))\n",
-        "model_X_extra_train <- model.matrix(formula_extra,data_train)\n",
-        "model_X_extra_test <- model.matrix(formula_extra,data_test)\n",
-        "p_extra <- dim(model_X_extra_train)[2]\n",
-        "p_extra"
-      ],
-      "metadata": {
-        "id": "JsFhSsM_rGjN"
-      },
       "execution_count": null,
-      "outputs": []
+      "metadata": {
+        "id": "JsFhSsM_rGjN",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "x_extra <- \" sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2\"\n",
+        "formula_extra <- as.formula(paste(\"lwage\", \"~\", x_extra))\n",
+        "model_x_extra_train <- model.matrix(formula_extra, data_train)\n",
+        "model_x_extra_test <- model.matrix(formula_extra, data_test)\n",
+        "p_extra <- dim(model_x_extra_train)[2]\n",
+        "p_extra"
+      ]
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "eheA1UPBsHfL",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
         "# ols (extra flexible model)\n",
-        "fit.lm.extra <- lm(formula_extra, data_train)\n",
-        "options(warn=-1)\n",
-        "yhat.lm.extra <- predict(fit.lm.extra, newdata=data_test)\n",
-        "MSE.lm.extra <- summary(lm((Y_test-yhat.lm.extra)^2~1))$coef[1:2]\n",
-        "R2.lm.extra <- 1-MSE.lm.extra[1]/var(Y_test)\n",
-        "cat(\"Extra flexible model R^2 (OLS): \",R2.lm.extra)"
-      ],
-      "metadata": {
-        "id": "eheA1UPBsHfL"
-      },
-      "execution_count": null,
-      "outputs": []
+        "fit_lm_extra <- lm(formula_extra, data_train)\n",
+        "options(warn = -1)\n",
+        "yhat_lm_extra <- predict(fit_lm_extra, newdata = data_test)\n",
+        "mse_lm_extra <- summary(lm((y_test - yhat_lm_extra)^2 ~ 1))$coef[1:2]\n",
+        "r2_lm_extra <- 1 - mse_lm_extra[1] / var(y_test)\n",
+        "cat(\"Extra flexible model R^2 (OLS): \", r2_lm_extra)"
+      ]
     },
     {
       "cell_type": "markdown",
+      "metadata": {
+        "id": "Scm5monOrJu5"
+      },
       "source": [
         "#### Penalized regressions (extra flexible model)\n",
         "\n",
         "Now let's repeat our penalized regression analysis for the extra flexible model. Note this block takes a while ~ 1 hour 15 minutes. To reduce time substantially, reduce the number of folds in LAVA."
-      ],
-      "metadata": {
-        "id": "Scm5monOrJu5"
-      }
+      ]
     },
     {
       "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "tOKoNLKFovrI",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
       "source": [
         "# penalized regressions\n",
-        "fit.lasso.cv.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=1)\n",
-        "fit.ridge.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=0)\n",
-        "fit.elnet.extra   <- cv.glmnet(model_X_extra_train, Y_train, family=\"gaussian\", alpha=.5)\n",
-        "fit.rlasso.extra  <- rlasso(formula_extra, data_train, post=FALSE)\n",
-        "fit.rlasso.post.extra <- rlasso(formula_extra, data_train, post=TRUE)\n",
-        "fit.lava.extra <- lava_yhat_r2(model_X_extra_train, model_X_extra_test, Y_train, Y_test)\n",
+        "fit_lasso_cv_extra <- cv.glmnet(model_x_extra_train, y_train, family = \"gaussian\", alpha = 1)\n",
+        "fit_ridge_extra <- cv.glmnet(model_x_extra_train, y_train, family = \"gaussian\", alpha = 0)\n",
+        "fit_elnet_extra <- cv.glmnet(model_x_extra_train, y_train, family = \"gaussian\", alpha = .5)\n",
+        "fit_rlasso_extra <- rlasso(formula_extra, data_train, post = FALSE)\n",
+        "fit_rlasso_post_extra <- rlasso(formula_extra, data_train, post = TRUE)\n",
+        "fit_lava_extra <- lava_yhat_r2(model_x_extra_train, model_x_extra_test, y_train, y_test)\n",
         "\n",
-        "yhat.lasso.cv.extra    <- predict(fit.lasso.cv.extra , newx = model_X_extra_test)\n",
-        "yhat.ridge.extra    <- predict(fit.ridge.extra , newx = model_X_extra_test)\n",
-        "yhat.elnet.extra    <- predict(fit.elnet.extra , newx = model_X_extra_test)\n",
-        "yhat.rlasso.extra   <- predict(fit.rlasso.extra, newdata=data_test)\n",
-        "yhat.rlasso.post.extra   <- predict(fit.rlasso.post.extra, newdata=data_test)\n",
-        "yhat.lava.extra <- fit.lava.extra[[4]]\n",
+        "yhat_lasso_cv_extra <- predict(fit_lasso_cv_extra, newx = model_x_extra_test)\n",
+        "yhat_ridge_extra <- predict(fit_ridge_extra, newx = model_x_extra_test)\n",
+        "yhat_elnet_extra <- predict(fit_elnet_extra, newx = model_x_extra_test)\n",
+        "yhat_rlasso_extra <- predict(fit_rlasso_extra, newdata = data_test)\n",
+        "yhat_rlasso_post_extra <- predict(fit_rlasso_post_extra, newdata = data_test)\n",
+        "yhat_lava_extra <- fit_lava_extra[[4]]\n",
         "\n",
-        "MSE.lasso.cv.extra  <- summary(lm((Y_test-yhat.lasso.cv.extra )^2~1))$coef[1:2]\n",
-        "MSE.ridge.extra  <- summary(lm((Y_test-yhat.ridge.extra )^2~1))$coef[1:2]\n",
-        "MSE.elnet.extra  <- summary(lm((Y_test-yhat.elnet.extra )^2~1))$coef[1:2]\n",
-        "MSE.lasso.extra <- summary(lm((Y_test-yhat.rlasso.extra)^2~1))$coef[1:2]\n",
-        "MSE.lasso.post.extra <- summary(lm((Y_test-yhat.rlasso.post.extra)^2~1))$coef[1:2]\n",
-        "MSE.lava.extra <- summary(lm(as.vector(Y_test-yhat.lava.extra)^2~1))$coef[1:2]\n",
+        "mse_lasso_cv_extra <- summary(lm((y_test - yhat_lasso_cv_extra)^2 ~ 1))$coef[1:2]\n",
+        "mse_ridge_extra <- summary(lm((y_test - yhat_ridge_extra)^2 ~ 1))$coef[1:2]\n",
+        "mse_elnet_extra <- summary(lm((y_test - yhat_elnet_extra)^2 ~ 1))$coef[1:2]\n",
+        "mse_lasso_extra <- summary(lm((y_test - yhat_rlasso_extra)^2 ~ 1))$coef[1:2]\n",
+        "mse_lasso_post_extra <- summary(lm((y_test - yhat_rlasso_post_extra)^2 ~ 1))$coef[1:2]\n",
+        "mse_lava_extra <- summary(lm(as.vector(y_test - yhat_lava_extra)^2 ~ 1))$coef[1:2]\n",
         "\n",
-        "R2.lasso.cv.extra  <- 1-MSE.lasso.cv.extra [1]/var(Y_test)\n",
-        "R2.ridge.extra  <- 1-MSE.ridge.extra [1]/var(Y_test)\n",
-        "R2.elnet.extra  <- 1-MSE.elnet.extra [1]/var(Y_test)\n",
-        "R2.lasso.extra <- 1-MSE.lasso.extra[1]/var(Y_test)\n",
-        "R2.lasso.post.extra <- 1-MSE.lasso.post.extra[1]/var(Y_test)\n",
-        "R2.lava.extra <- 1-MSE.lava.extra[1]/var(Y_test) # R2.lava.extra <- fit.lava.extra[[6]]\n",
+        "r2_lasso_cv_extra <- 1 - mse_lasso_cv_extra[1] / var(y_test)\n",
+        "r2_ridge_extra <- 1 - mse_ridge_extra[1] / var(y_test)\n",
+        "r2_elnet_extra <- 1 - mse_elnet_extra[1] / var(y_test)\n",
+        "r2_lasso_extra <- 1 - mse_lasso_extra[1] / var(y_test)\n",
+        "r2_lasso_post_extra <- 1 - mse_lasso_post_extra[1] / var(y_test)\n",
+        "r2_lava_extra <- 1 - mse_lava_extra[1] / var(y_test)\n",
         "\n",
         "# R^2 (extra flexible)\n",
-        "cat('\\nExtra flexible model R^2 (Lasso): ', R2.lasso.cv.extra)\n",
-        "cat('\\nExtra flexible model R^2 (Ridge): ', R2.ridge.extra)\n",
-        "cat('\\nExtra flexible model R^2 (Elastic Net): ', R2.elnet.extra)\n",
-        "cat('\\nExtra flexible model R^2 (RLasso): ', R2.lasso.extra)\n",
-        "cat('\\nExtra flexible model R^2 (RLasso post): ', R2.lasso.post.extra)\n",
-        "cat('\\nExtra flexible model R^2 (LAVA): ', R2.lava.extra) #using CV_min"
-      ],
-      "metadata": {
-        "id": "tOKoNLKFovrI"
-      },
-      "execution_count": null,
-      "outputs": []
+        "cat(\"\\nExtra flexible model R^2 (Lasso): \", r2_lasso_cv_extra)\n",
+        "cat(\"\\nExtra flexible model R^2 (Ridge): \", r2_ridge_extra)\n",
+        "cat(\"\\nExtra flexible model R^2 (Elastic Net): \", r2_elnet_extra)\n",
+        "cat(\"\\nExtra flexible model R^2 (RLasso): \", r2_lasso_extra)\n",
+        "cat(\"\\nExtra flexible model R^2 (RLasso post): \", r2_lasso_post_extra)\n",
+        "cat(\"\\nExtra flexible model R^2 (LAVA): \", r2_lava_extra) # using CV_min"
+      ]
     },
     {
       "cell_type": "markdown",
-      "source": [
-        "<!-- As shown above, the overfitting effect is mitigated with the penalized regression model. -->"
-      ],
       "metadata": {
         "id": "Btez-AI8yE7S"
-      }
+      },
+      "source": [
+        "<!-- As shown above, the overfitting effect is mitigated with the penalized regression model. -->"
+      ]
     }
   ],
   "metadata": {
+    "colab": {
+      "provenance": []
+    },
     "kernelspec": {
       "display_name": "R",
       "language": "R",
@@ -1056,9 +1116,6 @@
       "parameters": {},
       "start_time": "2021-02-13T18:19:39.889520",
       "version": "2.2.2"
-    },
-    "colab": {
-      "provenance": []
     }
   },
   "nbformat": 4,
