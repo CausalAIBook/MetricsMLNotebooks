@@ -637,8 +637,8 @@
         "se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
         "\n",
         "# print unconditional effect of gdpsh465 and the corresponding standard error\n",
-        "cat (\"The estimated coefficient on gdpsh465 is\", est,\n",
-        "     \" and the corresponding robust standard error is\", se)\n",
+        "cat(\"The estimated coefficient on gdpsh465 is\", est,\n",
+        "    \" and the corresponding robust standard error is\", se)\n",
         "\n",
         "# Calculate the 95% confidence interval for 'gdpsh465'\n",
         "lower_ci <- est - 1.96 * se\n",
@@ -658,7 +658,7 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 7,
+      "execution_count": null,
       "metadata": {
         "colab": {
           "base_uri": "https://localhost:8080/"
