@@ -1,0 +1,53 @@
+---
+title: An R Markdown document converted from "CM2/r-colliderbias-hollywood.irnb"
+output: html_document
+---
+
+# Collider Bias
+
+Here is a simple mnemonic example to illustate the collider or M-bias.
+
+Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that "talent and beaty are negatively correlated" for celebrities.  
+
+```{r}
+install.packages("dagitty")
+library(dagitty)
+```
+
+```{r}
+g <- dagitty( "dag{ T -> C <- B }" )
+plot(g)
+```
+
+```{r}
+#collider bias
+n=1000000
+T = rnorm(n)   #talent
+B = rnorm(n)   #beaty
+C = T+B + rnorm(n) #congeniality
+T.H= subset(T, C>0) # condition on C>0
+B.H= subset(B, C>0) # condition on C>0
+
+summary(lm(T~ B))  #regression of T on B
+summary(lm(T~ B +C)) #regression of T on B and C
+summary(lm(T.H~ B.H)) #regression of T on B, conditional on C>0.
+```
+
+We can also use package Dagitty to illustrate collider bias, also known as M-bias.
+
+```{r}
+## If we want to infer causal effec of B on T,
+## we can apply the command to figure out
+## variables we should condition on:
+
+adjustmentSets( g, "T", "B" )
+
+## empty set -- we should not condition on the additional
+## variable C.
+
+## Generate data where C = .5T + .5B
+set.seed( 123); d <- simulateSEM( g, .5 )
+confint( lm( T ~ B, d ) )["B",] # includes 0
+confint( lm( T ~ B + C, d ) )["B",] # does not include 0
+```
+
