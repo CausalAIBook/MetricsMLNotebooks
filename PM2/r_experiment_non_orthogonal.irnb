@@ -844,7 +844,7 @@
    "source": [
     "gen_data_non_rct <- function(n, d, p, delta, base) {\n",
     "  X <- matrix(rnorm(n * d), nrow = n, ncol = d)\n",
-    "  D <- X[, 1] + rnorm(n, mean = 0, sd = 1/4)\n",
+    "  D <- X[, 1] + rnorm(n, mean = 0, sd = 1 / 4)\n",
     "  y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)\n",
     "  return(list(y = y, D = D, X = X))\n",
     "}"
