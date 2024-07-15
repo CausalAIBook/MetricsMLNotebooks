@@ -211,7 +211,7 @@
    "source": [
     "# this cell takes 30 minutes to run\n",
     "index_gender <- grep(\"sex\", colnames(Zinteractions))\n",
-    "effects_female <- rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)\n",
+    "effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)\n",
     "result <- summary(effects_female)\n",
     "result$coef\n",
     "print(xtable(result$coef[, c(1, 2, 4)], type = \"latex\"), digits = 3)"

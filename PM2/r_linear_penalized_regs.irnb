@@ -498,8 +498,8 @@
    },
    "outputs": [],
    "source": [
-    "fit_rlasso <- rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level\n",
-    "fit_rlasso_post <- rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level"
+    "fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level\n",
+    "fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level"
    ]
   },
   {
@@ -982,8 +982,8 @@
     "fit_ridge <- cv.glmnet(X, y, family = \"gaussian\", alpha = 0, nfolds = 5)\n",
     "# family gaussian means that we'll be using square loss\n",
     "fit_elnet <- cv.glmnet(X, y, family = \"gaussian\", alpha = .5, nfolds = 5)\n",
-    "fit_rlasso <- rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level\n",
-    "fit_rlasso_post <- rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level\n",
+    "fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level\n",
+    "fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level\n",
     "\n",
     "r2_lasso_cv <- r2_score(predict(fit_lasso_cv, newx = Xpop, s = \"lambda.min\"), ypop)\n",
     "r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = \"lambda.min\"), ypop)\n",
