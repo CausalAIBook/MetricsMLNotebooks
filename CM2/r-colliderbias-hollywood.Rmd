@@ -7,7 +7,7 @@ output: html_document
 
 Here is a simple mnemonic example to illustate the collider or M-bias.
 
-Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that "talent and beaty are negatively correlated" for celebrities.  
+Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that "talent and beauty are negatively correlated" for celebrities.  
 
 ```{r}
 install.packages("dagitty")
@@ -15,39 +15,42 @@ library(dagitty)
 ```
 
 ```{r}
-g <- dagitty( "dag{ T -> C <- B }" )
-plot(g)
+causal_graph <- dagitty("dag{ Talent -> Congen <- Beauty }")
+plot(causal_graph)
 ```
 
 ```{r}
-#collider bias
-n=1000000
-T = rnorm(n)   #talent
-B = rnorm(n)   #beaty
-C = T+B + rnorm(n) #congeniality
-T.H= subset(T, C>0) # condition on C>0
-B.H= subset(B, C>0) # condition on C>0
+# collider bias
+n <- 1000000
+Talent <- rnorm(n) # talent
+Beauty <- rnorm(n) # beauty
+Congen <- Talent + Beauty + rnorm(n) # congeniality
+TalentH <- subset(Talent, Congen > 0) # condition on Congen>0
+BeautyH <- subset(Beauty, Congen > 0) # condition on Congen>0
 
-summary(lm(T~ B))  #regression of T on B
-summary(lm(T~ B +C)) #regression of T on B and C
-summary(lm(T.H~ B.H)) #regression of T on B, conditional on C>0.
+summary(lm(Talent ~ Beauty)) # regression of Talent on Beauty
+summary(lm(Talent ~ Beauty + Congen)) # regression of Talent on Beauty and Congen
+summary(lm(TalentH ~ BeautyH)) # regression of Talent on Beauty, conditional on Congen>0.
 ```
 
 We can also use package Dagitty to illustrate collider bias, also known as M-bias.
 
 ```{r}
-## If we want to infer causal effec of B on T,
+## If we want to infer causal effect of Beauty on Talent,
 ## we can apply the command to figure out
 ## variables we should condition on:
 
-adjustmentSets( g, "T", "B" )
+adjustmentSets(causal_graph, "Talent", "Beauty")
 
 ## empty set -- we should not condition on the additional
-## variable C.
+## variable Congen.
+```
 
-## Generate data where C = .5T + .5B
-set.seed( 123); d <- simulateSEM( g, .5 )
-confint( lm( T ~ B, d ) )["B",] # includes 0
-confint( lm( T ~ B + C, d ) )["B",] # does not include 0
+```{r}
+## Generate data where Congen = .5*Talent + .5*Beauty
+set.seed(123)
+data <- simulateSEM(causal_graph, .5)
+confint(lm(Talent ~ Beauty, data))["Beauty", ]
+confint(lm(Talent ~ Beauty + Congen, data))["Beauty", ]
 ```
 
