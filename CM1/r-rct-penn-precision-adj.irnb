@@ -13,7 +13,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "w7B1iDaqa2ZI"
+    "id": "w7B1iDaqa2ZI",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -43,17 +46,20 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "_whbk2z4elkY"
+    "id": "_whbk2z4elkY",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "## loading the data\n",
-    "file = \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat\"\n",
-    "Penn <- as.data.frame(read.table(file, header=T))\n",
+    "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat\"\n",
+    "Penn <- as.data.frame(read.table(file, header = TRUE))\n",
     "\n",
     "n <- dim(Penn)[1]\n",
     "p_1 <- dim(Penn)[2]\n",
-    "Penn<- subset(Penn, tg==4 | tg==0)\n",
+    "Penn <- subset(Penn, tg == 4 | tg == 0)\n",
     "attach(Penn)"
    ]
   },
@@ -61,11 +67,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "iTghGG4Kelkk"
+    "id": "iTghGG4Kelkk",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "T4<- (tg==4)\n",
+    "T4 <- (tg == 4)\n",
     "summary(T4)"
    ]
   },
@@ -73,7 +82,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "ZbWuqKExelkl"
+    "id": "ZbWuqKExelkl",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -162,15 +174,20 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "GYOMYN_WRNTL"
+    "id": "GYOMYN_WRNTL",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 + agelt35 + agegt54 + durable + lusd + husd)^2)\n",
+    "data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +\n",
+    "                             agelt35 + agegt54 + durable + lusd + husd)^2)\n",
     "\n",
     "# individual t-tests\n",
-    "m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 + agelt35 + agegt54 + durable + lusd + husd)^2, data = as.data.frame(data))\n",
-    "coeftest(m, vcov = vcovHC(m, type=\"HC1\"))"
+    "m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +\n",
+    "                agelt35 + agegt54 + durable + lusd + husd)^2, data = as.data.frame(data))\n",
+    "coeftest(m, vcov = vcovHC(m, type = \"HC1\"))"
    ]
   },
   {
@@ -200,7 +217,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "T4AmK55IiiV1"
+    "id": "T4AmK55IiiV1",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -219,9 +239,9 @@
     "  return(sig_beta)\n",
     "}\n",
     "\n",
-    "p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type=\"HC1\"))[,4])\n",
+    "p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = \"HC1\"))[, 4])\n",
     "significant_indices <- holm_bonferroni(p_values, alpha = 0.05)\n",
-    "print(paste(\"Significant Coefficients (Indices): \", significant_indices))\n"
+    "print(paste(\"Significant Coefficients (Indices): \", significant_indices))"
    ]
   },
   {
@@ -237,11 +257,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "iBMiaj3jAZuo"
+    "id": "iBMiaj3jAZuo",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type=\"HC1\"))[,4])\n",
+    "p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = \"HC1\"))[, 4])\n",
     "holm_reject <- p.adjust(sort(p_values), \"holm\") <= 0.05\n",
     "holm_reject"
    ]
@@ -270,31 +293,31 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "43W-vaIzelk1"
+    "id": "43W-vaIzelk1",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# model specifications\n",
     "\n",
-    "\n",
     "# no adjustment (2-sample approach)\n",
-    "formula_cl <- log(inuidur1)~T4\n",
+    "formula_cl <- log(inuidur1) ~ T4\n",
     "\n",
     "# adding controls\n",
-    "formula_cra <- log(inuidur1)~T4+ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2\n",
+    "formula_cra <- log(inuidur1) ~ T4 + (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +\n",
+    "                                       agelt35 + agegt54 + durable + lusd + husd)^2\n",
     "# Omitted dummies: q1, nondurable, muld\n",
     "\n",
+    "ols_cl <- lm(formula_cl)\n",
+    "ols_cra <- lm(formula_cra)\n",
     "\n",
-    "ols.cl <- lm(formula_cl)\n",
-    "ols.cra <- lm(formula_cra)\n",
+    "ols_cl <- coeftest(ols_cl, vcov = vcovHC(ols_cl, type = \"HC1\"))\n",
+    "ols_cra <- coeftest(ols_cra, vcov = vcovHC(ols_cra, type = \"HC1\"))\n",
     "\n",
-    "\n",
-    "ols.cl = coeftest(ols.cl, vcov = vcovHC(ols.cl, type=\"HC1\"))\n",
-    "ols.cra = coeftest(ols.cra, vcov = vcovHC(ols.cra, type=\"HC1\"))\n",
-    "\n",
-    "print(ols.cl)\n",
-    "print(ols.cra)\n",
-    "\n"
+    "print(ols_cl)\n",
+    "print(ols_cra)"
    ]
   },
   {
@@ -310,23 +333,28 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "SGdP0kQ3elk2"
+    "id": "SGdP0kQ3elk2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
+    "# interactive regression model;\n",
     "\n",
-    "#interactive regression model;\n",
-    "\n",
-    "X = model.matrix (~ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2)[,-1]\n",
+    "X <- model.matrix(~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +\n",
+    "                       agelt35 + agegt54 + durable + lusd + husd)^2)[, -1]\n",
     "dim(X)\n",
-    "demean<- function(x){ x - mean(x)}\n",
-    "X = apply(X, 2, demean)\n",
     "\n",
-    "ols.ira = lm(log(inuidur1) ~ T4*X)\n",
-    "ols.ira= coeftest(ols.ira, vcov = vcovHC(ols.ira, type=\"HC1\"))\n",
-    "print(ols.ira)\n",
+    "demean <- function(x) {\n",
+    "  x - mean(x)\n",
+    "}\n",
     "\n",
-    "\n"
+    "X <- apply(X, 2, demean)\n",
+    "\n",
+    "ols_ira <- lm(log(inuidur1) ~ T4 * X)\n",
+    "ols_ira <- coeftest(ols_ira, vcov = vcovHC(ols_ira, type = \"HC1\"))\n",
+    "print(ols_ira)"
    ]
   },
   {
@@ -342,18 +370,20 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "O9AZ49XNelk3"
+    "id": "O9AZ49XNelk3",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "T4 = demean(T4)\n",
+    "T4 <- demean(T4)\n",
     "\n",
-    "DX = model.matrix(~T4*X)[,-1]\n",
+    "DX <- model.matrix(~ T4 * X)[, -1]\n",
     "\n",
-    "rlasso.ira = summary(rlassoEffects(DX, log(inuidur1), index = 1))\n",
+    "rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1))\n",
     "\n",
-    "\n",
-    "print(rlasso.ira)\n"
+    "print(rlasso_ira)"
    ]
   },
   {
@@ -369,40 +399,46 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "UGh_LJouellB"
+    "id": "UGh_LJouellB",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "str(ols.ira)\n",
-    "ols.ira[2,1]"
+    "str(ols_ira)\n",
+    "ols_ira[2, 1]"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "wvxXEMUQellC"
+    "id": "wvxXEMUQellC",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "table<- matrix(0, 2, 4)\n",
-    "table[1,1]<-  ols.cl[2,1]\n",
-    "table[1,2]<-  ols.cra[2,1]\n",
-    "table[1,3]<-  ols.ira[2,1]\n",
-    "table[1,4]<-  rlasso.ira[[1]][1]\n",
+    "table <- matrix(0, 2, 4)\n",
+    "table[1, 1] <- ols_cl[2, 1]\n",
+    "table[1, 2] <- ols_cra[2, 1]\n",
+    "table[1, 3] <- ols_ira[2, 1]\n",
+    "table[1, 4] <- rlasso_ira[[1]][1]\n",
     "\n",
-    "table[2,1]<-  ols.cl[2,2]\n",
-    "table[2,2]<-  ols.cra[2,2]\n",
-    "table[2,3]<-  ols.ira[2,2]\n",
-    "table[2,4]<-  rlasso.ira[[1]][2]\n",
+    "table[2, 1] <- ols_cl[2, 2]\n",
+    "table[2, 2] <- ols_cra[2, 2]\n",
+    "table[2, 3] <- ols_ira[2, 2]\n",
+    "table[2, 4] <- rlasso_ira[[1]][2]\n",
     "\n",
     "\n",
-    "colnames(table)<- c(\"CL\",\"CRA\",\"IRA\", \"IRA w Lasso\")\n",
-    "rownames(table)<- c(\"estimate\", \"standard error\")\n",
-    "tab<- xtable(table, digits=5)\n",
+    "colnames(table) <- c(\"CL\", \"CRA\", \"IRA\", \"IRA w Lasso\")\n",
+    "rownames(table) <- c(\"estimate\", \"standard error\")\n",
+    "tab <- xtable(table, digits = 5)\n",
     "tab\n",
     "\n",
-    "print(tab, type=\"latex\", digits=5)"
+    "print(tab, type = \"latex\", digits = 5)"
    ]
   },
   {

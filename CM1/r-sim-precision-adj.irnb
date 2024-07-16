@@ -13,7 +13,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "VzLzwihLjfEJ"
+    "id": "VzLzwihLjfEJ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -54,20 +57,23 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "GXWON7gHd8zj"
+    "id": "GXWON7gHd8zj",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# generate the simulated dataset\n",
-    "set.seed(123)        # set MC seed\n",
-    "n = 1000             # sample size\n",
-    "Z = rnorm(n)         # generate Z\n",
-    "Y0 = -Z + rnorm(n)   # conditional average baseline response is -Z\n",
-    "Y1 = Z + rnorm(n)    # conditional average treatment effect is +Z\n",
-    "D = (runif(n)<.2)    # treatment indicator; only 20% get treated\n",
-    "Y = Y1*D + Y0*(1-D)  # observed Y\n",
-    "D = D - mean(D)      # demean D\n",
-    "Z = Z-mean(Z)        # demean Z"
+    "set.seed(123) # set MC seed\n",
+    "n <- 1000 # sample size\n",
+    "Z <- rnorm(n) # generate Z\n",
+    "Y0 <- -Z + rnorm(n) # conditional average baseline response is -Z\n",
+    "Y1 <- Z + rnorm(n) # conditional average treatment effect is +Z\n",
+    "D <- (runif(n) < .2) # treatment indicator; only 20% get treated\n",
+    "Y <- Y1 * D + Y0 * (1 - D) # observed Y\n",
+    "D <- D - mean(D) # demean D\n",
+    "Z <- Z - mean(Z) # demean Z"
    ]
   },
   {
@@ -93,19 +99,22 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "mGfqEgHLd8zs"
+    "id": "mGfqEgHLd8zs",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# implement each of the models on the simulated data\n",
-    "CL = lm(Y ~ D)\n",
-    "CRA = lm(Y ~ D+ Z)      #classical\n",
-    "IRA = lm(Y ~ D+ Z+ Z*D) #interactive approach\n",
+    "CL <- lm(Y ~ D)\n",
+    "CRA <- lm(Y ~ D + Z) # classical\n",
+    "IRA <- lm(Y ~ D + Z + Z * D) # interactive approach\n",
     "\n",
     "# we are interested in the coefficients on variable \"D\".\n",
-    "coeftest(CL, vcov = vcovHC(CL, type=\"HC1\"))\n",
-    "coeftest(CRA, vcov = vcovHC(CRA, type=\"HC1\"))\n",
-    "coeftest(IRA, vcov = vcovHC(IRA, type=\"HC1\"))"
+    "coeftest(CL, vcov = vcovHC(CL, type = \"HC1\"))\n",
+    "coeftest(CRA, vcov = vcovHC(CRA, type = \"HC1\"))\n",
+    "coeftest(IRA, vcov = vcovHC(IRA, type = \"HC1\"))"
    ]
   },
   {
@@ -125,7 +134,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "rOTRDgBld8zw"
+    "id": "rOTRDgBld8zw",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -149,30 +161,33 @@
    "metadata": {
     "_execution_state": "idle",
     "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
-    "id": "bmtL0a9Nd8z2"
+    "id": "bmtL0a9Nd8z2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "set.seed(123)\n",
-    "n = 1000\n",
-    "B= 1000\n",
+    "n <- 1000\n",
+    "B <- 1000\n",
     "\n",
-    "CLs = rep(0, B)\n",
-    "CRAs = rep(0, B)\n",
-    "IRAs = rep(0, B)\n",
+    "CLs <- rep(0, B)\n",
+    "CRAs <- rep(0, B)\n",
+    "IRAs <- rep(0, B)\n",
     "\n",
-    "for ( i in 1:B){\n",
-    "  Z = rnorm(n)\n",
-    "  Y0 = -Z + rnorm(n)\n",
-    "  Y1 =  Z + rnorm(n)\n",
-    "  Z = Z - mean(Z)\n",
-    "  D = (runif(n)<.1)\n",
-    "  D = D- mean(D)\n",
-    "  Y = Y1*D + Y0*(1-D)\n",
-    "  CLs[i]= lm(Y ~ D)$coef[2]\n",
-    "  CRAs[i] = lm(Y ~ D+ Z)$coef[2]\n",
-    "  IRAs[i] = lm(Y ~ D+ Z+ Z*D)$coef[2]\n",
-    "  }\n",
+    "for (i in 1:B) {\n",
+    "  Z <- rnorm(n)\n",
+    "  Y0 <- -Z + rnorm(n)\n",
+    "  Y1 <- Z + rnorm(n)\n",
+    "  Z <- Z - mean(Z)\n",
+    "  D <- (runif(n) < .1)\n",
+    "  D <- D - mean(D)\n",
+    "  Y <- Y1 * D + Y0 * (1 - D)\n",
+    "  CLs[i] <- lm(Y ~ D)$coef[2]\n",
+    "  CRAs[i] <- lm(Y ~ D + Z)$coef[2]\n",
+    "  IRAs[i] <- lm(Y ~ D + Z + Z * D)$coef[2]\n",
+    "}\n",
     "\n",
     "print(\"Standard deviations for estimators\")\n",
     "\n",
@@ -180,15 +195,6 @@
     "sqrt(mean(CRAs^2))\n",
     "sqrt(mean(IRAs^2))"
    ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "NTFe4jwBlVNo"
-   },
-   "outputs": [],
-   "source": []
   }
  ],
  "metadata": {
