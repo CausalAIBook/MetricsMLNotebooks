@@ -31,15 +31,18 @@
      "start_time": "2021-04-20T21:06:30.048170",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#install and load package\n",
+    "# install and load package\n",
     "install.packages(\"dagitty\")\n",
     "install.packages(\"ggdag\")\n",
     "library(dagitty)\n",
-    "library(ggdag)\n"
+    "library(ggdag)"
    ]
   },
   {
@@ -109,13 +112,16 @@
      "start_time": "2021-04-20T21:06:55.532808",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#generate a DAGs and plot them\n",
+    "# generate a DAGs and plot them\n",
     "\n",
-    "G1 = dagitty('dag{\n",
+    "G1 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -127,7 +133,7 @@
     "X -> Y}')\n",
     "\n",
     "\n",
-    "ggdag(G1)+  theme_dag()"
+    "ggdag(G1) + theme_dag()"
    ]
   },
   {
@@ -160,11 +166,14 @@
      "start_time": "2021-04-20T21:06:56.529499",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "adjustmentSets( G1, \"D\", \"Y\",effect=\"total\" )"
+    "adjustmentSets(G1, \"D\", \"Y\", effect = \"total\")"
    ]
   },
   {
@@ -215,13 +224,16 @@
      "start_time": "2021-04-20T21:06:56.637212",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#generate a couple of DAGs and plot them\n",
+    "# generate a couple of DAGs and plot them\n",
     "\n",
-    "G2 = dagitty('dag{\n",
+    "G2 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -233,7 +245,7 @@
     "X -> Y}')\n",
     "\n",
     "\n",
-    "ggdag(G2)+  theme_dag()"
+    "ggdag(G2) + theme_dag()"
    ]
   },
   {
@@ -248,11 +260,14 @@
      "start_time": "2021-04-20T21:06:57.038336",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "adjustmentSets( G2, \"D\", \"Y\", effect=\"total\" )\n"
+    "adjustmentSets(G2, \"D\", \"Y\", effect = \"total\")"
    ]
   },
   {
@@ -303,11 +318,14 @@
      "start_time": "2021-04-20T21:06:57.174395",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "G3 = dagitty('dag{\n",
+    "G3 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -321,9 +339,9 @@
     "A -> D\n",
     "X -> Y}')\n",
     "\n",
-    "adjustmentSets( G3, \"D\", \"Y\", effect=\"total\"  )\n",
+    "adjustmentSets(G3, \"D\", \"Y\", effect = \"total\")\n",
     "\n",
-    "ggdag(G3)+  theme_dag()"
+    "ggdag(G3) + theme_dag()"
    ]
   },
   {
@@ -357,11 +375,14 @@
      "start_time": "2021-04-20T21:06:57.615940",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "G4 = dagitty('dag{\n",
+    "G4 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -377,7 +398,7 @@
     "X -> Y}')\n",
     "\n",
     "\n",
-    "ggdag(G4)+  theme_dag()"
+    "ggdag(G4) + theme_dag()"
    ]
   },
   {
@@ -392,11 +413,14 @@
      "start_time": "2021-04-20T21:06:58.042805",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "adjustmentSets( G4, \"D\", \"Y\",effect=\"total\"  )"
+    "adjustmentSets(G4, \"D\", \"Y\", effect = \"total\")"
    ]
   },
   {
@@ -462,11 +486,14 @@
      "start_time": "2021-04-20T21:06:58.210967",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "G5 = dagitty('dag{\n",
+    "G5 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -484,9 +511,9 @@
     "X -> M\n",
     "X -> Y}')\n",
     "\n",
-    "print( adjustmentSets( G5, \"D\", \"Y\",effect=\"total\"  ) )\n",
+    "print(adjustmentSets(G5, \"D\", \"Y\", effect = \"total\"))\n",
     "\n",
-    "ggdag(G5)+  theme_dag()"
+    "ggdag(G5) + theme_dag()"
    ]
   },
   {
@@ -518,11 +545,14 @@
      "start_time": "2021-04-20T21:06:58.654264",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "G6 = dagitty('dag{\n",
+    "G6 <- dagitty('dag{\n",
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
@@ -541,9 +571,9 @@
     "X -> M\n",
     "X -> Y}')\n",
     "\n",
-    "print( adjustmentSets( G6, \"D\", \"Y\" ),effect=\"total\"  )\n",
+    "print(adjustmentSets(G6, \"D\", \"Y\"), effect = \"total\")\n",
     "\n",
-    "ggdag(G6)+  theme_dag()"
+    "ggdag(G6) + theme_dag()"
    ]
   },
   {
