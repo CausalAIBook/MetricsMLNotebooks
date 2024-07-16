@@ -8,6 +8,9 @@ output: html_document
 ```{r}
 install.packages("sandwich")
 install.packages("lmtest")
+```
+
+```{r}
 library(sandwich) # heterokedasticity robust standard errors
 library(lmtest) # coefficient testing
 ```

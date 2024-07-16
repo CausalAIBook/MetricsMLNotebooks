@@ -7,6 +7,9 @@ This notebook contains some RCT examples for teaching.
 
 ```{r}
 install.packages("PropCIs") # Exact CI exploiting Bernoulli outcome using the Cornfield Procedure
+```
+
+```{r}
 library(PropCIs)
 ```
 
