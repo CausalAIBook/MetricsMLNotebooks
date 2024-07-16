@@ -91,7 +91,11 @@ jobs:
                   source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = capture.output(traceback()))
+                  traceback_info <- capture.output({
+                    cat("Traceback:\n")
+                    traceback()
+                  })
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = traceback_info)
                 }
               )
             }
@@ -102,8 +106,7 @@ jobs:
               for (error in errors) {
                 cat("Error found in file:", error$gitrfile, "\n")
                 cat("Error message:", error$message, "\n")
-                cat("Traceback:\n")
-                print(error$traceback)
+                cat(paste(error$traceback, collapse = "\n"))
               }
               quit(status = 1, save = "no")  # Exit with an error status if errors are found
             }
