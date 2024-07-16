@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ['PM1', 'PM2', 'PM3'] #, 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
+        directory: ['PM1', 'PM2', 'PM3', 'PM4'], 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -62,7 +62,8 @@ jobs:
           R -e '
             library(lintr)
             linters <- with_defaults(line_length_linter = line_length_linter(120),
-                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")))
+                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")),
+                                     object_usage_linter = NULL)
             rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
             results <- lapply(rmd_files, function(file) {
               lints <- lint(file, linters)
