@@ -25,7 +25,9 @@ $W$'s are a vector of worker characteristics explaining variation in wages. Cons
 install.packages("xtable")
 install.packages("hdm") # a library for high-dimensional metrics
 install.packages("sandwich") # a package used to compute robust standard errors
+```
 
+```{r}
 library(hdm)
 library(xtable)
 library(sandwich)

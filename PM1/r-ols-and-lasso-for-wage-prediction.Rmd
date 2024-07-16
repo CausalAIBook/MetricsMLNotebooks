@@ -25,7 +25,9 @@ The variable of interest $Y$ is the (log) hourly wage rate constructed as the ra
 install.packages("xtable")
 install.packages("hdm") # a library for high-dimensional metrics
 install.packages("glmnet") # for lasso CV
+```
 
+```{r}
 library(hdm)
 library(xtable)
 library(glmnet)
