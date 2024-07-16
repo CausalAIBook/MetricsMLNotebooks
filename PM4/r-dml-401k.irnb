@@ -46,7 +46,10 @@
    "execution_count": null,
    "id": "2",
    "metadata": {
-    "id": "KmAkbDiVE7wm"
+    "id": "KmAkbDiVE7wm",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -105,7 +108,10 @@
      "start_time": "2022-04-19T09:06:48.819963",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -145,7 +151,10 @@
      "start_time": "2022-04-19T09:06:49.312540",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -201,11 +210,15 @@
      "start_time": "2022-04-19T09:06:49.711690",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "hist_e401 = ggplot(data, aes(x = e401, fill = factor(e401))) + geom_bar()\n",
+    "hist_e401 <- ggplot(data, aes(x = e401, fill = factor(e401))) +\n",
+    "  geom_bar()\n",
     "hist_e401"
    ]
   },
@@ -240,13 +253,17 @@
      "start_time": "2022-04-19T09:06:50.359520",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "dens_net_tfa = ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401)) ) +\n",
-    "                    geom_density() + xlim(c(-20000, 150000)) +\n",
-    "                    facet_wrap(.~e401)\n",
+    "dens_net_tfa <- ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401))) +\n",
+    "  geom_density() +\n",
+    "  xlim(c(-20000, 150000)) +\n",
+    "  facet_wrap(. ~ e401)\n",
     "\n",
     "dens_net_tfa"
    ]
@@ -282,13 +299,16 @@
      "start_time": "2022-04-19T09:06:50.945506",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "e1 <- data[data$e401==1,]\n",
-    "e0 <- data[data$e401==0,]\n",
-    "round(mean(e1$net_tfa)-mean(e0$net_tfa),0)"
+    "e1 <- data[data$e401 == 1, ]\n",
+    "e0 <- data[data$e401 == 0, ]\n",
+    "round(mean(e1$net_tfa) - mean(e0$net_tfa), 0)"
    ]
   },
   {
@@ -322,13 +342,16 @@
      "start_time": "2022-04-19T09:06:51.015311",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "p1 <- data[data$p401==1,]\n",
-    "p0 <- data[data$p401==0,]\n",
-    "round(mean(p1$net_tfa)-mean(p0$net_tfa),0)"
+    "p1 <- data[data$p401 == 1, ]\n",
+    "p0 <- data[data$p401 == 0, ]\n",
+    "round(mean(p1$net_tfa) - mean(p0$net_tfa), 0)"
    ]
   },
   {
@@ -354,23 +377,28 @@
    "execution_count": null,
    "id": "17",
    "metadata": {
-    "id": "1hBrSMQGzZBR"
+    "id": "1hBrSMQGzZBR",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# outcome variable\n",
-    "y <- data[,'net_tfa']\n",
+    "y <- data[, \"net_tfa\"]\n",
     "# treatment variable\n",
-    "D <- data[,'e401']\n",
-    "D2 <- data[,\"p401\"]\n",
-    "D3 <- data[,\"a401\"]\n",
+    "D <- data[, \"e401\"]\n",
+    "D2 <- data[, \"p401\"]\n",
+    "D3 <- data[, \"a401\"]\n",
     "\n",
-    "columns_to_drop <- c('e401', 'p401', 'a401', 'tw', 'tfa', 'net_tfa', 'tfa_he',\n",
-    "               'hval', 'hmort', 'hequity',\n",
-    "               'nifa', 'net_nifa', 'net_n401', 'ira',\n",
-    "               'dum91', 'icat', 'ecat', 'zhat',\n",
-    "               'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7',\n",
-    "               'a1', 'a2', 'a3', 'a4', 'a5')\n",
+    "columns_to_drop <- c(\n",
+    "  \"e401\", \"p401\", \"a401\", \"tw\", \"tfa\", \"net_tfa\", \"tfa_he\",\n",
+    "  \"hval\", \"hmort\", \"hequity\",\n",
+    "  \"nifa\", \"net_nifa\", \"net_n401\", \"ira\",\n",
+    "  \"dum91\", \"icat\", \"ecat\", \"zhat\",\n",
+    "  \"i1\", \"i2\", \"i3\", \"i4\", \"i5\", \"i6\", \"i7\",\n",
+    "  \"a1\", \"a2\", \"a3\", \"a4\", \"a5\"\n",
+    ")\n",
     "\n",
     "# covariates\n",
     "X <- data[, !(names(data) %in% columns_to_drop)]"
@@ -381,13 +409,17 @@
    "execution_count": null,
    "id": "18",
    "metadata": {
-    "id": "DD0Hwcb6z4u5"
+    "id": "DD0Hwcb6z4u5",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Constructing the controls\n",
-    "X_formula = \"~ 0 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown\"\n",
-    "X = as.data.table(model.frame(X_formula, pension))\n",
+    "x_formula <- paste(\"~ 0 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) \",\n",
+    "                   \"+ poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown\")\n",
+    "X <- as.data.table(model.frame(x_formula, X))\n",
     "head(X)"
    ]
   },
@@ -418,10 +450,10 @@
     "id": "vEAeB2ih0r8B"
    },
    "source": [
-    "\\begin{eqnarray}\n",
+    "\\begin{align}\n",
     " &  Y = D\\theta_0 + g_0(X) + \\zeta,  &  E[\\zeta \\mid D,X]= 0,\\\\\n",
     " & D = m_0(X) +  V,   &  E[V \\mid X] = 0.\n",
-    "\\end{eqnarray}"
+    "\\end{align}"
    ]
   },
   {
@@ -447,56 +479,57 @@
    "execution_count": null,
    "id": "23",
    "metadata": {
-    "id": "tqFlcClUNr9Z"
+    "id": "tqFlcClUNr9Z",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=3, method = \"regression\") {\n",
-    "  nobs <- nrow(x) #number of observations\n",
-    "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices\n",
-    "  I <- split(1:nobs, foldid)  #split observation indices into folds\n",
+    "dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 3, method = \"regression\") {\n",
+    "  nobs <- nrow(x) # number of observations\n",
+    "  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices\n",
+    "  I <- split(1:nobs, foldid) # split observation indices into folds\n",
     "  ytil <- dtil <- rep(NA, nobs)\n",
     "  cat(\"fold: \")\n",
-    "  for(b in 1:length(I)){\n",
-    "\n",
+    "  for (b in seq_along(I)) {\n",
     "    if (method == \"regression\") {\n",
-    "        dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out\n",
-    "        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out\n",
-    "        dhat <- predict(dfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "        yhat <- predict(yfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
-    "        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
+    "      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
+    "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out\n",
+    "      dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+    "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
     "    } else if (method == \"randomforest\") {\n",
-    "        dfit <- dreg(x[-I[[b]],], as.factor(d)[-I[[b]]]) #take a fold out\n",
-    "        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out\n",
-    "        dhat <- predict(dfit, x[I[[b]],], type=\"prob\")[,2] #predict the left-out fold\n",
-    "        yhat <- predict(yfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
-    "        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
+    "      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out\n",
+    "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+    "      dhat <- predict(dfit, x[I[[b]], ], type = \"prob\")[, 2] # predict the left-out fold\n",
+    "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+    "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
     "    } else if (method == \"decisiontrees\") {\n",
-    "        dfit <- dreg(x[-I[[b]],], as.factor(d)[-I[[b]]]) #take a fold out\n",
-    "        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out\n",
-    "        dhat <- predict(dfit, x[I[[b]],])[,2] #predict the left-out fold\n",
-    "        yhat <- predict(yfit, x[I[[b]],]) #predict the left-out fold\n",
-    "        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
-    "        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
+    "      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out\n",
+    "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+    "      dhat <- predict(dfit, x[I[[b]], ])[, 2] # predict the left-out fold\n",
+    "      yhat <- predict(yfit, x[I[[b]], ]) # predict the left-out fold\n",
+    "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+    "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
     "    } else if (method == \"boostedtrees\") {\n",
-    "        dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out\n",
-    "        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out\n",
-    "        dhat <- predict(dfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "        yhat <- predict(yfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
-    "        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
+    "      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
+    "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+    "      dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+    "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
     "    }\n",
-    "    cat(b,\" \")\n",
-    "\n",
+    "    cat(b, \" \")\n",
     "  }\n",
-    "  rfit <- lm(ytil ~ dtil)    #estimate the main parameter by regressing one residual on the other\n",
-    "  coef.est <- coef(rfit)[2]  #extract coefficient\n",
-    "  se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error\n",
-    "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))  #printing output\n",
-    "  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals\n",
-    "}\n"
+    "  rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other\n",
+    "  coef_est <- coef(rfit)[2] # extract coefficient\n",
+    "  se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error\n",
+    "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef_est, se)) # printing output\n",
+    "  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals\n",
+    "}"
    ]
   },
   {
@@ -504,7 +537,10 @@
    "execution_count": null,
    "id": "24",
    "metadata": {
-    "id": "sS0P4CVySjDP"
+    "id": "sS0P4CVySjDP",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -516,7 +552,7 @@
     "    upper = point + 1.96 * stderr, # upper end of 95% confidence interval\n",
     "    `rmse y` = sqrt(mean(resy^2)), # RMSE of model that predicts outcome y\n",
     "    `rmse D` = sqrt(mean(resD^2)), # RMSE of model that predicts treatment D\n",
-    "    `accuracy D` = mean(abs(resD) < 0.5)# binary classification accuracy of model for D\n",
+    "    `accuracy D` = mean(abs(resD) < 0.5) # binary classification accuracy of model for D\n",
     "  )\n",
     "  rownames(data) <- name\n",
     "  return(data)\n",
@@ -538,7 +574,10 @@
    "execution_count": null,
    "id": "26",
    "metadata": {
-    "id": "LOVuR5QO1bkB"
+    "id": "LOVuR5QO1bkB",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -546,14 +585,19 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Lasso CV \\n\"))\n",
     "\n",
-    "dreg.lasso.cv <- function(x,d){ cv.glmnet(x, d, family=\"gaussian\", alpha=1, nfolds=5)}\n",
-    "yreg.lasso.cv <- function(x,y){ cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
+    "dreg_lasso_cv <- function(x, d) {\n",
+    "  cv.glmnet(x, d, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "}\n",
+    "yreg_lasso_cv <- function(x, y) {\n",
+    "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "}\n",
     "\n",
-    "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.lasso.cv, yreg.lasso.cv, nfold=5)\n",
+    "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_lasso_cv, yreg_lasso_cv, nfold = 5)\n",
     "\n",
-    "sum.lasso.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV')\n",
+    "sum_lasso_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                           dml2_results$ytil, name = \"LassoCV\")\n",
     "tableplr <- data.frame()\n",
-    "tableplr <- rbind(sum.lasso.cv)\n",
+    "tableplr <- rbind(sum_lasso_cv)\n",
     "tableplr"
    ]
   },
@@ -562,13 +606,16 @@
    "execution_count": null,
    "id": "27",
    "metadata": {
-    "id": "KatOw36Z0ghO"
+    "id": "KatOw36Z0ghO",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
-    "dhat.lasso <- D - DML2.results$dtil\n",
-    "yhat.lasso <- y - DML2.results$ytil"
+    "dhat_lasso <- D - dml2_results$dtil\n",
+    "yhat_lasso <- y - dml2_results$ytil"
    ]
   },
   {
@@ -588,7 +635,10 @@
    "execution_count": null,
    "id": "29",
    "metadata": {
-    "id": "b9Nvp5ZlSuwB"
+    "id": "b9Nvp5ZlSuwB",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -596,12 +646,17 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Lasso/Logistic \\n\"))\n",
     "\n",
-    "dreg.logistic.cv <- function(x,d){cv.glmnet(x, d, family=\"binomial\", alpha=0, nfolds=5)}\n",
-    "yreg.lasso.cv <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
+    "dreg_logistic_cv <- function(x, d) {\n",
+    "  cv.glmnet(x, d, family = \"binomial\", alpha = 0, nfolds = 5)\n",
+    "}\n",
+    "yreg_lasso_cv <- function(x, y) {\n",
+    "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "}\n",
     "\n",
-    "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.logistic.cv, yreg.lasso.cv, nfold=5)\n",
-    "sum.lasso_logistic.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV/LogisticCV')\n",
-    "tableplr <- rbind(tableplr, sum.lasso_logistic.cv)\n",
+    "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_logistic_cv, yreg_lasso_cv, nfold = 5)\n",
+    "sum_lasso_logistic_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                                    dml2_results$ytil, name = \"LassoCV/LogisticCV\")\n",
+    "tableplr <- rbind(tableplr, sum_lasso_logistic_cv)\n",
     "tableplr"
    ]
   },
@@ -610,13 +665,16 @@
    "execution_count": null,
    "id": "30",
    "metadata": {
-    "id": "hJqMdcZV05lr"
+    "id": "hJqMdcZV05lr",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
-    "dhat.lasso_logistic <- D - DML2.results$dtil\n",
-    "yhat.lasso_logistic <- y - DML2.results$ytil"
+    "dhat_lasso_logistic <- D - dml2_results$dtil\n",
+    "yhat_lasso_logistic <- y - dml2_results$ytil"
    ]
   },
   {
@@ -634,7 +692,10 @@
    "execution_count": null,
    "id": "32",
    "metadata": {
-    "id": "nt0oTHTfSwMr"
+    "id": "nt0oTHTfSwMr",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -642,12 +703,17 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
     "\n",
-    "dreg.rf <- function(x,d){randomForest(x, d, ntree=1000, nodesize=10)}  #ML method=Forest\n",
-    "yreg.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
+    "dreg_rf <- function(x, d) {\n",
+    "  randomForest(x, d, ntree = 1000, nodesize = 10)\n",
+    "} # ML method=Forest\n",
+    "yreg_rf <- function(x, y) {\n",
+    "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+    "} # ML method=Forest\n",
     "\n",
-    "DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.rf, yreg.rf, nfold=5, method = \"randomforest\")\n",
-    "sum.rf <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Random Forest')\n",
-    "tableplr <- rbind(tableplr, sum.rf)\n",
+    "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_rf, yreg_rf, nfold = 5, method = \"randomforest\")\n",
+    "sum_rf <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                     dml2_results$ytil, name = \"Random Forest\")\n",
+    "tableplr <- rbind(tableplr, sum_rf)\n",
     "tableplr"
    ]
   },
@@ -656,13 +722,16 @@
    "execution_count": null,
    "id": "33",
    "metadata": {
-    "id": "TG476dPX1BI_"
+    "id": "TG476dPX1BI_",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
-    "dhat.rf <- D - DML2.results$dtil\n",
-    "yhat.rf <- y - DML2.results$ytil"
+    "dhat_rf <- D - dml2_results$dtil\n",
+    "dhat_rf <- y - dml2_results$ytil"
    ]
   },
   {
@@ -680,7 +749,10 @@
    "execution_count": null,
    "id": "35",
    "metadata": {
-    "id": "3Nu4daQRSyRb"
+    "id": "3Nu4daQRSyRb",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -688,12 +760,18 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Decision Trees \\n\"))\n",
     "\n",
-    "dreg.tr <- function(x,d){rpart(as.formula(\"D~.\"), cbind(data.frame(D=d),x), method = \"class\", minbucket=10, cp = 0.001)}\n",
-    "yreg.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
+    "dreg_tr <- function(x, d) {\n",
+    "  rpart(as.formula(\"D~.\"), cbind(data.frame(D = d), x), method = \"class\", minbucket = 10, cp = 0.001)\n",
+    "}\n",
+    "dreg_tr <- function(x, y) {\n",
+    "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+    "}\n",
     "\n",
-    "DML2.results <- DML2.for.PLM(X, D, y, dreg.tr, yreg.tr, nfold=5, method = \"decisiontrees\") # decision tree takes in X as dataframe, not matrix/array\n",
-    "sum.tr <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Decision Trees')\n",
-    "tableplr <- rbind(tableplr, sum.tr)\n",
+    "# decision tree takes in X as dataframe, not matrix/array\n",
+    "dml2_results <- dml2_for_plm(X, D, y, dreg_tr, dreg_tr, nfold = 5, method = \"decisiontrees\")\n",
+    "sum_tr <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                     dml2_results$ytil, name = \"Decision Trees\")\n",
+    "tableplr <- rbind(tableplr, sum_tr)\n",
     "tableplr"
    ]
   },
@@ -702,13 +780,16 @@
    "execution_count": null,
    "id": "36",
    "metadata": {
-    "id": "RnCGwVbN1KJJ"
+    "id": "RnCGwVbN1KJJ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
-    "dhat.tr <- D - DML2.results$dtil\n",
-    "yhat.tr <- y - DML2.results$ytil"
+    "dhat_tr <- D - dml2_results$dtil\n",
+    "yhat_tr <- y - dml2_results$ytil"
    ]
   },
   {
@@ -737,7 +818,10 @@
    "execution_count": null,
    "id": "39",
    "metadata": {
-    "id": "Ekg5qeEOSxep"
+    "id": "Ekg5qeEOSxep",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -746,14 +830,21 @@
     "cat(sprintf(\"\\nDML with Boosted Trees \\n\"))\n",
     "\n",
     "# NB: early stopping cannot easily be implemented with gbm\n",
-    "## set n.trees = best, where best <- gbm.perf(dreg.boost, plot.it = FALSE)\n",
-    "dreg.boost  <- function(x,d){gbm(as.formula(\"D~.\"), cbind(data.frame(D=d),x), distribution= \"bernoulli\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
-    "yreg.boost  <- function(x,y){gbm(as.formula(\"y~.\"), cbind(data.frame(y=y),x), distribution= \"gaussian\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
+    "## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)\n",
+    "dreg_boost <- function(x, d) {\n",
+    "  gbm(as.formula(\"D~.\"), cbind(data.frame(D = d), x), distribution = \"bernoulli\",\n",
+    "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+    "}\n",
+    "yreg_boost <- function(x, y) {\n",
+    "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+    "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+    "}\n",
     "\n",
     "# passing these through regression as type=\"response\", and D should not be factor!\n",
-    "DML2.results = DML2.for.PLM(X, D, y, dreg.boost, yreg.boost, nfold=5, method = \"boostedtrees\")\n",
-    "sum.boost <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Boosted Trees')\n",
-    "tableplr <- rbind(tableplr, sum.boost)\n",
+    "dml2_results <- dml2_for_plm(X, D, y, dreg_boost, yreg_boost, nfold = 5, method = \"boostedtrees\")\n",
+    "sum_boost <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                        dml2_results$ytil, name = \"Boosted Trees\")\n",
+    "tableplr <- rbind(tableplr, sum_boost)\n",
     "tableplr"
    ]
   },
@@ -762,13 +853,16 @@
    "execution_count": null,
    "id": "40",
    "metadata": {
-    "id": "WSyqSd5Z1hne"
+    "id": "WSyqSd5Z1hne",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
-    "dhat.boost <- D - DML2.results$dtil\n",
-    "yhat.boost <- y - DML2.results$ytil"
+    "dhat_boost <- D - dml2_results$dtil\n",
+    "yhat_boost <- y - dml2_results$ytil"
    ]
   },
   {
@@ -796,14 +890,18 @@
    "execution_count": null,
    "id": "43",
    "metadata": {
-    "id": "gDrZqZXR12hA"
+    "id": "gDrZqZXR12hA",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Best fit is boosted trees for both D and Y\n",
     "\n",
-    "sum.best <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Best')\n",
-    "tableplr <- rbind(tableplr, sum.best)\n",
+    "sum_best <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+    "                       dml2_results$ytil, name = \"Best\")\n",
+    "tableplr <- rbind(tableplr, sum_best)\n",
     "tableplr"
    ]
   },
@@ -822,22 +920,25 @@
    "execution_count": null,
    "id": "45",
    "metadata": {
-    "id": "Pkg7pw5h2N0z"
+    "id": "Pkg7pw5h2N0z",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Least squares model average\n",
     "\n",
-    "ma.dtil <- lm(D~dhat.lasso+dhat.lasso_logistic+dhat.rf+dhat.tr+dhat.boost)$residuals\n",
-    "ma.ytil <- lm(y~yhat.lasso+yhat.lasso_logistic+yhat.rf+yhat.tr+yhat.boost)$residuals\n",
+    "ma_dtil <- lm(D ~ dhat_lasso + dhat_lasso_logistic + dhat_rf + dhat_tr + dhat_boost)$residuals\n",
+    "ma_ytil <- lm(y ~ yhat_lasso + yhat_lasso_logistic + dhat_rf + yhat_tr + yhat_boost)$residuals\n",
     "\n",
-    "rfit <- lm(ma.ytil ~ ma.dtil)    #estimate the main parameter by regressing one residual on the other\n",
-    "coef.est <- coef(rfit)[2]  #extract coefficient\n",
-    "se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error\n",
+    "rfit <- lm(ma_ytil ~ ma_dtil) # estimate the main parameter by regressing one residual on the other\n",
+    "coef_est <- coef(rfit)[2] # extract coefficient\n",
+    "se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error\n",
     "\n",
-    "sum.ma <- summaryPLR(coef.est, se, ma.dtil, ma.ytil, name = 'Model Average')\n",
+    "sum.ma <- summaryPLR(coef_est, se, ma_dtil, ma_ytil, name = \"Model Average\")\n",
     "tableplr <- rbind(tableplr, sum.ma)\n",
-    "tableplr\n"
+    "tableplr"
    ]
   },
   {
@@ -891,10 +992,10 @@
     "tags": []
    },
    "source": [
-    " \\begin{eqnarray}\\label{eq: HetPL1}\n",
+    " \\begin{align}\n",
     " & Y  = g_0(D, X) + U,  &  \\quad E[U \\mid X, D]= 0,\\\\\n",
     "  & D  = m_0(X) + V,  & \\quad  E[V\\mid X] = 0.\n",
-    "\\end{eqnarray}"
+    "\\end{align}"
    ]
   },
   {
@@ -921,90 +1022,92 @@
    "execution_count": null,
    "id": "50",
    "metadata": {
-    "id": "-hCmnqC-N0nS"
+    "id": "-hCmnqC-N0nS",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "DML2.for.IRM <- function(x, d, y, dreg, yreg0, yreg1, trimming=0.01, nfold=5, method=\"regression\") {\n",
+    "dml2_for_irm <- function(x, d, y, dreg, yreg0, yreg1, trimming = 0.01, nfold = 5, method = \"regression\") {\n",
     "  yhat0 <- rep(0, length(y))\n",
     "  yhat1 <- rep(0, length(y))\n",
     "  Dhat <- rep(0, length(d))\n",
     "\n",
-    "  nobs <- nrow(x) #number of observations\n",
-    "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices\n",
-    "  I <- split(1:nobs, foldid)  #split observation indices into folds\n",
+    "  nobs <- nrow(x) # number of observations\n",
+    "  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices\n",
+    "  I <- split(1:nobs, foldid) # split observation indices into folds\n",
     "  ytil <- dtil <- rep(NA, nobs)\n",
     "\n",
     "  cat(\"fold: \")\n",
-    "  for(b in 1:length(I)){\n",
-    "\n",
+    "  for (b in seq_along(I)) {\n",
     "    # define helpful variables\n",
-    "    Dnotb = d[-I[[b]]]\n",
-    "    Xb = X[I[[b]],]\n",
-    "    Xnotb = X[-I[[b]],]\n",
+    "    Dnotb <- d[-I[[b]]]\n",
+    "    Xb <- X[I[[b]], ]\n",
+    "    Xnotb <- X[-I[[b]], ]\n",
     "\n",
     "    # training dfs subsetted on the -I[[b]] fold\n",
-    "    XD0 = X[-I[[b]],][d[-I[[b]]]==0]\n",
-    "    yD0 = y[-I[[b]]][d[-I[[b]]]==0]\n",
-    "    XD1 = X[-I[[b]],][d[-I[[b]]]==1]\n",
-    "    yD1 = y[-I[[b]]][d[-I[[b]]]==1]\n",
+    "    XD0 <- X[-I[[b]], ][d[-I[[b]]] == 0]\n",
+    "    yD0 <- y[-I[[b]]][d[-I[[b]]] == 0]\n",
+    "    XD1 <- X[-I[[b]], ][d[-I[[b]]] == 1]\n",
+    "    yD1 <- y[-I[[b]]][d[-I[[b]]] == 1]\n",
     "\n",
     "    if (method == \"regression\") {\n",
-    "        yfit0 <- yreg0(as.matrix(XD0), yD0)\n",
-    "        yfit1 <- yreg1(as.matrix(XD1), yD1)\n",
-    "        yhat0[I[[b]]] <- predict(yfit0, as.matrix(Xb)) # default is type = \"response\" for glmnet family gaussian\n",
-    "        yhat1[I[[b]]] <- predict(yfit1, as.matrix(Xb))\n",
+    "      yfit0 <- yreg0(as.matrix(XD0), yD0)\n",
+    "      yfit1 <- yreg1(as.matrix(XD1), yD1)\n",
+    "      yhat0[I[[b]]] <- predict(yfit0, as.matrix(Xb)) # default is type = \"response\" for glmnet family gaussian\n",
+    "      yhat1[I[[b]]] <- predict(yfit1, as.matrix(Xb))\n",
     "    } else if (method == \"randomforest\") {\n",
-    "        yfit0 <- yreg0(XD0, yD0)\n",
-    "        yfit1 <- yreg1(XD1, yD1)\n",
-    "        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for rf\n",
-    "        yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+    "      yfit0 <- yreg0(XD0, yD0)\n",
+    "      yfit1 <- yreg1(XD1, yD1)\n",
+    "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for rf\n",
+    "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
     "    } else if (method == \"decisiontrees\") {\n",
-    "        yfit0 <- yreg0(XD0, yD0)\n",
-    "        yfit1 <- yreg1(XD1, yD1)\n",
-    "        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"vector\" for decision\n",
-    "        yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+    "      yfit0 <- yreg0(XD0, yD0)\n",
+    "      yfit1 <- yreg1(XD1, yD1)\n",
+    "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"vector\" for decision\n",
+    "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
     "    } else if (method == \"boostedtrees\") {\n",
-    "        yfit0 <- yreg0(as.data.frame(XD0), yD0)\n",
-    "        yfit1 <- yreg1(as.data.frame(XD1), yD1)\n",
-    "        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for boosted\n",
-    "        yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+    "      yfit0 <- yreg0(as.data.frame(XD0), yD0)\n",
+    "      yfit1 <- yreg1(as.data.frame(XD1), yD1)\n",
+    "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for boosted\n",
+    "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
     "    }\n",
     "\n",
     "    # propensity scores:\n",
-    "    if (method == \"regression\"){\n",
-    "      Dfit_b <- dreg(as.matrix(Xnotb), Dnotb)\n",
-    "      Dhat_b <- predict(Dfit_b, as.matrix(Xb), type=\"response\") # default is type=\"link\" for family binomial!\n",
+    "    if (method == \"regression\") {\n",
+    "      dfit_b <- dreg(as.matrix(Xnotb), Dnotb)\n",
+    "      dhat_b <- predict(dfit_b, as.matrix(Xb), type = \"response\") # default is type=\"link\" for family binomial!\n",
     "    } else if (method == \"randomforest\") {\n",
-    "      Dfit_b <- dreg(Xnotb, as.factor(Dnotb))\n",
-    "      Dhat_b <- predict(Dfit_b, Xb, type = \"prob\")[,2]\n",
+    "      dfit_b <- dreg(Xnotb, as.factor(Dnotb))\n",
+    "      dhat_b <- predict(dfit_b, Xb, type = \"prob\")[, 2]\n",
     "    } else if (method == \"decisiontrees\") {\n",
-    "      Dfit_b <- dreg(Xnotb, Dnotb)\n",
-    "      Dhat_b <- predict(Dfit_b, Xb)[,2]\n",
+    "      dfit_b <- dreg(Xnotb, Dnotb)\n",
+    "      dhat_b <- predict(dfit_b, Xb)[, 2]\n",
     "    } else if (method == \"boostedtrees\") {\n",
-    "      Dfit_b <- dreg(as.data.frame(Xnotb), Dnotb)\n",
-    "      Dhat_b <- predict(Dfit_b, Xb, type=\"response\")\n",
+    "      dfit_b <- dreg(as.data.frame(Xnotb), Dnotb)\n",
+    "      dhat_b <- predict(dfit_b, Xb, type = \"response\")\n",
     "    }\n",
-    "    Dhat_b <- pmax(pmin(Dhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]\n",
-    "    Dhat[I[[b]]] <- Dhat_b\n",
+    "    dhat_b <- pmax(pmin(dhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]\n",
+    "    Dhat[I[[b]]] <- dhat_b\n",
     "\n",
-    "\n",
-    "    cat(b,\" \")\n",
+    "    cat(b, \" \")\n",
     "  }\n",
     "\n",
     "  # Prediction of treatment and outcome for observed instrument\n",
     "  yhat <- yhat0 * (1 - D) + yhat1 * D\n",
     "  # residuals\n",
-    "  ytil <- y-yhat\n",
-    "  dtil <- D-Dhat\n",
+    "  ytil <- y - yhat\n",
+    "  dtil <- D - Dhat\n",
     "  # doubly robust quantity for every sample\n",
-    "  drhat <- yhat1 - yhat0 + (y-yhat)* (D/Dhat - (1 - D)/(1 - Dhat))\n",
-    "  coef.est <- mean(drhat)\n",
+    "  drhat <- yhat1 - yhat0 + (y - yhat) * (D / Dhat - (1 - D) / (1 - Dhat))\n",
+    "  coef_est <- mean(drhat)\n",
     "  vari <- var(drhat)\n",
-    "  se <- sqrt(vari/nrow(X))\n",
-    "  cat(\"point\", coef.est)\n",
+    "  se <- sqrt(vari / nrow(X))\n",
+    "  cat(\"point\", coef_est)\n",
     "  cat(\"se\", se)\n",
-    "  return(list(coef.est = coef.est, se = se, ytil = ytil, dtil = dtil, drhat = drhat, yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))\n",
+    "  return(list(coef_est = coef_est, se = se, ytil = ytil, dtil = dtil, drhat = drhat,\n",
+    "              yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))\n",
     "}"
    ]
   },
@@ -1013,18 +1116,22 @@
    "execution_count": null,
    "id": "51",
    "metadata": {
-    "id": "bCj1D8_MSg09"
+    "id": "bCj1D8_MSg09",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "summaryIRM <- function(coef.est, se, ytil, dtil, drhat, name) {\n",
-    "  summary_data <- data.frame(estimate = coef.est,  # point estimate\n",
-    "                             se = se,  # standard error\n",
-    "                             lower = coef.est - 1.96 * se,  # lower end of 95% confidence interval\n",
-    "                             upper = coef.est + 1.96 * se,  # upper end of 95% confidence interval\n",
-    "                             rmse_y = sqrt(mean(ytil^2)),  # res of model that predicts outcome y\n",
-    "                             rmse_D = sqrt(mean(dtil^2)),  # res of model that predicts treatment D\n",
-    "                             accuracy_D = mean(abs(dtil) < 0.5)  # binary classification accuracy of model for D\n",
+    "summaryIRM <- function(coef_est, se, ytil, dtil, drhat, name) {\n",
+    "  summary_data <- data.frame(\n",
+    "    estimate = coef_est, # point estimate\n",
+    "    se = se, # standard error\n",
+    "    lower = coef_est - 1.96 * se, # lower end of 95% confidence interval\n",
+    "    upper = coef_est + 1.96 * se, # upper end of 95% confidence interval\n",
+    "    rmse_y = sqrt(mean(ytil^2)), # res of model that predicts outcome y\n",
+    "    rmse_D = sqrt(mean(dtil^2)), # res of model that predicts treatment D\n",
+    "    accuracy_D = mean(abs(dtil) < 0.5) # binary classification accuracy of model for D\n",
     "  )\n",
     "  row.names(summary_data) <- name\n",
     "  return(summary_data)\n",
@@ -1046,7 +1153,10 @@
    "execution_count": null,
    "id": "53",
    "metadata": {
-    "id": "AUiHMoNTvo-m"
+    "id": "AUiHMoNTvo-m",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1054,20 +1164,28 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with LassoCV/Logistic \\n\"))\n",
     "\n",
-    "dreg.lasso.cv <- function(x,d){cv.glmnet(x, d, family=\"binomial\", alpha=0, nfolds=5)}\n",
-    "yreg0.lasso.cv <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
-    "yreg1.lasso.cv <- function(x,y){cv.glmnet(x, y, family=\"gaussian\", alpha=1, nfolds=5)}\n",
+    "dreg_lasso_cv <- function(x, d) {\n",
+    "  cv.glmnet(x, d, family = \"binomial\", alpha = 0, nfolds = 5)\n",
+    "}\n",
+    "yreg0_lasso_cv <- function(x, y) {\n",
+    "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "}\n",
+    "yreg1_lasso_cv <- function(x, y) {\n",
+    "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+    "}\n",
     "\n",
-    "DML2.results <- DML2.for.IRM(X, D, y, dreg.lasso.cv, yreg0.lasso.cv, yreg1.lasso.cv, nfold=5) # more folds seems to help stabilize finite sample performance\n",
-    "sum.lasso.cv <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'LassoCVLogistic')\n",
+    "# more folds seems to help stabilize finite sample performance\n",
+    "dml2_results <- dml2_for_irm(X, D, y, dreg_lasso_cv, yreg0_lasso_cv, yreg1_lasso_cv, nfold = 5)\n",
+    "sum_lasso_cv <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+    "                           dml2_results$drhat, name = \"LassoCVLogistic\")\n",
     "tableirm <- data.frame()\n",
-    "tableirm <- rbind(sum.lasso.cv)\n",
+    "tableirm <- rbind(sum_lasso_cv)\n",
     "tableirm\n",
     "\n",
-    "yhat0.lasso <- DML2.results$yhat0\n",
-    "yhat1.lasso <- DML2.results$yhat1\n",
-    "dhat.lasso <- DML2.results$dhat\n",
-    "yhat.lasso <- DML2.results$yhat"
+    "yhat0_lasso <- dml2_results$yhat0\n",
+    "yhat1_lasso <- dml2_results$yhat1\n",
+    "dhat_lasso <- dml2_results$dhat\n",
+    "yhat_lasso <- dml2_results$yhat"
    ]
   },
   {
@@ -1075,7 +1193,10 @@
    "execution_count": null,
    "id": "54",
    "metadata": {
-    "id": "JPABXLYyvyqy"
+    "id": "JPABXLYyvyqy",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1083,20 +1204,27 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
     "\n",
-    "dreg.rf <- function(x,d){randomForest(x, d, ntree=1000, nodesize=10)}  #ML method=Forest\n",
-    "yreg0.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
-    "yreg1.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest\n",
+    "dreg_rf <- function(x, d) {\n",
+    "  randomForest(x, d, ntree = 1000, nodesize = 10)\n",
+    "} # ML method=Forest\n",
+    "yreg0_rf <- function(x, y) {\n",
+    "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+    "} # ML method=Forest\n",
+    "yreg1_rf <- function(x, y) {\n",
+    "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+    "} # ML method=Forest\n",
     "\n",
     "\n",
-    "DML2.results <- DML2.for.IRM(as.matrix(X), D, y, dreg.rf, yreg0.rf, yreg1.rf, nfold=5, method = \"randomforest\")\n",
-    "sum.rf <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Random Forest')\n",
-    "tableirm <- rbind(tableirm, sum.rf)\n",
+    "dml2_results <- dml2_for_irm(as.matrix(X), D, y, dreg_rf, yreg0_rf, yreg1_rf, nfold = 5, method = \"randomforest\")\n",
+    "sum_rf <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+    "                     dml2_results$drhat, name = \"Random Forest\")\n",
+    "tableirm <- rbind(tableirm, sum_rf)\n",
     "tableirm\n",
     "\n",
-    "yhat0.rf <- DML2.results$yhat0\n",
-    "yhat1.rf <- DML2.results$yhat1\n",
-    "dhat.rf <- DML2.results$dhat\n",
-    "yhat.rf <- DML2.results$yhat"
+    "yhat0_rf <- dml2_results$yhat0\n",
+    "yhat1_rf <- dml2_results$yhat1\n",
+    "dhat_rf <- dml2_results$dhat\n",
+    "dhat_rf <- dml2_results$yhat"
    ]
   },
   {
@@ -1104,7 +1232,10 @@
    "execution_count": null,
    "id": "55",
    "metadata": {
-    "id": "SukZCfEbvyzC"
+    "id": "SukZCfEbvyzC",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1112,19 +1243,26 @@
     "set.seed(123)\n",
     "cat(sprintf(\"\\nDML with Decision Trees \\n\"))\n",
     "\n",
-    "dreg.tr <- function(x,d){rpart(as.formula(\"D~.\"), cbind(data.frame(D=d),x), method = \"class\", minbucket=10, cp = 0.001)}\n",
-    "yreg0.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
-    "yreg1.tr <- function(x,y){rpart(as.formula(\"y~.\"), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}\n",
+    "dreg_tr <- function(x, d) {\n",
+    "  rpart(as.formula(\"D~.\"), cbind(data.frame(D = d), x), method = \"class\", minbucket = 10, cp = 0.001)\n",
+    "}\n",
+    "yreg0_tr <- function(x, y) {\n",
+    "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+    "}\n",
+    "yreg1_tr <- function(x, y) {\n",
+    "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+    "}\n",
     "\n",
-    "DML2.results <- DML2.for.IRM(X, D, y, dreg.tr, yreg0.tr, yreg1.tr, nfold=5, method = \"decisiontrees\")\n",
-    "sum.tr <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Decision Trees')\n",
-    "tableirm <- rbind(tableirm, sum.tr)\n",
+    "dml2_results <- dml2_for_irm(X, D, y, dreg_tr, yreg0_tr, yreg1_tr, nfold = 5, method = \"decisiontrees\")\n",
+    "sum_tr <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+    "                     dml2_results$drhat, name = \"Decision Trees\")\n",
+    "tableirm <- rbind(tableirm, sum_tr)\n",
     "tableirm\n",
     "\n",
-    "yhat0.tr <- DML2.results$yhat0\n",
-    "yhat1.tr <- DML2.results$yhat1\n",
-    "dhat.tr <- DML2.results$dhat\n",
-    "yhat.tr <- DML2.results$yhat"
+    "yhat0_tr <- dml2_results$yhat0\n",
+    "yhat1_tr <- dml2_results$yhat1\n",
+    "dhat_tr <- dml2_results$dhat\n",
+    "yhat_tr <- dml2_results$yhat"
    ]
   },
   {
@@ -1132,7 +1270,10 @@
    "execution_count": null,
    "id": "56",
    "metadata": {
-    "id": "bTfgiCabvy6f"
+    "id": "bTfgiCabvy6f",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1141,21 +1282,31 @@
     "cat(sprintf(\"\\nDML with Boosted Trees \\n\"))\n",
     "\n",
     "# NB: early stopping cannot easily be implemented with gbm\n",
-    "## set n.trees = best, where best <- gbm.perf(dreg.boost, plot.it = FALSE)\n",
-    "dreg.boost  <- function(x,d){gbm(as.formula(\"D~.\"), cbind(data.frame(D=d),x), distribution= \"bernoulli\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
-    "yreg0.boost  <- function(x,y){gbm(as.formula(\"y~.\"), cbind(data.frame(y=y),x), distribution= \"gaussian\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
-    "yreg1.boost  <- function(x,y){gbm(as.formula(\"y~.\"), cbind(data.frame(y=y),x), distribution= \"gaussian\", interaction.depth=2, n.trees=100, shrinkage=.1)}\n",
+    "## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)\n",
+    "dreg_boost <- function(x, d) {\n",
+    "  gbm(as.formula(\"D~.\"), cbind(data.frame(D = d), x), distribution = \"bernoulli\",\n",
+    "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+    "}\n",
+    "yreg0_boost <- function(x, y) {\n",
+    "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+    "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+    "}\n",
+    "yreg1_boost <- function(x, y) {\n",
+    "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+    "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+    "}\n",
     "\n",
     "# passing these through regression as type=\"response\", and D should not be factor!\n",
-    "DML2.results = DML2.for.IRM(X, D, y, dreg.boost, yreg0.boost, yreg1.boost, nfold=5, method = \"boostedtrees\")\n",
-    "sum.boost <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Boosted Trees')\n",
-    "tableirm <- rbind(tableirm, sum.boost)\n",
+    "dml2_results <- dml2_for_irm(X, D, y, dreg_boost, yreg0_boost, yreg1_boost, nfold = 5, method = \"boostedtrees\")\n",
+    "sum_boost <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+    "                        dml2_results$drhat, name = \"Boosted Trees\")\n",
+    "tableirm <- rbind(tableirm, sum_boost)\n",
     "tableirm\n",
     "\n",
-    "yhat0.boost <- DML2.results$yhat0\n",
-    "yhat1.boost <- DML2.results$yhat1\n",
-    "dhat.boost <- DML2.results$dhat\n",
-    "yhat.boost <- DML2.results$yhat"
+    "yhat0_boost <- dml2_results$yhat0\n",
+    "yhat1_boost <- dml2_results$yhat1\n",
+    "dhat_boost <- dml2_results$dhat\n",
+    "yhat_boost <- dml2_results$yhat"
    ]
   },
   {
@@ -1163,7 +1314,10 @@
    "execution_count": null,
    "id": "57",
    "metadata": {
-    "id": "7rxqwK-R4Z2q"
+    "id": "7rxqwK-R4Z2q",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1174,16 +1328,16 @@
     "# Here, the best performance for Y is the random forest and for D the boosted tree\n",
     "\n",
     "# residuals\n",
-    "ytil <- y-yhat.rf\n",
-    "dtil <- D-dhat.boost\n",
+    "ytil <- y - dhat_rf\n",
+    "dtil <- D - dhat_boost\n",
     "# doubly robust quantity for every sample\n",
-    "drhat <- yhat1.rf - yhat0.rf + (y-yhat.rf)* (D/dhat.boost - (1 - D)/(1 - dhat.boost))\n",
-    "coef.est <- mean(drhat)\n",
+    "drhat <- yhat1_rf - yhat0_rf + (y - dhat_rf) * (D / dhat_boost - (1 - D) / (1 - dhat_boost))\n",
+    "coef_est <- mean(drhat)\n",
     "vari <- var(drhat)\n",
-    "se <- sqrt(vari/nrow(X))\n",
+    "se <- sqrt(vari / nrow(X))\n",
     "\n",
-    "sum.best <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Best')\n",
-    "tableirm <- rbind(tableirm, sum.best)\n",
+    "sum_best <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = \"Best\")\n",
+    "tableirm <- rbind(tableirm, sum_best)\n",
     "tableirm"
    ]
   },
@@ -1192,38 +1346,41 @@
    "execution_count": null,
    "id": "58",
    "metadata": {
-    "id": "0-c3NI0fCfqg"
+    "id": "0-c3NI0fCfqg",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Least squares model average\n",
     "# We'll look at weights that do best job for Y overall. Could also use different weights for Y0 and Y1\n",
     "\n",
-    "ma.dw <- lm(D~dhat.lasso+dhat.rf+dhat.tr+dhat.boost)$coef\n",
-    "ma.yw <- lm(y~yhat.lasso+yhat.rf+yhat.tr+yhat.boost)$coef\n",
+    "ma_dw <- lm(D ~ dhat_lasso + dhat_rf + dhat_tr + dhat_boost)$coef\n",
+    "ma_yw <- lm(y ~ yhat_lasso + dhat_rf + yhat_tr + yhat_boost)$coef\n",
     "\n",
-    "Dhats <- cbind(as.matrix(rep(1,nrow(X))),dhat.lasso,dhat.rf,dhat.tr,dhat.boost)\n",
-    "Y0s <- cbind(as.matrix(rep(1,nrow(X))),yhat0.lasso,yhat0.rf,yhat0.tr,yhat0.boost)\n",
-    "Y1s <- cbind(as.matrix(rep(1,nrow(X))),yhat1.lasso,yhat1.rf,yhat1.tr,yhat1.boost)\n",
+    "Dhats <- cbind(as.matrix(rep(1, nrow(X))), dhat_lasso, dhat_rf, dhat_tr, dhat_boost)\n",
+    "Y0s <- cbind(as.matrix(rep(1, nrow(X))), yhat0_lasso, yhat0_rf, yhat0_tr, yhat0_boost)\n",
+    "Y1s <- cbind(as.matrix(rep(1, nrow(X))), yhat1_lasso, yhat1_rf, yhat1_tr, yhat1_boost)\n",
     "\n",
-    "dhat <- Dhats%*%as.matrix(ma.dw)\n",
-    "yhat0 <- Y0s%*%as.matrix(ma.yw)\n",
-    "yhat1 <- Y1s%*%as.matrix(ma.yw)\n",
+    "dhat <- Dhats %*% as.matrix(ma_dw)\n",
+    "yhat0 <- Y0s %*% as.matrix(ma_yw)\n",
+    "yhat1 <- Y1s %*% as.matrix(ma_yw)\n",
     "\n",
     "# Prediction of treatment and outcome for observed instrument\n",
     "yhat <- yhat0 * (1 - D) + yhat1 * D\n",
     "# residuals\n",
-    "ytil <- y-yhat\n",
-    "dtil <- D-dhat\n",
+    "ytil <- y - yhat\n",
+    "dtil <- D - dhat\n",
     "# doubly robust quantity for every sample\n",
-    "drhat <- yhat1 - yhat0 + (y-yhat)* (D/dhat - (1 - D)/(1 - dhat))\n",
-    "coef.est <- mean(drhat)\n",
+    "drhat <- yhat1 - yhat0 + (y - yhat) * (D / dhat - (1 - D) / (1 - dhat))\n",
+    "coef_est <- mean(drhat)\n",
     "vari <- var(drhat)\n",
-    "se <- sqrt(vari/nrow(X))\n",
+    "se <- sqrt(vari / nrow(X))\n",
     "\n",
-    "sum.ma <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Model Average')\n",
+    "sum.ma <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = \"Model Average\")\n",
     "tableirm <- rbind(tableirm, sum.ma)\n",
-    "tableirm\n"
+    "tableirm"
    ]
   },
   {
@@ -1279,7 +1436,10 @@
      "start_time": "2022-04-19T09:06:51.130347",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1311,22 +1471,22 @@
      "start_time": "2022-04-19T09:07:11.994203",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Constructing the data (as DoubleMLData)\n",
-    "formula_flex = \"net_tfa ~ e401 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + marr + twoearn + db + pira + hown\"\n",
-    "model_flex = as.data.table(model.frame(formula_flex, pension))\n",
-    "x_cols = colnames(model_flex)[-c(1,2)]\n",
-    "data_ml = DoubleMLData$new(model_flex, y_col = \"net_tfa\", d_cols = \"e401\", x_cols=x_cols)\n",
+    "formula_flex <- paste(\"net_tfa ~ e401 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) \",\n",
+    "                      \"+ poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + marr + twoearn + db + pira + hown\")\n",
+    "model_flex <- as.data.table(model.frame(formula_flex, pension))\n",
+    "x_cols <- colnames(model_flex)[-c(1, 2)]\n",
+    "data_ml <- DoubleMLData$new(model_flex, y_col = \"net_tfa\", d_cols = \"e401\", x_cols = x_cols)\n",
     "\n",
-    "\n",
-    "p <- dim(model_flex)[2]-2\n",
-    "p\n",
-    "\n",
-    "# complex model with two-way interactions\n",
-    "#data_interactions = fetch_401k(polynomial_features = TRUE, instrument = FALSE)\n"
+    "p <- dim(model_flex)[2] - 2\n",
+    "p"
    ]
   },
   {
@@ -1370,17 +1530,20 @@
      "start_time": "2022-04-19T09:07:12.173534",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Estimating the PLR\n",
     "lgr::get_logger(\"mlr3\")$set_threshold(\"warn\")\n",
-    "lasso <- lrn(\"regr.cv_glmnet\",nfolds = 5, s = \"lambda.min\")\n",
+    "lasso <- lrn(\"regr.cv_glmnet\", nfolds = 5, s = \"lambda.min\")\n",
     "lasso_class <- lrn(\"classif.cv_glmnet\", nfolds = 5, s = \"lambda.min\")\n",
     "\n",
-    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds=5)\n",
-    "dml_plr$fit(store_predictions=TRUE)\n",
+    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds = 5)\n",
+    "dml_plr$fit(store_predictions = TRUE)\n",
     "dml_plr$summary()\n",
     "lasso_plr <- dml_plr$coef\n",
     "lasso_std_plr <- dml_plr$se"
@@ -1417,7 +1580,10 @@
      "start_time": "2022-04-19T09:07:34.681248",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1439,7 +1605,10 @@
      "start_time": "2022-04-19T09:07:34.730771",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1447,8 +1616,8 @@
     "y <- as.matrix(pension$net_tfa) # true observations\n",
     "theta <- as.numeric(dml_plr$coef) # estimated regression coefficient\n",
     "d <- as.matrix(pension$e401)\n",
-    "predictions_y <- as.matrix(d*theta)+g_hat # predictions for y\n",
-    "lasso_y_rmse <- sqrt(mean((y-predictions_y)^2))\n",
+    "predictions_y <- as.matrix(d * theta) + g_hat # predictions for y\n",
+    "lasso_y_rmse <- sqrt(mean((y - predictions_y)^2))\n",
     "lasso_y_rmse"
    ]
   },
@@ -1465,13 +1634,16 @@
      "start_time": "2022-04-19T09:07:34.785388",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# cross-fitted RMSE: treatment\n",
     "d <- as.matrix(pension$e401)\n",
-    "lasso_d_rmse <- sqrt(mean((d-m_hat)^2))\n",
+    "lasso_d_rmse <- sqrt(mean((d - m_hat)^2))\n",
     "lasso_d_rmse\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1509,17 +1681,20 @@
      "start_time": "2022-04-19T09:07:34.863255",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Random Forest\n",
     "lgr::get_logger(\"mlr3\")$set_threshold(\"warn\")\n",
     "randomForest <- lrn(\"regr.ranger\")\n",
-    "randomForest_class <- lrn(\"classif.ranger\")\n",
+    "random_forest_class <- lrn(\"classif.ranger\")\n",
     "\n",
-    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = randomForest_class, n_folds=5)\n",
-    "dml_plr$fit(store_predictions=TRUE) # set store_predictions=TRUE to evaluate the model\n",
+    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = random_forest_class, n_folds = 5)\n",
+    "dml_plr$fit(store_predictions = TRUE) # set store_predictions=TRUE to evaluate the model\n",
     "dml_plr$summary()\n",
     "forest_plr <- dml_plr$coef\n",
     "forest_std_plr <- dml_plr$se"
@@ -1556,7 +1731,10 @@
      "start_time": "2022-04-19T09:08:35.944307",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1564,12 +1742,12 @@
     "g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o\n",
     "m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o\n",
     "theta <- as.numeric(dml_plr$coef) # estimated regression coefficient\n",
-    "predictions_y <- as.matrix(d*theta)+g_hat # predictions for y\n",
-    "forest_y_rmse <- sqrt(mean((y-predictions_y)^2))\n",
+    "predictions_y <- as.matrix(d * theta) + g_hat # predictions for y\n",
+    "forest_y_rmse <- sqrt(mean((y - predictions_y)^2))\n",
     "forest_y_rmse\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "forest_d_rmse <- sqrt(mean((d-m_hat)^2))\n",
+    "forest_d_rmse <- sqrt(mean((d - m_hat)^2))\n",
     "forest_d_rmse\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1589,7 +1767,10 @@
      "start_time": "2022-04-19T09:08:36.049899",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1599,8 +1780,8 @@
     "trees <- lrn(\"regr.rpart\")\n",
     "trees_class <- lrn(\"classif.rpart\")\n",
     "\n",
-    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds=5)\n",
-    "dml_plr$fit(store_predictions=TRUE)\n",
+    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds = 5)\n",
+    "dml_plr$fit(store_predictions = TRUE)\n",
     "dml_plr$summary()\n",
     "tree_plr <- dml_plr$coef\n",
     "tree_std_plr <- dml_plr$se\n",
@@ -1609,12 +1790,12 @@
     "g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o\n",
     "m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o\n",
     "theta <- as.numeric(dml_plr$coef) # estimated regression coefficient\n",
-    "predictions_y <- as.matrix(d*theta)+g_hat # predictions for y\n",
-    "tree_y_rmse <- sqrt(mean((y-predictions_y)^2))\n",
+    "predictions_y <- as.matrix(d * theta) + g_hat # predictions for y\n",
+    "tree_y_rmse <- sqrt(mean((y - predictions_y)^2))\n",
     "tree_y_rmse\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "tree_d_rmse <- sqrt(mean((d-m_hat)^2))\n",
+    "tree_d_rmse <- sqrt(mean((d - m_hat)^2))\n",
     "tree_d_rmse\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1634,7 +1815,10 @@
      "start_time": "2022-04-19T09:08:37.283721",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1659,16 +1843,19 @@
      "start_time": "2022-04-19T09:09:58.089896",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Boosting\n",
-    "boost<- lrn(\"regr.glmboost\")\n",
+    "boost <- lrn(\"regr.glmboost\")\n",
     "boost_class <- lrn(\"classif.glmboost\")\n",
     "\n",
-    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds=5)\n",
-    "dml_plr$fit(store_predictions=TRUE)\n",
+    "dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds = 5)\n",
+    "dml_plr$fit(store_predictions = TRUE)\n",
     "dml_plr$summary()\n",
     "boost_plr <- dml_plr$coef\n",
     "boost_std_plr <- dml_plr$se\n",
@@ -1677,12 +1864,12 @@
     "g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o\n",
     "m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o\n",
     "theta <- as.numeric(dml_plr$coef) # estimated regression coefficient\n",
-    "predictions_y <- as.matrix(d*theta)+g_hat # predictions for y\n",
-    "boost_y_rmse <- sqrt(mean((y-predictions_y)^2))\n",
+    "predictions_y <- as.matrix(d * theta) + g_hat # predictions for y\n",
+    "boost_y_rmse <- sqrt(mean((y - predictions_y)^2))\n",
     "boost_y_rmse\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "boost_d_rmse <- sqrt(mean((d-m_hat)^2))\n",
+    "boost_d_rmse <- sqrt(mean((d - m_hat)^2))\n",
     "boost_d_rmse\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1720,18 +1907,21 @@
      "start_time": "2022-04-19T09:10:00.534612",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "table <- matrix(0, 4, 4)\n",
-    "table[1,1:4]   <- c(lasso_plr,forest_plr,tree_plr,boost_plr)\n",
-    "table[2,1:4]   <- c(lasso_std_plr,forest_std_plr,tree_std_plr,boost_std_plr)\n",
-    "table[3,1:4]   <- c(lasso_y_rmse,forest_y_rmse,tree_y_rmse,boost_y_rmse)\n",
-    "table[4,1:4]   <- c(lasso_d_rmse,forest_d_rmse,tree_d_rmse,boost_d_rmse)\n",
-    "rownames(table) <- c(\"Estimate\",\"Std.Error\",\"RMSE Y\",\"RMSE D\")\n",
-    "colnames(table) <- c(\"Lasso\",\"Random Forest\",\"Trees\",\"Boosting\")\n",
-    "tab<- xtable(table, digits = 2)\n",
+    "table[1, 1:4] <- c(lasso_plr, forest_plr, tree_plr, boost_plr)\n",
+    "table[2, 1:4] <- c(lasso_std_plr, forest_std_plr, tree_std_plr, boost_std_plr)\n",
+    "table[3, 1:4] <- c(lasso_y_rmse, forest_y_rmse, tree_y_rmse, boost_y_rmse)\n",
+    "table[4, 1:4] <- c(lasso_d_rmse, forest_d_rmse, tree_d_rmse, boost_d_rmse)\n",
+    "rownames(table) <- c(\"Estimate\", \"Std.Error\", \"RMSE Y\", \"RMSE D\")\n",
+    "colnames(table) <- c(\"Lasso\", \"Random Forest\", \"Trees\", \"Boosting\")\n",
+    "tab <- xtable(table, digits = 2)\n",
     "tab"
    ]
   },
@@ -1766,7 +1956,10 @@
      "start_time": "2022-04-19T09:10:00.656349",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1796,15 +1989,20 @@
      "start_time": "2022-04-19T09:10:00.813519",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "lgr::get_logger(\"mlr3\")$set_threshold(\"warn\")\n",
-    "dml_irm = DoubleMLIRM$new(data_ml, ml_g = lasso,\n",
-    "                          ml_m = lasso_class,\n",
-    "                          trimming_threshold = 0.01, n_folds=5)\n",
-    "dml_irm$fit(store_predictions=TRUE)\n",
+    "dml_irm <- DoubleMLIRM$new(data_ml,\n",
+    "  ml_g = lasso,\n",
+    "  ml_m = lasso_class,\n",
+    "  trimming_threshold = 0.01, n_folds = 5\n",
+    ")\n",
+    "dml_irm$fit(store_predictions = TRUE)\n",
     "dml_irm$summary()\n",
     "lasso_irm <- dml_irm$coef\n",
     "lasso_std_irm <- dml_irm$se\n",
@@ -1814,8 +2012,8 @@
     "dml_irm$params_names()\n",
     "g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)\n",
     "g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)\n",
-    "g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0\n",
-    "m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o\n"
+    "g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0\n",
+    "m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o"
    ]
   },
   {
@@ -1831,18 +2029,21 @@
      "start_time": "2022-04-19T09:10:18.948743",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# cross-fitted RMSE: outcome\n",
     "y <- as.matrix(pension$net_tfa) # true observations\n",
     "d <- as.matrix(pension$e401)\n",
-    "lasso_y_irm <- sqrt(mean((y-g_hat)^2))\n",
+    "lasso_y_irm <- sqrt(mean((y - g_hat)^2))\n",
     "lasso_y_irm\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "lasso_d_irm <- sqrt(mean((d-m_hat)^2))\n",
+    "lasso_d_irm <- sqrt(mean((d - m_hat)^2))\n",
     "lasso_d_irm\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1862,16 +2063,21 @@
      "start_time": "2022-04-19T09:10:19.015521",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "##### forest #####\n",
     "\n",
-    "dml_irm = DoubleMLIRM$new(data_ml, ml_g = randomForest,\n",
-    "                          ml_m = randomForest_class,\n",
-    "                          trimming_threshold = 0.01, n_folds=5)\n",
-    "dml_irm$fit(store_predictions=TRUE)\n",
+    "dml_irm <- DoubleMLIRM$new(data_ml,\n",
+    "  ml_g = randomForest,\n",
+    "  ml_m = random_forest_class,\n",
+    "  trimming_threshold = 0.01, n_folds = 5\n",
+    ")\n",
+    "dml_irm$fit(store_predictions = TRUE)\n",
     "dml_irm$summary()\n",
     "forest_irm <- dml_irm$coef\n",
     "forest_std_irm <- dml_plr$se\n",
@@ -1879,17 +2085,17 @@
     "# predictions\n",
     "g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)\n",
     "g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)\n",
-    "g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0\n",
+    "g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0\n",
     "m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_0\n",
     "\n",
     "# cross-fitted RMSE: outcome\n",
     "y <- as.matrix(pension$net_tfa) # true observations\n",
     "d <- as.matrix(pension$e401)\n",
-    "forest_y_irm <- sqrt(mean((y-g_hat)^2))\n",
+    "forest_y_irm <- sqrt(mean((y - g_hat)^2))\n",
     "forest_y_irm\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "forest_d_irm <- sqrt(mean((d-m_hat)^2))\n",
+    "forest_d_irm <- sqrt(mean((d - m_hat)^2))\n",
     "forest_d_irm\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1897,9 +2103,11 @@
     "\n",
     "##### trees #####\n",
     "\n",
-    "dml_irm <- DoubleMLIRM$new(data_ml, ml_g = trees, ml_m = trees_class,\n",
-    "                           trimming_threshold = 0.01, n_folds=5)\n",
-    "dml_irm$fit(store_predictions=TRUE)\n",
+    "dml_irm <- DoubleMLIRM$new(data_ml,\n",
+    "  ml_g = trees, ml_m = trees_class,\n",
+    "  trimming_threshold = 0.01, n_folds = 5\n",
+    ")\n",
+    "dml_irm$fit(store_predictions = TRUE)\n",
     "dml_irm$summary()\n",
     "tree_irm <- dml_irm$coef\n",
     "tree_std_irm <- dml_irm$se\n",
@@ -1907,17 +2115,17 @@
     "# predictions\n",
     "g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)\n",
     "g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)\n",
-    "g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0\n",
+    "g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0\n",
     "m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o\n",
     "\n",
     "# cross-fitted RMSE: outcome\n",
     "y <- as.matrix(pension$net_tfa) # true observations\n",
     "d <- as.matrix(pension$e401)\n",
-    "tree_y_irm <- sqrt(mean((y-g_hat)^2))\n",
+    "tree_y_irm <- sqrt(mean((y - g_hat)^2))\n",
     "tree_y_irm\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "tree_d_irm <- sqrt(mean((d-m_hat)^2))\n",
+    "tree_d_irm <- sqrt(mean((d - m_hat)^2))\n",
     "tree_d_irm\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1926,9 +2134,11 @@
     "\n",
     "##### boosting #####\n",
     "\n",
-    "dml_irm <- DoubleMLIRM$new(data_ml, ml_g = boost, ml_m = boost_class,\n",
-    "                           trimming_threshold = 0.01, n_folds=5)\n",
-    "dml_irm$fit(store_predictions=TRUE)\n",
+    "dml_irm <- DoubleMLIRM$new(data_ml,\n",
+    "  ml_g = boost, ml_m = boost_class,\n",
+    "  trimming_threshold = 0.01, n_folds = 5\n",
+    ")\n",
+    "dml_irm$fit(store_predictions = TRUE)\n",
     "dml_irm$summary()\n",
     "boost_irm <- dml_irm$coef\n",
     "boost_std_irm <- dml_irm$se\n",
@@ -1936,17 +2146,17 @@
     "# predictions\n",
     "g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)\n",
     "g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)\n",
-    "g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0\n",
+    "g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0\n",
     "m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o\n",
     "\n",
     "# cross-fitted RMSE: outcome\n",
     "y <- as.matrix(pension$net_tfa) # true observations\n",
     "d <- as.matrix(pension$e401)\n",
-    "boost_y_irm <- sqrt(mean((y-g_hat)^2))\n",
+    "boost_y_irm <- sqrt(mean((y - g_hat)^2))\n",
     "boost_y_irm\n",
     "\n",
     "# cross-fitted RMSE: treatment\n",
-    "boost_d_irm <- sqrt(mean((d-m_hat)^2))\n",
+    "boost_d_irm <- sqrt(mean((d - m_hat)^2))\n",
     "boost_d_irm\n",
     "\n",
     "# cross-fitted ce: treatment\n",
@@ -1966,18 +2176,21 @@
      "start_time": "2022-04-19T09:11:17.801787",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "table <- matrix(0, 4, 4)\n",
-    "table[1,1:4]   <- c(lasso_irm,forest_irm,tree_irm,boost_irm)\n",
-    "table[2,1:4]   <- c(lasso_std_irm,forest_std_irm,tree_std_irm,boost_std_irm)\n",
-    "table[3,1:4]   <- c(lasso_y_irm,forest_y_irm,tree_y_irm,boost_y_irm)\n",
-    "table[4,1:4]   <- c(lasso_d_irm,forest_d_irm,tree_d_irm,boost_d_irm)\n",
-    "rownames(table) <- c(\"Estimate\",\"Std.Error\",\"RMSE Y\",\"RMSE D\")\n",
-    "colnames(table) <- c(\"Lasso\",\"Random Forest\",\"Trees\",\"Boosting\")\n",
-    "tab<- xtable(table, digits = 2)\n",
+    "table[1, 1:4] <- c(lasso_irm, forest_irm, tree_irm, boost_irm)\n",
+    "table[2, 1:4] <- c(lasso_std_irm, forest_std_irm, tree_std_irm, boost_std_irm)\n",
+    "table[3, 1:4] <- c(lasso_y_irm, forest_y_irm, tree_y_irm, boost_y_irm)\n",
+    "table[4, 1:4] <- c(lasso_d_irm, forest_d_irm, tree_d_irm, boost_d_irm)\n",
+    "rownames(table) <- c(\"Estimate\", \"Std.Error\", \"RMSE Y\", \"RMSE D\")\n",
+    "colnames(table) <- c(\"Lasso\", \"Random Forest\", \"Trees\", \"Boosting\")\n",
+    "tab <- xtable(table, digits = 2)\n",
     "tab"
    ]
   },
@@ -2012,15 +2225,20 @@
      "start_time": "2022-04-19T09:11:17.907974",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "lgr::get_logger(\"mlr3\")$set_threshold(\"warn\")\n",
-    "dml_irm = DoubleMLIRM$new(data_ml, ml_g = randomForest,\n",
-    "                          ml_m = lasso_class,\n",
-    "                          trimming_threshold = 0.01, n_folds=5)\n",
-    "dml_irm$fit(store_predictions=TRUE)\n",
+    "dml_irm <- DoubleMLIRM$new(data_ml,\n",
+    "  ml_g = randomForest,\n",
+    "  ml_m = lasso_class,\n",
+    "  trimming_threshold = 0.01, n_folds = 5\n",
+    ")\n",
+    "dml_irm$fit(store_predictions = TRUE)\n",
     "dml_irm$summary()\n",
     "best_irm <- dml_irm$coef\n",
     "best_std_irm <- dml_irm$se"
