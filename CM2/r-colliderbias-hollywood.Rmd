@@ -11,6 +11,9 @@ Here the idea is that people who get to Hollywood have to have high congenility 
 
 ```{r}
 install.packages("dagitty")
+```
+
+```{r}
 library(dagitty)
 ```
 
