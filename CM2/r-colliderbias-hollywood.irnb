@@ -24,7 +24,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "HqSBY2MwlFy2"
+    "id": "HqSBY2MwlFy2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -36,12 +39,15 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "eITRXDGJlFy5"
+    "id": "eITRXDGJlFy5",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "g <- dagitty( \"dag{ T -> C <- B }\" )\n",
-    "plot(g)"
+    "causal_graph <- dagitty(\"dag{ Talent -> Congen <- Beauty }\")\n",
+    "plot(causal_graph)"
    ]
   },
   {
@@ -50,21 +56,24 @@
    "metadata": {
     "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
     "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
-    "id": "XrV8UFAOlFy5"
+    "id": "XrV8UFAOlFy5",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#collider bias\n",
-    "n=1000000\n",
-    "T = rnorm(n)   #talent\n",
-    "B = rnorm(n)   #beaty\n",
-    "C = T+B + rnorm(n) #congeniality\n",
-    "T.H= subset(T, C>0) # condition on C>0\n",
-    "B.H= subset(B, C>0) # condition on C>0\n",
+    "# collider bias\n",
+    "n <- 1000000\n",
+    "Talent <- rnorm(n) # talent\n",
+    "Beauty <- rnorm(n) # beauty\n",
+    "Congen <- Talent + Beauty + rnorm(n) # congeniality\n",
+    "TalentH <- subset(Talent, Congen > 0) # condition on Congen>0\n",
+    "BeautyH <- subset(Beaty, Congen > 0) # condition on Congen>0\n",
     "\n",
-    "summary(lm(T~ B))  #regression of T on B\n",
-    "summary(lm(T~ B +C)) #regression of T on B and C\n",
-    "summary(lm(T.H~ B.H)) #regression of T on B, conditional on C>0."
+    "summary(lm(Talent ~ Beauty)) # regression of Talent on Beauty\n",
+    "summary(lm(Talent ~ Beauty + Congen)) # regression of Talent on Beauty and Congen\n",
+    "summary(lm(TalentH ~ BeautyH)) # regression of Talent on Beauty, conditional on Congen>0."
    ]
   },
   {
@@ -82,23 +91,27 @@
    "metadata": {
     "_cell_guid": "79c7e3d0-c299-4dcb-8224-4455121ee9b0",
     "_uuid": "d629ff2d2480ee46fbb7e2d37f6b5fab8052498a",
-    "id": "B4vPm1JRlFy6"
+    "id": "B4vPm1JRlFy6",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "## If we want to infer causal effec of B on T,\n",
+    "## If we want to infer causal effect of Beauty on Talent,\n",
     "## we can apply the command to figure out\n",
     "## variables we should condition on:\n",
     "\n",
-    "adjustmentSets( g, \"T\", \"B\" )\n",
+    "adjustmentSets(causal_graph, \"Talent\", \"Beauty\")\n",
     "\n",
     "## empty set -- we should not condition on the additional\n",
-    "## variable C.\n",
+    "## variable Congen.\n",
     "\n",
-    "## Generate data where C = .5T + .5B\n",
-    "set.seed( 123); d <- simulateSEM( g, .5 )\n",
-    "confint( lm( T ~ B, d ) )[\"B\",] # includes 0\n",
-    "confint( lm( T ~ B + C, d ) )[\"B\",] # does not include 0\n"
+    "## Generate data where Congen = .5*Talent + .5*Beauty\n",
+    "set.seed(123)\n",
+    "data <- simulateSEM(causal_graph, .5)\n",
+    "confint(lm(Talent ~ Beauty, data))[\"Beauty\", ] # includes 0\n",
+    "confint(lm(Talent ~ Beauty + Congen, data))[\"Beauty\", ] # does not include 0"
    ]
   }
  ],
