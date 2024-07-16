@@ -17,7 +17,7 @@
    "source": [
     "Here is a simple mnemonic example to illustate the collider or M-bias.\n",
     "\n",
-    "Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that \"talent and beaty are negatively correlated\" for celebrities.  "
+    "Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that \"talent and beauty are negatively correlated\" for celebrities.  "
    ]
   },
   {
@@ -69,7 +69,7 @@
     "Beauty <- rnorm(n) # beauty\n",
     "Congen <- Talent + Beauty + rnorm(n) # congeniality\n",
     "TalentH <- subset(Talent, Congen > 0) # condition on Congen>0\n",
-    "BeautyH <- subset(Beaty, Congen > 0) # condition on Congen>0\n",
+    "BeautyH <- subset(Beauty, Congen > 0) # condition on Congen>0\n",
     "\n",
     "summary(lm(Talent ~ Beauty)) # regression of Talent on Beauty\n",
     "summary(lm(Talent ~ Beauty + Congen)) # regression of Talent on Beauty and Congen\n",

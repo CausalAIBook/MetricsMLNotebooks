@@ -13,13 +13,16 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "9TqXQzIlOelc"
+    "id": "9TqXQzIlOelc",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "system('sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable')\n",
-    "system('sudo apt-get update')\n",
-    "system('sudo apt-get install libglpk-dev libgmp-dev libxml2-dev')"
+    "system(\"sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable\")\n",
+    "system(\"sudo apt-get update\")\n",
+    "system(\"sudo apt-get install libglpk-dev libgmp-dev libxml2-dev\")"
    ]
   },
   {
@@ -41,15 +44,18 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "md3VArZXk2-G",
-    "outputId": "2b1a6a60-18a4-4de3-cec6-de65a2516641"
+    "outputId": "2b1a6a60-18a4-4de3-cec6-de65a2516641",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#install and load package\n",
+    "# install and load package\n",
     "install.packages(\"dagitty\")\n",
     "install.packages(\"ggdag\")\n",
     "library(dagitty)\n",
-    "library(ggdag)\n"
+    "library(ggdag)"
    ]
   },
   {
@@ -79,13 +85,16 @@
      "height": 437
     },
     "id": "1fgBFtRxk2-K",
-    "outputId": "88af1fad-7fbe-46a6-986c-637462e8e86d"
+    "outputId": "88af1fad-7fbe-46a6-986c-637462e8e86d",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#generate a couple of DAGs and plot them\n",
+    "# generate a couple of DAGs and plot them\n",
     "\n",
-    "G = dagitty('dag{\n",
+    "G <- dagitty('dag{\n",
     "Z1 [pos=\"-2,-1.5\"]\n",
     "X1 [pos=\"-2,0\"]\n",
     "Z2 [pos=\"1.5,-1.5\"]\n",
@@ -108,7 +117,7 @@
     "}')\n",
     "\n",
     "\n",
-    "ggdag(G)+  theme_dag()"
+    "ggdag(G) + theme_dag()"
    ]
   },
   {
@@ -128,15 +137,17 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "PDE3ROjfk2-P",
-    "outputId": "0890ac94-4658-4ec7-b984-e7d0b2913483"
+    "outputId": "0890ac94-4658-4ec7-b984-e7d0b2913483",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "print(parents(G, \"X2\"))\n",
     "print(children(G, \"X2\"))\n",
     "print(ancestors(G, \"X2\"))\n",
-    "print(descendants(G, \"X2\"))\n",
-    "\n"
+    "print(descendants(G, \"X2\"))"
    ]
   },
   {
@@ -158,7 +169,10 @@
      "height": 114
     },
     "id": "5JhG_60wk2-R",
-    "outputId": "10ada2ca-f201-4a3a-ff84-89b2948775d6"
+    "outputId": "10ada2ca-f201-4a3a-ff84-89b2948775d6",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -182,11 +196,14 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "B5LnSoCik2-T",
-    "outputId": "a03a58e3-5ae1-4d22-beea-ff8f97f6c64b"
+    "outputId": "a03a58e3-5ae1-4d22-beea-ff8f97f6c64b",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print( impliedConditionalIndependencies(G) )"
+    "print(impliedConditionalIndependencies(G))"
    ]
   },
   {
@@ -206,11 +223,14 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "dXKGvXgTk2-V",
-    "outputId": "daefd9dd-eba8-4057-b2d8-e5347ee30c79"
+    "outputId": "daefd9dd-eba8-4057-b2d8-e5347ee30c79",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print( adjustmentSets( G, \"D\", \"Y\" ) )"
+    "print(adjustmentSets(G, \"D\", \"Y\"))"
    ]
   },
   {
@@ -231,11 +251,14 @@
      "height": 437
     },
     "id": "Zv3rbjEuk2-W",
-    "outputId": "ce658fd8-b475-4deb-c809-602de1686b60"
+    "outputId": "ce658fd8-b475-4deb-c809-602de1686b60",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "SWIG = dagitty('dag{\n",
+    "SWIG <- dagitty('dag{\n",
     "Z1 [pos=\"-2,-1.5\"]\n",
     "X1 [pos=\"-2,0\"]\n",
     "Z2 [pos=\"1.5,-1.5\"]\n",
@@ -258,7 +281,7 @@
     "d-> Md\n",
     "}')\n",
     "\n",
-    "ggdag(SWIG)+  theme_dag()"
+    "ggdag(SWIG) + theme_dag()"
    ]
   },
   {
@@ -279,11 +302,14 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "KwJgFzoqk2-X",
-    "outputId": "b66ee434-d948-4c7e-cf45-0fbc6843c6cc"
+    "outputId": "b66ee434-d948-4c7e-cf45-0fbc6843c6cc",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print( impliedConditionalIndependencies(SWIG)[5:8] )\n"
+    "print(impliedConditionalIndependencies(SWIG)[5:8])"
    ]
   },
   {
@@ -312,19 +338,21 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "OcBfUurBk2-X",
-    "outputId": "b2a8b5c2-3407-48e4-e68e-61f19ac9e598"
+    "outputId": "b2a8b5c2-3407-48e4-e68e-61f19ac9e598",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "for( n in names(G) ){\n",
-    "    for( m in children(G,n) ){\n",
-    "        a <- adjustmentSets( G, n, m )\n",
-    "        if( length(a) > 0 ){\n",
-    "            cat(\"The effect \",n,\"->\",m,\n",
-    "                \" is identifiable by controlling for:\\n\",sep=\"\")\n",
-    "            print( a, prefix=\" * \" )\n",
-    "        }\n",
+    "for (n in names(G)) {\n",
+    "  for (m in children(G, n)) {\n",
+    "    a <- adjustmentSets(G, n, m)\n",
+    "    if (length(a) > 0) {\n",
+    "      cat(\"The effect \", n, \"->\", m, \" is identifiable by controlling for:\\n\", sep = \"\")\n",
+    "      print(a, prefix = \" * \")\n",
     "    }\n",
+    "  }\n",
     "}"
    ]
   },
@@ -346,13 +374,15 @@
      "height": 437
     },
     "id": "8vNiL5HWk2-Y",
-    "outputId": "fcd29ac8-675b-4fb1-8a95-8e62ccba8d44"
+    "outputId": "fcd29ac8-675b-4fb1-8a95-8e62ccba8d44",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "P=equivalenceClass(G)\n",
-    "plot(P)\n",
-    "#equivalentDAGs(G,10)"
+    "P <- equivalenceClass(G)\n",
+    "plot(P)"
    ]
   },
   {
@@ -377,21 +407,23 @@
      "height": 437
     },
     "id": "pBHDnH7Fk2-Z",
-    "outputId": "ea6c8fd5-4e90-4ce6-e84b-449d9c49d8b5"
+    "outputId": "ea6c8fd5-4e90-4ce6-e84b-449d9c49d8b5",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "G3<- dagitty('dag{\n",
+    "G3 <- dagitty(\"dag{\n",
     "D -> Y\n",
     "X -> D\n",
     "X -> Y\n",
     "}\n",
-    "')\n",
+    "\")\n",
     "\n",
-    "ggdag(G3)+  theme_dag()\n",
+    "ggdag(G3) + theme_dag()\n",
     "\n",
-    "print(impliedConditionalIndependencies(G3))\n",
-    "\n"
+    "print(impliedConditionalIndependencies(G3))"
    ]
   },
   {
@@ -403,14 +435,16 @@
      "height": 1000
     },
     "id": "1cw47mOEk2-Z",
-    "outputId": "9e4f3af6-1f2b-4eac-ab68-841aaebaa87d"
+    "outputId": "9e4f3af6-1f2b-4eac-ab68-841aaebaa87d",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "P=equivalenceClass(G3)\n",
+    "P <- equivalenceClass(G3)\n",
     "plot(P)\n",
-    "equivalentDAGs(G3,10)\n",
-    "\n"
+    "equivalentDAGs(G3, 10)"
    ]
   },
   {
@@ -436,16 +470,17 @@
      "height": 1000
     },
     "id": "MZ_4jxNdk2-a",
-    "outputId": "d91485d7-311d-4ae2-ea60-2e7f87a2fb96"
+    "outputId": "d91485d7-311d-4ae2-ea60-2e7f87a2fb96",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "set.seed(1)\n",
     "x <- simulateSEM(G)\n",
     "head(x)\n",
-    "#cov(x)\n",
-    "localTests(G, data = x, type = c(\"cis\"))\n",
-    "\n"
+    "localTests(G, data = x, type = c(\"cis\"))"
    ]
   },
   {
@@ -471,15 +506,17 @@
      "height": 1000
     },
     "id": "C0ND4GbEk2-a",
-    "outputId": "37236927-3ece-458f-fcd4-820422609d7b"
+    "outputId": "37236927-3ece-458f-fcd4-820422609d7b",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "x.R = x\n",
-    "x.R$D = (x$D+ x$Y)/2\n",
+    "xR <- x\n",
+    "xR$D <- (x$D + x$Y) / 2\n",
     "\n",
-    "localTests(G, data = x.R, type = c(\"cis\"))\n",
-    "\n"
+    "localTests(G, data = xR, type = c(\"cis\"))"
    ]
   }
  ],
