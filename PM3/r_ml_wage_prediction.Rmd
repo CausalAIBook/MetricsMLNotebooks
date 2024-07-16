@@ -38,7 +38,7 @@ Again, we consider data from the U.S. March Supplement of the Current Population
 The preproccessed sample consists of $5150$ never-married individuals.
 
 ```{r}
-file = "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
 data <- read.csv(file)
 dim(data)
 ```
@@ -46,14 +46,14 @@ dim(data)
 The outcomes $Y_i$'s are hourly (log) wages of never-married workers living in the U.S. The raw regressors $Z_i$'s consist of a variety of characteristics, including experience, education and industry and occupation indicators.
 
 ```{r}
-Z <- subset(data,select=-c(lwage,wage)) # regressors
+Z <- subset(data, select = -c(lwage, wage)) # regressors
 colnames(Z)
 ```
 
 The following figure shows the weekly wage distribution from the US survey data.
 
 ```{r}
-hist(data$wage, xlab= "hourly wage", main="Empirical wage distribution from the US survey data", breaks= 35)
+hist(data$wage, xlab = "hourly wage", main = "Empirical wage distribution from the US survey data", breaks = 35)
 ```
 
 Wages show a high degree of skewness. Hence, wages are transformed in almost all studies by
@@ -80,31 +80,32 @@ To evaluate the out-of-sample performance, we split the data first.
 
 ```{r}
 set.seed(1234)
-training <- sample(nrow(data), nrow(data)*(3/4), replace=FALSE)
+training <- sample(nrow(data), nrow(data) * (3 / 4), replace = FALSE)
 
-data_train <- data[training,]
-data_test <- data[-training,]
+data_train <- data[training, ]
+data_test <- data[-training, ]
 ```
 
 We construct the two different model matrices $X_{basic}$ and $X_{flex}$ for both the training and the test sample:
 
 ```{r}
-X_basic <-  "sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)"
-X_flex <- "sex + exp1 + shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+C(occ2)+C(ind2)+mw+so+we)"
-formula_basic <- as.formula(paste("lwage", "~", X_basic))
-formula_flex <- as.formula(paste("lwage", "~", X_flex))
+x_basic <- "sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)"
+x_flex <- paste("sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we ",
+                "+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)")
+formula_basic <- as.formula(paste("lwage", "~", x_basic))
+formula_flex <- as.formula(paste("lwage", "~", x_flex))
 
-model_X_basic_train <- model.matrix(formula_basic,data_train)
-model_X_basic_test <- model.matrix(formula_basic,data_test)
-p_basic <- dim(model_X_basic_train)[2]
-model_X_flex_train <- model.matrix(formula_flex,data_train)
-model_X_flex_test <- model.matrix(formula_flex,data_test)
-p_flex <- dim(model_X_flex_train)[2]
+model_x_basic_train <- model.matrix(formula_basic, data_train)
+model_x_basic_test <- model.matrix(formula_basic, data_test)
+p_basic <- dim(model_x_basic_train)[2]
+model_x_flex_train <- model.matrix(formula_flex, data_train)
+model_x_flex_test <- model.matrix(formula_flex, data_test)
+p_flex <- dim(model_x_flex_train)[2]
 ```
 
 ```{r}
-Y_train <- data_train$lwage
-Y_test <- data_test$lwage
+y_train <- data_train$lwage
+y_test <- data_test$lwage
 ```
 
 ```{r}
@@ -120,40 +121,42 @@ We fit the basic model to our training data by running an ols regression and com
 
 ```{r}
 # ols (basic model)
-fit.lm.basic <- lm(formula_basic, data_train)
+fit_lm_basic <- lm(formula_basic, data_train)
 ```
 
 ```{r}
 # Compute the Out-Of-Sample Performance
-yhat.lm.basic <- predict(fit.lm.basic, newdata=data_test)
-cat("The mean squared error (MSE) using the basic model is equal to" , mean((Y_test-yhat.lm.basic)^2)) # MSE OLS (basic model)
+yhat_lm_basic <- predict(fit_lm_basic, newdata = data_test)
+# MSE OLS (basic model)
+cat("The mean squared error (MSE) using the basic model is equal to", mean((y_test - yhat_lm_basic)^2))
 ```
 
 To determine the out-of-sample $MSE$ and the standard error in one step, we can use the function *lm*:
 
 ```{r}
-MSE.lm.basic <- summary(lm((Y_test-yhat.lm.basic)^2~1))$coef[1:2]
-MSE.lm.basic
+mse_lm_basic <- summary(lm((y_test - yhat_lm_basic)^2 ~ 1))$coef[1:2]
+mse_lm_basic
 ```
 
 We also compute the out-of-sample $R^2$:
 
 ```{r}
-R2.lm.basic <- 1-MSE.lm.basic[1]/var(Y_test)
-cat("The R^2 using the basic model is equal to",R2.lm.basic) # MSE OLS (basic model)
+r2_lm_basic <- 1 - mse_lm_basic[1] / var(y_test)
+# MSE OLS (basic model)
+cat("The R^2 using the basic model is equal to", r2_lm_basic)
 ```
 
 We repeat the same procedure for the flexible model.
 
 ```{r}
 # ols (flexible model)
-fit.lm.flex <- lm(formula_flex, data_train)
+fit_lm_flex <- lm(formula_flex, data_train)
 # Compute the Out-Of-Sample Performance
-options(warn=-1)
-yhat.lm.flex <- predict(fit.lm.flex, newdata=data_test)
-MSE.lm.flex <- summary(lm((Y_test-yhat.lm.flex)^2~1))$coef[1:2]
-R2.lm.flex <- 1-MSE.lm.flex[1]/var(Y_test)
-cat("The R^2 using the flexible model is equal to",R2.lm.flex) # MSE OLS (flexible model)
+options(warn = -1)
+yhat_lm_flex <- predict(fit_lm_flex, newdata = data_test)
+mse_lm_flex <- summary(lm((y_test - yhat_lm_flex)^2 ~ 1))$coef[1:2]
+r2_lm_flex <- 1 - mse_lm_flex[1] / var(y_test)
+cat("The R^2 using the flexible model is equal to", r2_lm_flex) # MSE OLS (flexible model)
 ```
 
 We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We now proceed by running lasso regressions and related penalized methods.
@@ -164,79 +167,84 @@ Considering the basic model, we run a lasso/post-lasso regression first and then
 
 ```{r}
 # lasso and variants
-fit.rlasso  <- rlasso(formula_basic, data_train, post=FALSE)
-fit.rlasso.post <- rlasso(formula_basic, data_train, post=TRUE)
-yhat.rlasso   <- predict(fit.rlasso, newdata=data_test)
-yhat.rlasso.post   <- predict(fit.rlasso.post, newdata=data_test)
+fit_rlasso <- hdm::rlasso(formula_basic, data_train, post = FALSE)
+fit_rlasso_post <- hdm::rlasso(formula_basic, data_train, post = TRUE)
+yhat_rlasso <- predict(fit_rlasso, newdata = data_test)
+yhat_rlasso_post <- predict(fit_rlasso_post, newdata = data_test)
 
-MSE.lasso <- summary(lm((Y_test-yhat.rlasso)^2~1))$coef[1:2]
-MSE.lasso.post <- summary(lm((Y_test-yhat.rlasso.post)^2~1))$coef[1:2]
+mse_lasso <- summary(lm((y_test - yhat_rlasso)^2 ~ 1))$coef[1:2]
+mse_lasso_post <- summary(lm((y_test - yhat_rlasso_post)^2 ~ 1))$coef[1:2]
 
-R2.lasso <- 1-MSE.lasso[1]/var(Y_test)
-R2.lasso.post <- 1-MSE.lasso.post[1]/var(Y_test)
-cat("The R^2 using the basic model is equal to",R2.lasso,"for lasso and",R2.lasso.post,"for post-lasso") # R^2 lasso/post-lasso (basic model)
+r2_lasso <- 1 - mse_lasso[1] / var(y_test)
+r2_lasso_post <- 1 - mse_lasso_post[1] / var(y_test)
+# R^2 lasso/post-lasso (basic model)
+cat("The R^2 using the basic model is equal to", r2_lasso, "for lasso and", r2_lasso_post, "for post-lasso")
 ```
 
 Now, we repeat the same procedure for the flexible model.
 
 ```{r}
-fit.rlasso.flex  <- rlasso(formula_flex, data_train, post=FALSE)
-fit.rlasso.post.flex <- rlasso(formula_flex, data_train, post=TRUE)
-yhat.rlasso.flex   <- predict(fit.rlasso.flex, newdata=data_test)
-yhat.rlasso.post.flex   <- predict(fit.rlasso.post.flex, newdata=data_test)
+fit_rlasso_flex <- hdm::rlasso(formula_flex, data_train, post = FALSE)
+fit_rlasso_post_flex <- hdm::rlasso(formula_flex, data_train, post = TRUE)
+yhat_rlasso_flex <- predict(fit_rlasso_flex, newdata = data_test)
+yhat_rlasso_post_flex <- predict(fit_rlasso_post_flex, newdata = data_test)
 
-MSE.lasso.flex <- summary(lm((Y_test-yhat.rlasso.flex)^2~1))$coef[1:2]
-MSE.lasso.post.flex <- summary(lm((Y_test-yhat.rlasso.post.flex)^2~1))$coef[1:2]
+mse_lasso_flex <- summary(lm((y_test - yhat_rlasso_flex)^2 ~ 1))$coef[1:2]
+mse_lasso_post_flex <- summary(lm((y_test - yhat_rlasso_post_flex)^2 ~ 1))$coef[1:2]
 
-R2.lasso.flex <- 1-MSE.lasso.flex[1]/var(Y_test)
-R2.lasso.post.flex <- 1-MSE.lasso.post.flex[1]/var(Y_test)
-cat("The R^2 using the flexible model is equal to",R2.lasso.flex,"for lasso and",R2.lasso.post.flex,"for post-lasso") # R^2 lasso/post-lasso (flexible model)
+# R^2 lasso/post-lasso (flexible model)
+r2_lasso_flex <- 1 - mse_lasso_flex[1] / var(y_test)
+r2_lasso_post_flex <- 1 - mse_lasso_post_flex[1] / var(y_test)
+cat("The R^2 using the flexible model is equal to", r2_lasso_flex,
+    "for lasso and", r2_lasso_post_flex, "for post-lasso")
 ```
 
 In contrast to a theoretical based choice of the tuning parameter $\lambda$ in the lasso regression, we can also use cross-validation to determine the penalty level by applying the package *glmnet* and the function cv.glmnet. In this context, we also run a ridge and a elastic net regression by adjusting the parameter *alpha*.
 
 ```{r}
-fit.lasso.cv   <- cv.glmnet(model_X_basic_train, Y_train, family="gaussian", alpha=1)
-fit.ridge   <- cv.glmnet(model_X_basic_train, Y_train, family="gaussian", alpha=0)
-fit.elnet   <- cv.glmnet(model_X_basic_train, Y_train, family="gaussian", alpha=.5)
+fit_lasso_cv <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = .5)
 
-yhat.lasso.cv    <- predict(fit.lasso.cv, newx = model_X_basic_test)
-yhat.ridge   <- predict(fit.ridge, newx = model_X_basic_test)
-yhat.elnet   <- predict(fit.elnet, newx = model_X_basic_test)
+yhat_lasso_cv <- predict(fit_lasso_cv, newx = model_x_basic_test)
+yhat_ridge <- predict(fit_ridge, newx = model_x_basic_test)
+yhat_elnet <- predict(fit_elnet, newx = model_x_basic_test)
 
-MSE.lasso.cv <- summary(lm((Y_test-yhat.lasso.cv)^2~1))$coef[1:2]
-MSE.ridge <- summary(lm((Y_test-yhat.ridge)^2~1))$coef[1:2]
-MSE.elnet <- summary(lm((Y_test-yhat.elnet)^2~1))$coef[1:2]
+mse_lasso_cv <- summary(lm((y_test - yhat_lasso_cv)^2 ~ 1))$coef[1:2]
+mse_ridge <- summary(lm((y_test - yhat_ridge)^2 ~ 1))$coef[1:2]
+mse_elnet <- summary(lm((y_test - yhat_elnet)^2 ~ 1))$coef[1:2]
 
-R2.lasso.cv <- 1-MSE.lasso.cv[1]/var(Y_test)
-R2.ridge <- 1-MSE.ridge[1]/var(Y_test)
-R2.elnet <- 1-MSE.elnet[1]/var(Y_test)
+r2_lasso_cv <- 1 - mse_lasso_cv[1] / var(y_test)
+r2_ridge <- 1 - mse_ridge[1] / var(y_test)
+r2_elnet <- 1 - mse_elnet[1] / var(y_test)
 
 # R^2 using cross-validation (basic model)
-cat("R^2 using cross-validation for lasso, ridge and elastic net in the basic model:",R2.lasso.cv,R2.ridge,R2.elnet)
+cat("R^2 using cross-validation for lasso, ridge and elastic net in the basic model:",
+    r2_lasso_cv, r2_ridge, r2_elnet)
 ```
 
 Note that the following calculations for the flexible model need some computation time.
 
 ```{r}
-fit.lasso.cv.flex   <- cv.glmnet(model_X_flex_train, Y_train, family="gaussian", alpha=1)
-fit.ridge.flex   <- cv.glmnet(model_X_flex_train, Y_train, family="gaussian", alpha=0)
-fit.elnet.flex   <- cv.glmnet(model_X_flex_train, Y_train, family="gaussian", alpha=.5)
+fit_lasso_cv_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = .5)
 
-yhat.lasso.cv.flex    <- predict(fit.lasso.cv.flex , newx = model_X_flex_test)
-yhat.ridge.flex    <- predict(fit.ridge.flex , newx = model_X_flex_test)
-yhat.elnet.flex    <- predict(fit.elnet.flex , newx = model_X_flex_test)
+yhat_lasso_cv_flex <- predict(fit_lasso_cv_flex, newx = model_x_flex_test)
+yhat_ridge_flex <- predict(fit_ridge_flex, newx = model_x_flex_test)
+yhat_elnet_flex <- predict(fit_elnet_flex, newx = model_x_flex_test)
 
-MSE.lasso.cv.flex  <- summary(lm((Y_test-yhat.lasso.cv.flex )^2~1))$coef[1:2]
-MSE.ridge.flex  <- summary(lm((Y_test-yhat.ridge.flex )^2~1))$coef[1:2]
-MSE.elnet.flex  <- summary(lm((Y_test-yhat.elnet.flex )^2~1))$coef[1:2]
+mse_lasso_cv_flex <- summary(lm((y_test - yhat_lasso_cv_flex)^2 ~ 1))$coef[1:2]
+mse_ridge_flex <- summary(lm((y_test - yhat_ridge_flex)^2 ~ 1))$coef[1:2]
+mse_elnet_flex <- summary(lm((y_test - yhat_elnet_flex)^2 ~ 1))$coef[1:2]
 
-R2.lasso.cv.flex  <- 1-MSE.lasso.cv.flex [1]/var(Y_test)
-R2.ridge.flex  <- 1-MSE.ridge.flex [1]/var(Y_test)
-R2.elnet.flex  <- 1-MSE.elnet.flex [1]/var(Y_test)
+r2_lasso_cv_flex <- 1 - mse_lasso_cv_flex[1] / var(y_test)
+r2_ridge_flex <- 1 - mse_ridge_flex[1] / var(y_test)
+r2_elnet_flex <- 1 - mse_elnet_flex[1] / var(y_test)
 
 # R^2 using cross-validation (flexible model)
-cat("R^2 using cross-validation for lasso, ridge and elastic net in the flexible model:",R2.lasso.cv.flex,R2.ridge.flex,R2.elnet.flex)
+cat("R^2 using cross-validation for lasso, ridge and elastic net in the flexible model:",
+    r2_lasso_cv_flex, r2_ridge_flex, r2_elnet_flex)
 ```
 
 The performance of the lasso regression with cross-validated penalty is quite similar to the performance of lasso using a theoretical based choice of the tuning parameter.
@@ -251,34 +259,36 @@ We fit a regression tree to the training data using the basic model. The variabl
 
 ```{r}
 # tree
-fit.trees <- rpart(formula_basic, data_train, minbucket=5, cp = 0.001)
-prp(fit.trees, leaf.round=1, space=2, yspace=2, split.space=2,shadow.col = "gray",trace = 1) # plotting the tree
+fit_trees <- rpart(formula_basic, data_train, minbucket = 5, cp = 0.001)
+# plotting the tree
+prp(fit_trees, leaf.round = 1, space = 2, yspace = 2, split.space = 2, shadow.col = "gray", trace = 1)
 ```
 
 An important method to improve predictive performance is called "Pruning the Tree". This
 means the process of cutting down the branches of a tree. We apply pruning to the complex tree above to reduce the depth. Initially, we determine the optimal complexity of the regression tree.
 
 ```{r}
-bestcp <- fit.trees$cptable[which.min(fit.trees$cptable[,"xerror"]),"CP"]
+bestcp <- fit_trees$cptable[which.min(fit_trees$cptable[, "xerror"]), "CP"]
 bestcp
 ```
 
 Now, we can prune the tree and visualize the prediction rule.
 
 ```{r}
-fit.prunedtree <- prune(fit.trees,cp=bestcp)
-prp(fit.prunedtree,leaf.round=1, space=3, yspace=3, split.space=7, shadow.col = "gray",trace = 1,yesno=1)
+fit_prunedtree <- prune(fit_trees, cp = bestcp)
+prp(fit_prunedtree, leaf.round = 1, space = 3, yspace = 3, split.space = 7,
+    shadow.col = "gray", trace = 1, yesno = 1)
 ```
 
 Finally, we calculate the mean-squared error and the $R^2$ on the test sample to evaluate the out-of-sample performance of the pruned tree.
 
 ```{r}
-yhat.pt <- predict(fit.prunedtree,newdata=data_test)
-MSE.pt <- summary(lm((Y_test-yhat.pt)^2~1))$coef[1:2]
-R2.pt  <- 1-MSE.pt[1]/var(Y_test)
+yhat_pt <- predict(fit_prunedtree, newdata = data_test)
+mse_pt <- summary(lm((y_test - yhat_pt)^2 ~ 1))$coef[1:2]
+r2_pt <- 1 - mse_pt[1] / var(y_test)
 
 # R^2 of the pruned tree
-cat("R^2 of the pruned tree:",R2.pt)
+cat("R^2 of the pruned tree:", r2_pt)
 ```
 
 ## Random Forest and Boosted Trees
@@ -287,30 +297,31 @@ In the next step, we apply the more advanced tree-based methods random forest an
 
 ```{r}
 # random forest
-fit.rf       <- randomForest(model_X_basic_train, Y_train, ntree=2000, nodesize=20, data = data_train)
+fit_rf <- randomForest(model_x_basic_train, y_train, ntree = 2000, nodesize = 20, data = data_train)
 
 ## Evaluating the method
-yhat.rf       <- predict(fit.rf, newdata=model_X_basic_test) # prediction
+yhat_rf <- predict(fit_rf, newdata = model_x_basic_test) # prediction
 
-MSE.rf       = summary(lm((Y_test-yhat.rf)^2~1))$coef[1:2]
-R2.rf  <- 1-MSE.rf[1]/var(Y_test)
+mse_rf <- summary(lm((y_test - yhat_rf)^2 ~ 1))$coef[1:2]
+r2_rf <- 1 - mse_rf[1] / var(y_test)
 ```
 
 ```{r}
 # boosting
-fit.boost   <- gbm(formula_basic, data=data_train, distribution= "gaussian", bag.fraction = .5, interaction.depth=2, n.trees=1000, shrinkage=.01)
-best.boost  <- gbm.perf(fit.boost, plot.it = FALSE) # cross-validation to determine when to stop
+fit_boost <- gbm(formula_basic, data = data_train, distribution = "gaussian", bag.fraction = .5,
+                 interaction.depth = 2, n.trees = 1000, shrinkage = .01)
+best_boost <- gbm.perf(fit_boost, plot.it = FALSE) # cross-validation to determine when to stop
 
 ## Evaluating the method
-yhat.boost    <- predict(fit.boost, newdata=data_test, n.trees=best.boost)
+yhat_boost <- predict(fit_boost, newdata = data_test, n.trees = best_boost)
 
-MSE.boost    = summary(lm((Y_test-yhat.boost)^2~1))$coef[1:2]
-R2.boost  <- 1-MSE.boost[1]/var(Y_test)
+mse_boost <- summary(lm((y_test - yhat_boost)^2 ~ 1))$coef[1:2]
+r2_boost <- 1 - mse_boost[1] / var(y_test)
 ```
 
 ```{r}
 # printing R^2
-cat("R^2 of the random forest and boosted trees:", R2.rf, R2.boost)
+cat("R^2 of the random forest and boosted trees:", r2_rf, r2_boost)
 ```
 
 ## NNets
@@ -320,9 +331,9 @@ First, we need to determine the structure of our network. We are using the R pac
 ```{r}
 # Define the neural network architecture
 model <- keras_model_sequential() %>%
-  layer_dense(units = 50, activation = 'relu', input_shape = dim(model_X_basic_train)[2]) %>%
-  layer_dense(units = 50, activation = 'relu') %>%
-  layer_dense(units = 1)  # Output layer with 1 unit for regression task
+  layer_dense(units = 50, activation = "relu", input_shape = dim(model_x_basic_train)[2]) %>%
+  layer_dense(units = 50, activation = "relu") %>%
+  layer_dense(units = 1) # Output layer with 1 unit for regression task
 
 # Compile the model
 model %>% compile(
@@ -338,14 +349,15 @@ summary(model)
 num_epochs <- 100
 
 # Define early stopping based on validation set (20%) performance
-early_stopping <- callback_early_stopping(monitor = 'val_loss', patience = 5)  # Patience set to 5 epochs (default in skorch is 5)
+# Patience set to 5 epochs (default in skorch is 5)
+early_stopping <- callback_early_stopping(monitor = "val_loss", patience = 5)
 
 # Train the model
 model %>% fit(
-  model_X_basic_train, Y_train,
+  model_x_basic_train, y_train,
   epochs = num_epochs,
   batch_size = 10,
-  validation_split = 0.2,  # 20% validation set
+  validation_split = 0.2, # 20% validation set
   verbose = 0,
   callbacks = list(early_stopping)
 )
@@ -353,16 +365,16 @@ model %>% fit(
 
 ```{r}
 # evaluating the performance
-model %>% evaluate(model_X_basic_test, Y_test, verbose = 0)
+model %>% evaluate(model_x_basic_test, y_test, verbose = 0)
 ```
 
 ```{r}
 # Calculating the performance measures
-yhat.nn <- model %>% predict(model_X_basic_test)
-MSE.nn = summary(lm((Y_test-yhat.nn)^2~1))$coef[1:2]
-R2.nn <- 1-MSE.nn[1]/var(Y_test)
+yhat_nn <- model %>% predict(model_x_basic_test)
+mse_nn <- summary(lm((y_test - yhat_nn)^2 ~ 1))$coef[1:2]
+r2_nn <- 1 - mse_nn[1] / var(y_test)
 # printing R^2
-cat("R^2 of the neural network:",R2.nn)
+cat("R^2 of the neural network:", r2_nn)
 ```
 
 To conclude, let us have a look at our results.
@@ -370,52 +382,53 @@ To conclude, let us have a look at our results.
 ## Results
 
 ```{r}
-table<- matrix(0, 16, 3)
-table[1,1:2]   <- MSE.lm.basic
-table[2,1:2]   <- MSE.lm.flex
-table[3,1:2]   <- MSE.lasso
-table[4,1:2]   <- MSE.lasso.post
-table[5,1:2]   <- MSE.lasso.flex
-table[6,1:2]   <- MSE.lasso.post.flex
-table[7,1:2]   <- MSE.lasso.cv
-table[8,1:2]   <- MSE.ridge
-table[9,1:2]   <- MSE.elnet
-table[10,1:2]   <- MSE.lasso.cv.flex
-table[11,1:2]  <- MSE.ridge.flex
-table[12,1:2]  <- MSE.elnet.flex
-table[13,1:2]  <- MSE.rf
-table[14,1:2]  <- MSE.boost
-table[15,1:2]  <- MSE.pt
-table[16,1:2] <- MSE.nn
+table <- matrix(0, 16, 3)
+table[1, 1:2] <- mse_lm_basic
+table[2, 1:2] <- mse_lm_flex
+table[3, 1:2] <- mse_lasso
+table[4, 1:2] <- mse_lasso_post
+table[5, 1:2] <- mse_lasso_flex
+table[6, 1:2] <- mse_lasso_post_flex
+table[7, 1:2] <- mse_lasso_cv
+table[8, 1:2] <- mse_ridge
+table[9, 1:2] <- mse_elnet
+table[10, 1:2] <- mse_lasso_cv_flex
+table[11, 1:2] <- mse_ridge_flex
+table[12, 1:2] <- mse_elnet_flex
+table[13, 1:2] <- mse_rf
+table[14, 1:2] <- mse_boost
+table[15, 1:2] <- mse_pt
+table[16, 1:2] <- mse_nn
 
 
-
-table[1,3]   <- R2.lm.basic
-table[2,3]   <- R2.lm.flex
-table[3,3]   <- R2.lasso
-table[4,3]   <- R2.lasso.post
-table[5,3]   <- R2.lasso.flex
-table[6,3]   <- R2.lasso.post.flex
-table[7,3]   <- R2.lasso.cv
-table[8,3]   <- R2.ridge
-table[9,3]   <- R2.elnet
-table[10,3]   <- R2.lasso.cv.flex
-table[11,3]  <- R2.ridge.flex
-table[12,3]  <- R2.elnet.flex
-table[13,3]  <- R2.rf
-table[14,3]  <- R2.boost
-table[15,3]  <- R2.pt
-table[16,3] <- R2.nn
-
+table[1, 3] <- r2_lm_basic
+table[2, 3] <- r2_lm_flex
+table[3, 3] <- r2_lasso
+table[4, 3] <- r2_lasso_post
+table[5, 3] <- r2_lasso_flex
+table[6, 3] <- r2_lasso_post_flex
+table[7, 3] <- r2_lasso_cv
+table[8, 3] <- r2_ridge
+table[9, 3] <- r2_elnet
+table[10, 3] <- r2_lasso_cv_flex
+table[11, 3] <- r2_ridge_flex
+table[12, 3] <- r2_elnet_flex
+table[13, 3] <- r2_rf
+table[14, 3] <- r2_boost
+table[15, 3] <- r2_pt
+table[16, 3] <- r2_nn
 
 
-
-colnames(table)<- c("MSE", "S.E. for MSE", "R-squared")
-rownames(table)<- c("Least Squares (basic)","Least Squares (flexible)", "Lasso", "Post-Lasso","Lasso (flexible)","Post-Lasso (flexible)",
-                    "Cross-Validated lasso", "Cross-Validated ridge","Cross-Validated elnet","Cross-Validated lasso (flexible)","Cross-Validated ridge (flexible)","Cross-Validated elnet (flexible)",
-                    "Random Forest","Boosted Trees", "Pruned Tree", "Neural Net (Early)")
-tab <- xtable(table, digits =3)
-print(tab,type="latex") # set type="latex" for printing table in LaTeX
+colnames(table) <- c("MSE", "S.E. for MSE", "R-squared")
+rownames(table) <- c(
+  "Least Squares (basic)", "Least Squares (flexible)", "Lasso", "Post-Lasso",
+  "Lasso (flexible)", "Post-Lasso (flexible)",
+  "Cross-Validated lasso", "Cross-Validated ridge", "Cross-Validated elnet",
+  "Cross-Validated lasso (flexible)", "Cross-Validated ridge (flexible)", "Cross-Validated elnet (flexible)",
+  "Random Forest", "Boosted Trees", "Pruned Tree", "Neural Net (Early)"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
 tab
 ```
 
@@ -431,34 +444,40 @@ where the $f_k$'s denote our prediction rules from the table above and the $\alp
 We first estimate the weights without penalization.
 
 ```{r}
-ensemble.ols <- summary(lm(Y_test~ yhat.lm.basic + yhat.lm.flex + yhat.rlasso + yhat.rlasso.flex + yhat.rlasso.post + yhat.rlasso.post.flex + yhat.lasso.cv + yhat.lasso.cv.flex + yhat.ridge + yhat.ridge.flex + yhat.elnet + yhat.elnet.flex + yhat.pt + yhat.rf + yhat.boost + yhat.nn))
-ensemble.ols
+ensemble_ols <- summary(lm(y_test ~ yhat_lm_basic + yhat_lm_flex + yhat_rlasso + yhat_rlasso_flex +
+                             yhat_rlasso_post + yhat_rlasso_post_flex + yhat_lasso_cv + yhat_lasso_cv_flex +
+                             yhat_ridge + yhat_ridge_flex + yhat_elnet + yhat_elnet_flex +
+                             yhat_pt + yhat_rf + yhat_boost + yhat_nn))
+ensemble_ols
 ```
 
 Alternatively, we can determine the weights via lasso regression.
 
 ```{r}
-ensemble.lasso <- summary(rlasso(Y_test~ yhat.lm.basic + yhat.lm.flex + yhat.rlasso + + yhat.rlasso.flex + yhat.rlasso.post + yhat.rlasso.post.flex + yhat.lasso.cv + yhat.lasso.cv.flex + yhat.ridge + yhat.ridge.flex + yhat.elnet + yhat.elnet.flex + yhat.pt + yhat.rf + yhat.boost + yhat.nn))
-ensemble.lasso
+ensemble_lasso <- summary(hdm::rlasso(y_test ~ yhat_lm_basic + yhat_lm_flex + yhat_rlasso + yhat_rlasso_flex +
+                                        yhat_rlasso_post + yhat_rlasso_post_flex + yhat_lasso_cv + yhat_lasso_cv_flex +
+                                        yhat_ridge + yhat_ridge_flex + yhat_elnet + yhat_elnet_flex +
+                                        yhat_pt + yhat_rf + yhat_boost + yhat_nn))
+ensemble_lasso
 ```
 
 The estimated weights are shown in the following table.
 
 ```{r}
-table<- matrix(0, 17, 2)
-table[1:17,1]   <- ensemble.ols$coef[1:17]
-table[1:17,2]   <- ensemble.lasso$coef[1:17]
+table <- matrix(0, 17, 2)
+table[1:17, 1] <- ensemble_ols$coef[1:17]
+table[1:17, 2] <- ensemble_lasso$coef[1:17]
 
+colnames(table) <- c("Weight OLS", "Weight Lasso")
 
-colnames(table)<- c("Weight OLS", "Weight Lasso")
-
-
-rownames(table)<- c("Constant","Least Squares (basic)", "Least Squares (flexible)", "Lasso (basic)",
-                    "Lasso (flexible)", "Post-Lasso (basic)", "Post-Lasso (flexible)", "LassoCV (basic)",
-                    "Lasso CV (flexible)", "Ridge CV (basic)", "Ridge CV (flexible)", "ElNet CV (basic)",
-                    "ElNet CV (flexible)", "Pruned Tree", "Random Forest","Boosted Trees", "Neural Net")
-tab <- xtable(table, digits =3)
-print(tab,type="latex") # set type="latex" for printing table in LaTeX
+rownames(table) <- c(
+  "Constant", "Least Squares (basic)", "Least Squares (flexible)", "Lasso (basic)",
+  "Lasso (flexible)", "Post-Lasso (basic)", "Post-Lasso (flexible)", "LassoCV (basic)",
+  "Lasso CV (flexible)", "Ridge CV (basic)", "Ridge CV (flexible)", "ElNet CV (basic)",
+  "ElNet CV (flexible)", "Pruned Tree", "Random Forest", "Boosted Trees", "Neural Net"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
 tab
 ```
 
@@ -466,8 +485,8 @@ We note the superior $R^2$ performance of the ensembles. Though for more unbiase
 
 ```{r}
 # print ensemble R^2
-cat("R^2 of stacking with LS weights:",ensemble.ols$adj.r.squared,"\n")
-cat("R^2 of stacking with Lasso weights:",ensemble.lasso$adj.r.squared,"\n")
+cat("R^2 of stacking with LS weights:", ensemble_ols$adj.r.squared, "\n")
+cat("R^2 of stacking with Lasso weights:", ensemble_lasso$adj.r.squared, "\n")
 ```
 
 # Automatic Machine Learning with H20 AutoML
@@ -489,27 +508,28 @@ h2o.init()
 
 ```{r}
 # convert data as h2o type
-train_h = as.h2o(data_train)
-test_h = as.h2o(data_test)
+train_h <- as.h2o(data_train)
+test_h <- as.h2o(data_test)
 
 # have a look at the data
 h2o.describe(train_h)
 ```
 
 ```{r}
-y_name = 'lwage'
-X_names = setdiff(names(data), c('lwage','wage','occ', 'ind'))
+y_name <- "lwage"
+x_names <- setdiff(names(data), c("lwage", "wage", "occ", "ind"))
 
 # run AutoML for 10 base models and a maximal runtime of 100 seconds
-aml = h2o.automl(x=X_names, y=y_name,
-                  training_frame = train_h,
-                  leaderboard_frame = test_h,
-                  max_models = 10,
-                  seed = 1,
-                  max_runtime_secs = 100
-                 )
+aml <- h2o.automl(
+  x = x_names, y = y_name,
+  training_frame = train_h,
+  leaderboard_frame = test_h,
+  max_models = 10,
+  seed = 1,
+  max_runtime_secs = 100
+)
 # AutoML Leaderboard
-lb = aml@leaderboard
+lb <- aml@leaderboard
 print(lb, n = nrow(lb))
 ```
 
@@ -528,7 +548,7 @@ aml@leader
 This is in line with our previous results. To understand how the ensemble works, let's take a peek inside the Stacked Ensemble "All Models" model.  The "All Models" ensemble is an ensemble of all of the individual models in the AutoML run.  This is often the top performing model on the leaderboard.
 
 ```{r}
-model_ids <- as.data.frame(aml@leaderboard$model_id)[,1]
+model_ids <- as.data.frame(aml@leaderboard$model_id)[, 1]
 # Get the "All Models" Stacked Ensemble model
 se <- h2o.getModel(grep("StackedEnsemble_AllModels", model_ids, value = TRUE)[1])
 # Get the Stacked Ensemble metalearner model
@@ -547,19 +567,19 @@ h2o.varimp_plot(metalearner)
 We can also generate predictions on a test sample using the leader model object.
 
 ```{r}
-pred <- as.matrix(h2o.predict(aml@leader,test_h)) # make prediction using x data from the test sample
+pred <- as.matrix(h2o.predict(aml@leader, test_h)) # make prediction using x data from the test sample
 head(pred)
 ```
 
 ```{r}
 y_test <- as.matrix(test_h$lwage)
-R2_test  <- 1-summary(lm((y_test-pred)^2~1))$coef[1]/var(y_test)
-cat("MSE, SE, R^2:" , summary(lm((y_test-pred)^2~1))$coef[1:2], R2_test)
+r2_test <- 1 - summary(lm((y_test - pred)^2 ~ 1))$coef[1] / var(y_test)
+cat("MSE, SE, R^2:", summary(lm((y_test - pred)^2 ~ 1))$coef[1:2], r2_test)
 ```
 
 We observe both a similar MSE and $R^2$ relative to the better performing models in our previous results.
 
 ```{r}
-h2o.shutdown(prompt = F) # shut down the h20 automatically without prompting user
+h2o.shutdown(prompt = FALSE) # shut down the h20 automatically without prompting user
 ```
 
