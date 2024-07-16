@@ -10,12 +10,12 @@ Here we experiment with using package "sensemakr" in conjunction with debiased M
 ## Partially Linear SEM
 
 Consider the SEM
-\begin{eqnarray*}
-Y & := & \alpha D + \delta A + f_Y(X) + \epsilon_Y,  \\
-D & := & \gamma A + f_D(X) + \epsilon_D, \\
-A & : =  & f_A(X) + \epsilon_A, \\
-X & := &  \epsilon_X,
-\end{eqnarray*}
+\begin{align}
+Y :=~& \alpha D + \delta A + f_Y(X) + \epsilon_Y,  \\
+D :=~& \gamma A + f_D(X) + \epsilon_D, \\
+A :=~& f_A(X) + \epsilon_A, \\
+X :=~&  \epsilon_X,
+\end{align}
 where, conditional on $X$, $\epsilon_Y, \epsilon_D, \epsilon_A$ are mean zero
 and mutually uncorrelated. We further normalize
 $$
@@ -32,11 +32,11 @@ We start by applying the partialling out operator to get rid of the $X$'s in all
 $$\tilde V = V - E [V \mid X].$$  
 If $f$'s are linear, we can replace $E [V \mid X]$
 by linear projection.  After partialling out, we have a simplified system:
-\begin{eqnarray*}
-\tilde Y & := & \alpha \tilde D + \delta \tilde A + \epsilon_Y,  \\
-\tilde D & := & \gamma \tilde A + \epsilon_D, \\
-\tilde A & : = & \epsilon_A,
-\end{eqnarray*}
+\begin{align}
+\tilde Y :=~& \alpha \tilde D + \delta \tilde A + \epsilon_Y,  \\
+\tilde D :=~& \gamma \tilde A + \epsilon_D, \\
+\tilde A :=~& \epsilon_A,
+\end{align}
 where $\epsilon_Y$, $\epsilon_D$, and $\epsilon_A$ are uncorrelated.
 
 Then the projection of $\tilde Y$ on $\tilde D$ recovers
@@ -108,114 +108,112 @@ file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/
 data <- read.csv(file)
 dim(data)
 attach(darfur)
-
-# # Alternatively load data and save as follows:
-# data("darfur")
-# # write.csv(darfur, "darfur.csv", row.names=FALSE)
 ```
 
 ## Preprocessing
 Take out village fixed effects and run basic linear analysis
 
 ```{r}
-#get rid of village fixed effects
-peacefactorR <- lm(peacefactor~village)$res
-directlyharmedR <- lm(directlyharmed~village)$res
-femaleR <- lm(female~village)$res
-ageR <- lm(age~village)$res
-farmerR <- lm(farmer_dar~village)$res
-herderR <- lm(herder_dar~village)$res
-pastvotedR <- lm(pastvoted~village)$res
-hhsizeR <- lm(hhsize_darfur~village)$res
+# get rid of village fixed effects
+peacefactorR <- lm(peacefactor ~ village)$res
+directlyharmedR <- lm(directlyharmed ~ village)$res
+femaleR <- lm(female ~ village)$res
+ageR <- lm(age ~ village)$res
+farmerR <- lm(farmer_dar ~ village)$res
+herderR <- lm(herder_dar ~ village)$res
+pastvotedR <- lm(pastvoted ~ village)$res
+hhsizeR <- lm(hhsize_darfur ~ village)$res
 
 
 # Preliminary linear model analysis
-summary(felm(peacefactorR~ directlyharmedR+ femaleR +
-                     ageR + farmerR+ herderR + pastvotedR + hhsizeR |0|0|village))
+summary(felm(peacefactorR ~ directlyharmedR + femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
 
 # here we are clustering standard errors at the village level
-summary(felm(peacefactorR~ femaleR +
-                     ageR + farmerR+ herderR + pastvotedR + hhsizeR |0|0|village))
+summary(felm(peacefactorR ~ femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
 
-summary(felm(directlyharmedR~ femaleR +
-                     ageR + farmerR+ herderR + pastvotedR + hhsizeR |0|0|village))
+summary(felm(directlyharmedR ~ femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
 ```
 
 For benchmarking, we want to understand the "partial $R^2$" of the controls on the outcome after partialling out the variable of interest.
 
 ```{r}
-#partial out variable of interest
-peacefactorR2 <- lm(peacefactorR~directlyharmedR)$res
-femaleR2 <- lm(femaleR~directlyharmedR)$res
-ageR2 <- lm(ageR~directlyharmedR)$res
-farmerR2 <- lm(farmerR~directlyharmedR)$res
-herderR2 <- lm(herderR~directlyharmedR)$res
-pastvotedR2 <- lm(pastvotedR~directlyharmedR)$res
-hhsizeR2 <- lm(hhsizeR~directlyharmedR)$res
+# partial out variable of interest
+peacefactorR2 <- lm(peacefactorR ~ directlyharmedR)$res
+femaleR2 <- lm(femaleR ~ directlyharmedR)$res
+ageR2 <- lm(ageR ~ directlyharmedR)$res
+farmerR2 <- lm(farmerR ~ directlyharmedR)$res
+herderR2 <- lm(herderR ~ directlyharmedR)$res
+pastvotedR2 <- lm(pastvotedR ~ directlyharmedR)$res
+hhsizeR2 <- lm(hhsizeR ~ directlyharmedR)$res
 
 
 # R^2 of controls after partialling out variable of interest
 summary(lm(peacefactorR2 ~ femaleR2 +
-                     ageR2 + farmerR2 + herderR2 + pastvotedR2 + hhsizeR2))
-
+             ageR2 + farmerR2 + herderR2 + pastvotedR2 + hhsizeR2))
 ```
 
 ## Lasso for partialling out controls
 
 ```{r}
-resY = rlasso(peacefactorR ~  (femaleR +
-                     ageR + farmerR+ herderR + pastvotedR + hhsizeR)^3, post=F)$res
+resY <- rlasso(peacefactorR ~ (femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)^3,
+               post = FALSE)$res
 
-resD = rlasso(directlyharmedR ~  (femaleR +
-                     ageR + farmerR + herderR + pastvotedR + hhsizeR)^3 , post=F)$res
+resD <- rlasso(directlyharmedR ~ (femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)^3,
+               post = FALSE)$res
 
-print(c("Controls explain the following fraction of variance of Outcome", 1-var(resY)/var(peacefactorR)))
-print(c("Controls explain the following fraction of variance of Treatment", 1-var(resD)/var(directlyharmedR)))
+print(c("Controls explain the following fraction of variance of Outcome", 1 - var(resY) / var(peacefactorR)))
+print(c("Controls explain the following fraction of variance of Treatment", 1 - var(resD) / var(directlyharmedR)))
 
-dml.darfur.model = felm(resY ~ resD|0|0|village)   # cluster SEs by village
+dml_darfur_model <- felm(resY ~ resD | 0 | 0 | village) # cluster SEs by village
 
-summary(dml.darfur.model,robust=T)  # cluster SE by village
+summary(dml_darfur_model, robust = TRUE) # cluster SE by village
 
-dml.darfur.model = lm(resY ~ resD)  # linear model to use as input in sensemakr
+dml_darfur_model <- lm(resY ~ resD) # linear model to use as input in sensemakr
 ```
 
 ## Manual Bias Analysis
 
 ```{r}
 # Main estimate
-beta = dml.darfur.model$coef[2]
+beta <- dml_darfur_model$coef[2]
 
 # Hypothetical values of partial R2s
-R2.YC = .13; R2.DC = .01
+r2_yc <- .13
+r2_dc <- .01
 
 # Elements of the bias equation
-kappa<-  (R2.YC * R2.DC)/(1- R2.DC)
-varianceRatio<- mean(dml.darfur.model$res^2)/mean(resD^2)
+kappa <- (r2_yc * r2_dc) / (1 - r2_dc)
+varianceRatio <- mean(dml_darfur_model$res^2) / mean(resD^2)
 
 # Compute square bias
-BiasSq <-  kappa*varianceRatio
+BiasSq <- kappa * varianceRatio
 
 # Compute absolute value of the bias
 print(cat("absolute value of the bias:", sqrt(BiasSq)[1]))
 
 # plotting
-gridR2.DC<- seq(0,.3, by=.001)
-gridR2.YC<- kappa*(1 - gridR2.DC)/gridR2.DC
-gridR2.YC<- ifelse(gridR2.YC> 1, 1, gridR2.YC);
-
-plot(gridR2.DC, gridR2.YC, type="l", col=4, xlab = "Partial R2 of Treatment with Confounder",
-     ylab = "Partial R2 of Outcome with Confounder",
-     main = paste("Combination of R2 such that |Bias| < ", round(sqrt(BiasSq), digits=4))
+gridr2_dc <- seq(0, .3, by = .001)
+gridr2_yc <- kappa * (1 - gridr2_dc) / gridr2_dc
+gridr2_yc <- ifelse(gridr2_yc > 1, 1, gridr2_yc)
+plot(gridr2_dc, gridr2_yc,
+  type = "l", col = 4, xlab = "Partial R2 of Treatment with Confounder",
+  ylab = "Partial R2 of Outcome with Confounder",
+  main = paste("Combination of R2 such that |Bias| < ", round(sqrt(BiasSq), digits = 4))
 )
 ```
 
 ## Bias Analysis with Sensemakr
 
 ```{r}
-dml.darfur.sensitivity <- sensemakr(model = dml.darfur.model,
-                                treatment = "resD")
-summary(dml.darfur.sensitivity)
-plot(dml.darfur.sensitivity, nlevels = 15)
+dml_darfur_sensitivity <- sensemakr(
+  model = dml_darfur_model,
+  treatment = "resD"
+)
+summary(dml_darfur_sensitivity)
+plot(dml_darfur_sensitivity, nlevels = 15)
 ```
 
 ## Random Forest for partialling out
@@ -223,60 +221,67 @@ plot(dml.darfur.sensitivity, nlevels = 15)
 The following code does DML with clustered standard errors by village
 
 ```{r}
-DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=2, clusterID) {
-  nobs <- nrow(x) #number of observations
-  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices
-  I <- split(1:nobs, foldid)  #split observation indices into folds
+dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 2, clusterID) {
+  nobs <- nrow(x) # number of observations
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid) # split observation indices into folds
   ytil <- dtil <- rep(NA, nobs)
   cat("fold: ")
-  for(b in 1:length(I)){
-    dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out
-    yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out
-    dhat <- predict(dfit, x[I[[b]],], type="response") #predict the left-out fold
-    yhat <- predict(yfit, x[I[[b]],], type="response") #predict the left-out fold
-    dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-    ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
-    cat(b," ")
-        }
-  rfit <- felm(ytil ~ dtil |0|0|clusterID)    #get clustered standard errors using felm
-  rfitSummary<- summary(rfit)
-  coef.est <-  rfitSummary$coef[2] #extract coefficient
-  se <- rfitSummary$coef[2,2]  #record robust standard error
-  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est , se))  #printing output
-  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals
+  for (b in seq_along(I)) {
+    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out
+    dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
+    cat(b, " ")
+  }
+  rfit <- felm(ytil ~ dtil | 0 | 0 | clusterID) # get clustered standard errors using felm
+  rfitSummary <- summary(rfit)
+  coef_est <- rfitSummary$coef[2] # extract coefficient
+  se <- rfitSummary$coef[2, 2] # record robust standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef_est, se)) # printing output
+  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals
 }
 ```
 
 ```{r}
-x = model.matrix(~  femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)
+x <- model.matrix(~ femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)
 dim(x)
 
-d = directlyharmedR
-y = peacefactorR;
-
+d <- directlyharmedR
+y <- peacefactorR
 # DML with Random Forest:
-dreg <- function(x,d){ randomForest(x, d) } #ML method=Forest
-yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest
+dreg <- function(x, d) {
+  randomForest(x, d)
+} # ML method=Forest
+yreg <- function(x, y) {
+  randomForest(x, y)
+} # ML method=Forest
 
-DML2.RF = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10, clusterID=village)
+dml2_rf <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10, clusterID = village)
 
-resY =  DML2.RF$ytil
-resD =  DML2.RF$dtil
+resY <- dml2_rf$ytil
+resD <- dml2_rf$dtil
 
-print(c("Controls explain the following fraction of variance of Outcome", max(1-var(resY)/var(peacefactorR),0)))
-print(c("Controls explain the following fraction of variance of Treatment", max(1-var(resD)/var(directlyharmedR),0)))
+print(c("Controls explain the following fraction of variance of Outcome",
+        max(1 - var(resY) / var(peacefactorR), 0)))
+print(c("Controls explain the following fraction of variance of Treatment",
+        max(1 - var(resD) / var(directlyharmedR), 0)))
 
-dml.darfur.model = lm(resY~resD)
+dml_darfur_model <- lm(resY ~ resD)
 ```
 
 ## Bias Analysis with Sensemakr
 
 
 ```{r}
-dml.darfur.sensitivity <- sensemakr(model = dml.darfur.model,
-                                treatment = "resD")
-summary(dml.darfur.sensitivity)
+dml_darfur_sensitivity <- sensemakr(
+  model = dml_darfur_model,
+  treatment = "resD"
+)
+summary(dml_darfur_sensitivity)
 
-plot(dml.darfur.sensitivity,nlevels = 15)
+plot(dml_darfur_sensitivity, nlevels = 15)
 ```
 
