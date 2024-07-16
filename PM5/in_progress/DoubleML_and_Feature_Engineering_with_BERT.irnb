@@ -11,8 +11,6 @@
     "\n",
     "**Bidirectional Encoder Representations from Transformers.**\n",
     "\n",
-    "_ | _\n",
-    "- | -\n",
     "![alt](https://pytorch.org/assets/images/bert1.png) | ![alt](https://pytorch.org/assets/images/bert2.png)\n",
     "\n",
     "\n",
@@ -54,7 +52,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "9rooQWVdri1m",
-    "outputId": "e8d7baf0-1420-4405-d5d5-c63466fbbcdd"
+    "outputId": "e8d7baf0-1420-4405-d5d5-c63466fbbcdd",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -96,7 +97,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "ppJlcoIatlAw",
-    "outputId": "3a5cbcea-04c9-4c67-ccb1-1b45e691ccf8"
+    "outputId": "3a5cbcea-04c9-4c67-ccb1-1b45e691ccf8",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -112,11 +116,14 @@
    "execution_count": null,
    "id": "5",
    "metadata": {
-    "id": "GmOhRKEG4jEy"
+    "id": "GmOhRKEG4jEy",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "use_python(\"/usr/bin/python3\", required = TRUE)  # Adjust the path as needed"
+    "use_python(\"/usr/bin/python3\", required = TRUE) # Adjust the path as needed"
    ]
   },
   {
@@ -124,7 +131,10 @@
    "execution_count": null,
    "id": "6",
    "metadata": {
-    "id": "bUEb1TDIs4TK"
+    "id": "bUEb1TDIs4TK",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -141,27 +151,12 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "id": "7",
-   "metadata": {
-    "id": "A7HTpjkA4u54"
-   },
-   "outputs": [],
-   "source": [
-    "# Check GPU availability\n",
-    "# py_run_string('\n",
-    "# device_name = tf.test.gpu_device_name()\n",
-    "# if device_name != \"/device:GPU:0\":\n",
-    "#   raise SystemError(\"GPU device not found\")\n",
-    "# print(\"Found GPU at:\", device_name)\n",
-    "# ')"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
    "id": "8",
    "metadata": {
-    "id": "hZaltj7Fv5Gh"
+    "id": "hZaltj7Fv5Gh",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -172,7 +167,7 @@
     "  flucs <- y - mean(y)\n",
     "  rss <- ssq(resids)\n",
     "  tss <- ssq(flucs)\n",
-    "  cat(sprintf(\"RSS: %f, TSS + MEAN^2: %f, TSS: %f, R^2: %f\", rss, tss + mean(y)^2, tss, 1 - rss/tss))\n",
+    "  cat(sprintf(\"RSS: %f, TSS + MEAN^2: %f, TSS: %f, R^2: %f\", rss, tss + mean(y)^2, tss, 1 - rss / tss))\n",
     "}"
    ]
   },
@@ -181,7 +176,10 @@
    "execution_count": null,
    "id": "9",
    "metadata": {
-    "id": "CB3ur5xF41o-"
+    "id": "CB3ur5xF41o-",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -210,7 +208,10 @@
    "execution_count": null,
    "id": "11",
    "metadata": {
-    "id": "cER5mL4fMSCr"
+    "id": "cER5mL4fMSCr",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -231,7 +232,10 @@
      "height": 329
     },
     "id": "KVETer7w5euE",
-    "outputId": "3b7b87f7-69f4-4727-bccf-3bd8d6162e00"
+    "outputId": "3b7b87f7-69f4-4727-bccf-3bd8d6162e00",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -277,7 +281,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "Q1ODAgBMa3Zg",
-    "outputId": "7ccd4481-6489-4830-c86b-a3c40cb1c37c"
+    "outputId": "7ccd4481-6489-4830-c86b-a3c40cb1c37c",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -308,11 +315,11 @@
     "output_preview <- py$output_preview\n",
     "\n",
     "cat(sprintf(\n",
-    "\"Output type: %s\\n\\nOutput shape: %s\\n\\nOutput preview: %s\\n\",\n",
-    "output_type,\n",
-    "paste(output_shape, collapse=\", \"),\n",
-    "output_preview\n",
-    "))\n"
+    "  \"Output type: %s\\n\\nOutput shape: %s\\n\\nOutput preview: %s\\n\",\n",
+    "  output_type,\n",
+    "  paste(output_shape, collapse = \", \"),\n",
+    "  output_preview\n",
+    "))"
    ]
   },
   {
@@ -341,16 +348,6 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "id": "16",
-   "metadata": {
-    "id": "_d5eA3xyzdtb"
-   },
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
    "id": "17",
    "metadata": {
     "colab": {
@@ -358,7 +355,10 @@
      "height": 247
     },
     "id": "5kzXygwH0BKw",
-    "outputId": "f368dd28-317f-4815-d05b-a0c2ce7f05d6"
+    "outputId": "f368dd28-317f-4815-d05b-a0c2ce7f05d6",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -366,6 +366,7 @@
     "library(stringr)\n",
     "library(tidyr)\n",
     "library(purrr)\n",
+    "\n",
     "data_url <- \"https://github.com/CausalAIBook/MetricsMLNotebooks/raw/main/data/amazon_toys.csv\"\n",
     "data <- read_csv(data_url, show_col_types = FALSE)\n",
     "problems(data)\n",
@@ -373,7 +374,7 @@
     "data <- data %>%\n",
     "  mutate(\n",
     "    number_of_reviews = as.numeric(str_replace_all(number_of_reviews, \",\", \"\"))\n",
-    "  )\n"
+    "  )"
    ]
   },
   {
@@ -385,7 +386,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "1Su5vOGhD3Df",
-    "outputId": "577bbbd9-1a7d-4f7e-d9bd-decd46830dc0"
+    "outputId": "577bbbd9-1a7d-4f7e-d9bd-decd46830dc0",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -417,7 +421,10 @@
      "height": 437
     },
     "id": "lovFEHaWp4lC",
-    "outputId": "2c191aaa-d7ed-4b62-ef28-c513fabfab05"
+    "outputId": "2c191aaa-d7ed-4b62-ef28-c513fabfab05",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -446,7 +453,10 @@
      "height": 454
     },
     "id": "dNujhir1q_0N",
-    "outputId": "06ba2da1-4ffc-4dc4-d762-f0bd6cdc039c"
+    "outputId": "06ba2da1-4ffc-4dc4-d762-f0bd6cdc039c",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -467,7 +477,10 @@
      "height": 454
     },
     "id": "t7axTjsnq8qI",
-    "outputId": "84a6aa7b-41cd-43f6-e371-2c46d15c86eb"
+    "outputId": "84a6aa7b-41cd-43f6-e371-2c46d15c86eb",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -486,7 +499,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "aZPOUT5SvR4o",
-    "outputId": "c5186cae-c1da-4c35-91b0-08f0b9986919"
+    "outputId": "c5186cae-c1da-4c35-91b0-08f0b9986919",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -518,7 +534,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "pGt-G-qpciGd",
-    "outputId": "dfdf62d9-66b7-4787-b00c-b019f9064cf4"
+    "outputId": "dfdf62d9-66b7-4787-b00c-b019f9064cf4",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -532,7 +551,10 @@
    "execution_count": null,
    "id": "26",
    "metadata": {
-    "id": "EPX_-K9CPpuO"
+    "id": "EPX_-K9CPpuO",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -551,13 +573,17 @@
    "execution_count": null,
    "id": "27",
    "metadata": {
-    "id": "IGFzO9sZPvAJ"
+    "id": "IGFzO9sZPvAJ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "library(reticulate)\n",
+    "\n",
     "use_python(\"/usr/bin/python3\", required = TRUE)\n",
-    "py_run_string('import tensorflow as tf')\n",
+    "py_run_string(\"import tensorflow as tf\")\n",
     "\n",
     "py$train_texts <- train$text\n",
     "train_tensors <- py_run_string(\"\n",
@@ -602,7 +628,10 @@
    "execution_count": null,
    "id": "28",
    "metadata": {
-    "id": "XQ4DMJQ0drZm"
+    "id": "XQ4DMJQ0drZm",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -625,21 +654,6 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "id": "30",
-   "metadata": {
-    "id": "ytZhy46hdDdr"
-   },
-   "outputs": [],
-   "source": [
-    "library(reticulate)\n",
-    "#Sys.setenv(RETICULATE_PYTHON = \"/usr/bin/python\")\n",
-    "library(keras)\n",
-    "#install_keras()"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
    "id": "31",
    "metadata": {
     "colab": {
@@ -647,10 +661,15 @@
      "height": 835
     },
     "id": "TsqfQ3OH-HR3",
-    "outputId": "a4107a7d-ce9e-4d09-a63e-1bab3174bf76"
+    "outputId": "a4107a7d-ce9e-4d09-a63e-1bab3174bf76",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
+    "library(reticulate)\n",
+    "library(keras)\n",
     "library(caTools)\n",
     "library(dplyr)\n",
     "library(readr)\n",
@@ -661,8 +680,8 @@
     "library(stringr)\n",
     "\n",
     "use_python(\"/usr/bin/python3\", required = TRUE)\n",
-    "py_run_string('import tensorflow as tf')\n",
-    "py_run_string('from transformers import BertTokenizer, TFBertModel')\n",
+    "py_run_string(\"import tensorflow as tf\")\n",
+    "py_run_string(\"from transformers import BertTokenizer, TFBertModel\")\n",
     "py_run_string('\n",
     "tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n",
     "bert_model = TFBertModel.from_pretrained(\"bert-base-uncased\")\n",
@@ -719,7 +738,8 @@
     "outputs = bert_model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)\n",
     "\n",
     "# Define the embedding model\n",
-    "embedding_model = tf.keras.models.Model(inputs=[input_ids, token_type_ids, attention_mask], outputs=outputs.last_hidden_state[:, 0, :])\n",
+    "embedding_model = tf.keras.models.Model(inputs=[input_ids, token_type_ids, attention_mask],\n",
+    "                                        outputs=outputs.last_hidden_state[:, 0, :])\n",
     "')\n",
     "\n",
     "py_run_string('\n",
@@ -734,7 +754,7 @@
     "embeddings <- py$embeddings\n",
     "\n",
     "py$ln_p <- ln_p\n",
-    "py_run_string('\n",
+    "py_run_string(\"\n",
     "from sklearn.linear_model import LassoCV\n",
     "from sklearn.model_selection import KFold\n",
     "from sklearn.preprocessing import StandardScaler\n",
@@ -742,7 +762,7 @@
     "\n",
     "lcv = make_pipeline(StandardScaler(), LassoCV(cv=KFold(n_splits=5, shuffle=True, random_state=123), random_state=123))\n",
     "lcv.fit(embeddings, ln_p)\n",
-    "')\n",
+    "\")\n",
     "\n",
     "py_run_string('\n",
     "embeddings_val = embedding_model.predict({\n",
@@ -790,7 +810,10 @@
    "execution_count": null,
    "id": "33",
    "metadata": {
-    "id": "Ck1xqRIrmx8I"
+    "id": "Ck1xqRIrmx8I",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -840,7 +863,10 @@
    "execution_count": null,
    "id": "34",
    "metadata": {
-    "id": "XhTREb3NcZhH"
+    "id": "XhTREb3NcZhH",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -884,7 +910,10 @@
    "execution_count": null,
    "id": "36",
    "metadata": {
-    "id": "NzWCkTY87luH"
+    "id": "NzWCkTY87luH",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -933,11 +962,14 @@
    "execution_count": null,
    "id": "37",
    "metadata": {
-    "id": "PWauCl0T7nUo"
+    "id": "PWauCl0T7nUo",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")"
+    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")\n"
    ]
   },
   {
@@ -945,7 +977,10 @@
    "execution_count": null,
    "id": "38",
    "metadata": {
-    "id": "iDSBZWAe8nhE"
+    "id": "iDSBZWAe8nhE",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -978,11 +1013,14 @@
    "execution_count": null,
    "id": "39",
    "metadata": {
-    "id": "wchpbXoqBAJu"
+    "id": "wchpbXoqBAJu",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")"
+    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")\n"
    ]
   },
   {
@@ -990,7 +1028,10 @@
    "execution_count": null,
    "id": "40",
    "metadata": {
-    "id": "jpUmDHYfkJEZ"
+    "id": "jpUmDHYfkJEZ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1007,12 +1048,15 @@
    "execution_count": null,
    "id": "41",
    "metadata": {
-    "id": "g_XK81hpkQMN"
+    "id": "g_XK81hpkQMN",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print('Neural Net R^2, Price Prediction:')\n",
-    "get_r2(holdout['ln_p'], ln_p_hat_holdout)"
+    "print(\"Neural Net R^2, Price Prediction:\")\n",
+    "get_r2(holdout[\"ln_p\"], ln_p_hat_holdout)\n"
    ]
   },
   {
@@ -1020,7 +1064,10 @@
    "execution_count": null,
    "id": "42",
    "metadata": {
-    "id": "GR4QP4DJPQk0"
+    "id": "GR4QP4DJPQk0",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1034,7 +1081,10 @@
    "execution_count": null,
    "id": "43",
    "metadata": {
-    "id": "RAGwE4peL1Me"
+    "id": "RAGwE4peL1Me",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": []
@@ -1055,7 +1105,10 @@
    "execution_count": null,
    "id": "45",
    "metadata": {
-    "id": "Qiteu6FaoctV"
+    "id": "Qiteu6FaoctV",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1102,7 +1155,10 @@
    "execution_count": null,
    "id": "46",
    "metadata": {
-    "id": "aaxHV0gGMqpw"
+    "id": "aaxHV0gGMqpw",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1136,11 +1192,14 @@
    "execution_count": null,
    "id": "47",
    "metadata": {
-    "id": "TfyQV3lw-xf2"
+    "id": "TfyQV3lw-xf2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "QuantityPredictionNetwork.load_weights(\"/content/gdrive/MyDrive/qweights.hdf5\")"
+    "QuantityPredictionNetwork.load_weights(\"/content/gdrive/MyDrive/qweights.hdf5\")\n"
    ]
   },
   {
@@ -1148,7 +1207,10 @@
    "execution_count": null,
    "id": "48",
    "metadata": {
-    "id": "YADpNj0jMygZ"
+    "id": "YADpNj0jMygZ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1166,12 +1228,15 @@
    "execution_count": null,
    "id": "49",
    "metadata": {
-    "id": "jh4criU1hGIP"
+    "id": "jh4criU1hGIP",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print('Neural Net R^2, Quantity Prediction:')\n",
-    "get_r2(holdout['ln_q'], ln_q_hat_holdout)"
+    "print(\"Neural Net R^2, Quantity Prediction:\")\n",
+    "get_r2(holdout[\"ln_q\"], ln_q_hat_holdout)\n"
    ]
   },
   {
@@ -1179,7 +1244,10 @@
    "execution_count": null,
    "id": "50",
    "metadata": {
-    "id": "ir-_yAfkPM6f"
+    "id": "ir-_yAfkPM6f",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1214,7 +1282,10 @@
    "execution_count": null,
    "id": "52",
    "metadata": {
-    "id": "XRUZEXqc8HPG"
+    "id": "XRUZEXqc8HPG",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1226,7 +1297,10 @@
    "execution_count": null,
    "id": "53",
    "metadata": {
-    "id": "ymWJv4Ej7lt9"
+    "id": "ymWJv4Ej7lt9",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1245,7 +1319,10 @@
    "execution_count": null,
    "id": "54",
    "metadata": {
-    "id": "E3ncPtwt8nJi"
+    "id": "E3ncPtwt8nJi",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1307,7 +1384,10 @@
    "execution_count": null,
    "id": "56",
    "metadata": {
-    "id": "Mc7I00JPK6wJ"
+    "id": "Mc7I00JPK6wJ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1350,7 +1430,10 @@
    "execution_count": null,
    "id": "58",
    "metadata": {
-    "id": "afGiLR7v6ecJ"
+    "id": "afGiLR7v6ecJ",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1366,7 +1449,10 @@
    "execution_count": null,
    "id": "59",
    "metadata": {
-    "id": "9Tl9AM3J6j3X"
+    "id": "9Tl9AM3J6j3X",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1383,7 +1469,10 @@
    "execution_count": null,
    "id": "60",
    "metadata": {
-    "id": "0l7De-Do6mD0"
+    "id": "0l7De-Do6mD0",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -1412,7 +1501,10 @@
    "execution_count": null,
    "id": "61",
    "metadata": {
-    "id": "oXoe98f06njT"
+    "id": "oXoe98f06njT",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
