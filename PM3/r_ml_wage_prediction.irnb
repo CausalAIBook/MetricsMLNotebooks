@@ -369,8 +369,8 @@
    "outputs": [],
    "source": [
     "x_basic <- \"sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)\"\n",
-    "x_flex <- \"sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we \" +\n",
-    "  \"+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\"\n",
+    "x_flex <- paste(\"sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we \",\n",
+    "                \"+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\")\n",
     "formula_basic <- as.formula(paste(\"lwage\", \"~\", x_basic))\n",
     "formula_flex <- as.formula(paste(\"lwage\", \"~\", x_flex))\n",
     "\n",
