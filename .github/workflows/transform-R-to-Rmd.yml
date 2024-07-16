@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.8'  # Specify your Python version here
 
-      - name: Install nbstripout
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install nbstripout tensorflow
@@ -62,8 +62,7 @@ jobs:
           R -e '
             library(lintr)
             linters <- with_defaults(line_length_linter = line_length_linter(120),
-                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")),
-                                     object_usage_linter = NULL)
+                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")))
             rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
             results <- lapply(rmd_files, function(file) {
               lints <- lint(file, linters)
@@ -91,7 +90,7 @@ jobs:
                   source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message)
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = traceback())
                 }
               )
             }
@@ -102,6 +101,8 @@ jobs:
               for (error in errors) {
                 cat("Error found in file:", error$gitrfile, "\n")
                 cat("Error message:", error$message, "\n")
+                cat("Traceback:\n")
+                print(error$traceback)
               }
               quit(status = 1, save = "no")  # Exit with an error status if errors are found
             }

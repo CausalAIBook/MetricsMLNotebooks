@@ -39,7 +39,10 @@
      "start_time": "2021-02-13T17:32:35.344160",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -62,7 +65,10 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "1I8mEMEM33fS"
+    "id": "1I8mEMEM33fS",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -77,20 +83,24 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "hiwEVN6i4FIH"
+    "id": "hiwEVN6i4FIH",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "y = as.matrix(data[,1])         # outcome: growth rate\n",
-    "d = as.matrix(data[,3])         # treatment: initial wealth\n",
-    "x = as.matrix(data[,-c(1,2,3)]) # controls: country characteristics\n",
+    "y <- as.matrix(data[, 1]) # outcome: growth rate\n",
+    "d <- as.matrix(data[, 3]) # treatment: initial wealth\n",
+    "x <- as.matrix(data[, -c(1, 2, 3)]) # controls: country characteristics\n",
     "\n",
     "# some summary statistics\n",
-    "cat(sprintf(\"\\nThe length of y is %g \\n\", length(y) ))\n",
-    "cat(sprintf(\"\\nThe number of features in x is %g \\n\", dim(x)[2] ))\n",
+    "cat(sprintf(\"\\nThe length of y is %g \\n\", length(y)))\n",
+    "cat(sprintf(\"\\nThe number of features in x is %g \\n\", dim(x)[2]))\n",
     "\n",
-    "lres=summary(lm(y~d +x))$coef[2,1:2]\n",
-    "cat(sprintf(\"\\nNaive OLS that uses all features w/o cross-fitting Y ~ D+X yields: \\ncoef (se) = %g (%g)\\n\", lres[1] , lres[2]))"
+    "lres <- summary(lm(y ~ d + x))$coef[2, 1:2]\n",
+    "cat(sprintf(\"\\nNaive OLS that uses all features w/o cross-fitting Y ~ D+X yields: \\ncoef (se) = %g (%g)\\n\",\n",
+    "            lres[1], lres[2]))"
    ]
   },
   {
@@ -139,30 +149,33 @@
      "start_time": "2021-02-13T17:33:08.350892",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=2) {\n",
-    "  nobs <- nrow(x) #number of observations\n",
-    "  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices\n",
-    "  I <- split(1:nobs, foldid)  #split observation indices into folds\n",
+    "dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 2) {\n",
+    "  nobs <- nrow(x) # number of observations\n",
+    "  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices\n",
+    "  I <- split(1:nobs, foldid) # split observation indices into folds\n",
     "  ytil <- dtil <- rep(NA, nobs)\n",
     "  cat(\"fold: \")\n",
-    "  for(b in 1:length(I)){\n",
-    "    dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out\n",
-    "    yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out\n",
-    "    dhat <- predict(dfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "    yhat <- predict(yfit, x[I[[b]],], type=\"response\") #predict the left-out fold\n",
-    "    dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold\n",
-    "    ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold\n",
-    "    cat(b,\" \")\n",
-    "        }\n",
-    "  rfit <- lm(ytil ~ dtil)    #estimate the main parameter by regressing one residual on the other\n",
-    "  coef.est <- coef(rfit)[2]  #extract coefficient\n",
-    "  se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error\n",
-    "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est , se))  #printing output\n",
-    "  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals\n",
+    "  for (b in seq_along(I)) {\n",
+    "    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
+    "    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out\n",
+    "    dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "    yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+    "    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+    "    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+    "    cat(b, \" \")\n",
+    "  }\n",
+    "  rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other\n",
+    "  coef.est <- coef(rfit)[2] # extract coefficient\n",
+    "  se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error\n",
+    "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef.est, se)) # printing output\n",
+    "  return(list(coef.est = coef.est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals\n",
     "}\n"
    ]
   },
@@ -191,35 +204,54 @@
      "start_time": "2021-02-13T17:33:08.428303",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "#DML with OLS\n",
+    "# DML with OLS\n",
     "cat(sprintf(\"\\nDML with OLS w/o feature selection \\n\"))\n",
-    "dreg <- function(x,d){ glmnet(x, d, lambda = 0) } #ML method= OLS using glmnet; using lm gives bugs\n",
-    "yreg <- function(x,y){ glmnet(x, y, lambda = 0) } #ML method = OLS\n",
-    "DML2.OLS = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+    "dreg <- function(x, d) {\n",
+    "  glmnet(x, d, lambda = 0)\n",
+    "} # ML method= OLS using glmnet; using lm gives bugs\n",
+    "yreg <- function(x, y) {\n",
+    "  glmnet(x, y, lambda = 0)\n",
+    "} # ML method = OLS\n",
+    "dml2_ols <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)\n",
     "\n",
     "\n",
-    "#DML with Lasso:\n",
+    "# DML with Lasso:\n",
     "cat(sprintf(\"\\nDML with Lasso \\n\"))\n",
-    "dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method= lasso from hdm\n",
-    "yreg <- function(x,y){ rlasso(x,y, post=FALSE) } #ML method = lasso from hdm\n",
-    "DML2.lasso = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+    "dreg <- function(x, d) {\n",
+    "  rlasso(x, d, post = FALSE)\n",
+    "} # ML method= lasso from hdm\n",
+    "yreg <- function(x, y) {\n",
+    "  rlasso(x, y, post = FALSE)\n",
+    "} # ML method = lasso from hdm\n",
+    "dml2_lasso <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)\n",
     "\n",
     "\n",
-    "#DML with Random Forest:\n",
+    "# DML with Random Forest:\n",
     "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
-    "dreg <- function(x,d){ randomForest(x, d) } #ML method=Forest\n",
-    "yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest\n",
-    "DML2.RF = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n",
+    "dreg <- function(x, d) {\n",
+    "  randomForest(x, d)\n",
+    "} # ML method=Forest\n",
+    "yreg <- function(x, y) {\n",
+    "  randomForest(x, y)\n",
+    "} # ML method=Forest\n",
+    "dml2_rf <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)\n",
     "\n",
-    "#DML MIX:\n",
+    "# DML MIX:\n",
     "cat(sprintf(\"\\nDML with Lasso for D and Random Forest for Y \\n\"))\n",
-    "dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method=Forest\n",
-    "yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest\n",
-    "DML2.mix = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)\n"
+    "dreg <- function(x, d) {\n",
+    "  rlasso(x, d, post = FALSE)\n",
+    "} # ML method=Forest\n",
+    "yreg <- function(x, y) {\n",
+    "  randomForest(x, y)\n",
+    "} # ML method=Forest\n",
+    "dml2_mix <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)"
    ]
   },
   {
@@ -243,55 +275,61 @@
      "start_time": "2021-02-13T17:33:27.099704",
      "status": "completed"
     },
-    "tags": []
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "prRes.D<- c( mean((DML2.OLS$dtil)^2), mean((DML2.lasso$dtil)^2), mean((DML2.RF$dtil)^2), mean((DML2.mix$dtil)^2));\n",
-    "prRes.Y<- c(mean((DML2.OLS$ytil)^2), mean((DML2.lasso$ytil)^2),mean((DML2.RF$ytil)^2),mean((DML2.mix$ytil)^2));\n",
-    "prRes<- rbind(sqrt(prRes.D), sqrt(prRes.Y));\n",
-    "rownames(prRes)<- c(\"RMSE D\", \"RMSE Y\");\n",
-    "colnames(prRes)<- c(\"OLS\", \"Lasso\", \"RF\", \"Mix\")"
+    "pr_res_d <- c(mean((dml2_ols$dtil)^2), mean((dml2_lasso$dtil)^2), mean((dml2_rf$dtil)^2), mean((dml2_mix$dtil)^2))\n",
+    "pr_res_y <- c(mean((dml2_ols$ytil)^2), mean((dml2_lasso$ytil)^2), mean((dml2_rf$ytil)^2), mean((dml2_mix$ytil)^2))\n",
+    "pr_res <- rbind(sqrt(pr_res_d), sqrt(pr_res_y))\n",
+    "rownames(pr_res) <- c(\"RMSE D\", \"RMSE Y\")\n",
+    "colnames(pr_res) <- c(\"OLS\", \"Lasso\", \"RF\", \"Mix\")"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "a7WC2-_6_wMl"
+    "id": "a7WC2-_6_wMl",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "table <- matrix(0,4,4)\n",
+    "table <- matrix(0, 4, 4)\n",
     "\n",
     "# Point Estimate\n",
-    "table[1,1] <- as.numeric(DML2.OLS$coef.est)\n",
-    "table[2,1] <- as.numeric(DML2.lasso$coef.est)\n",
-    "table[3,1] <- as.numeric(DML2.RF$coef.est)\n",
-    "table[4,1]   <- as.numeric(DML2.mix$coef.est)\n",
+    "table[1, 1] <- as.numeric(dml2_ols$coef.est)\n",
+    "table[2, 1] <- as.numeric(dml2_lasso$coef.est)\n",
+    "table[3, 1] <- as.numeric(dml2_rf$coef.est)\n",
+    "table[4, 1] <- as.numeric(dml2_mix$coef.est)\n",
     "\n",
     "# SE\n",
-    "table[1,2] <- as.numeric(DML2.OLS$se)\n",
-    "table[2,2] <- as.numeric(DML2.lasso$se)\n",
-    "table[3,2] <- as.numeric(DML2.RF$se)\n",
-    "table[4,2]   <- as.numeric(DML2.mix$se)\n",
+    "table[1, 2] <- as.numeric(dml2_ols$se)\n",
+    "table[2, 2] <- as.numeric(dml2_lasso$se)\n",
+    "table[3, 2] <- as.numeric(dml2_rf$se)\n",
+    "table[4, 2] <- as.numeric(dml2_mix$se)\n",
     "\n",
     "# RMSE Y\n",
-    "table[1,3] <- as.numeric(prRes[2,1])\n",
-    "table[2,3] <- as.numeric(prRes[2,2])\n",
-    "table[3,3] <- as.numeric(prRes[2,3])\n",
-    "table[4,3]   <- as.numeric(prRes[2,4])\n",
+    "table[1, 3] <- as.numeric(pr_res[2, 1])\n",
+    "table[2, 3] <- as.numeric(pr_res[2, 2])\n",
+    "table[3, 3] <- as.numeric(pr_res[2, 3])\n",
+    "table[4, 3] <- as.numeric(pr_res[2, 4])\n",
     "\n",
     "# RMSE D\n",
-    "table[1,4] <- as.numeric(prRes[1,1])\n",
-    "table[2,4] <- as.numeric(prRes[1,2])\n",
-    "table[3,4] <- as.numeric(prRes[1,3])\n",
-    "table[4,4]   <- as.numeric(prRes[1,4])\n",
+    "table[1, 4] <- as.numeric(pr_res[1, 1])\n",
+    "table[2, 4] <- as.numeric(pr_res[1, 2])\n",
+    "table[3, 4] <- as.numeric(pr_res[1, 3])\n",
+    "table[4, 4] <- as.numeric(pr_res[1, 4])\n",
     "\n",
     "\n",
     "\n",
     "# print results\n",
-    "colnames(table) <- c(\"Estimate\",\"Standard Error\", \"RMSE Y\", \"RMSE D\")\n",
+    "colnames(table) <- c(\"Estimate\", \"Standard Error\", \"RMSE Y\", \"RMSE D\")\n",
     "rownames(table) <- c(\"OLS\", \"Lasso\", \"RF\", \"RF/Lasso Mix\")\n",
     "table"
    ]
@@ -300,23 +338,29 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "zZMbnWTE_yYd"
+    "id": "zZMbnWTE_yYd",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "print(table, digit=3)"
+    "print(table, digit = 3)"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "pNDCsznF_zyR"
+    "id": "pNDCsznF_zyR",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "tab<- xtable(table, digits=3)\n",
-    "print(tab, type=\"latex\")"
+    "tab <- xtable(table, digits = 3)\n",
+    "print(tab, type = \"latex\")"
    ]
   }
  ],
