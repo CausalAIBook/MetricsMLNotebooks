@@ -91,7 +91,7 @@ jobs:
                   source(gitrfile)
                 },
                 error = function(e) {
-                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = traceback())
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = capture.output(traceback()))
                 }
               )
             }
