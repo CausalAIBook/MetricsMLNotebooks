@@ -109,8 +109,8 @@
     "\n",
     "# Print the dataset details\n",
     "cat(sprintf(\n",
-    "  past(\"Labeled Faces in the Wild Dataset:\\n Number of examples: %d\\n \",\n",
-    "       \"Number of features: %d\\n Image height: %d\\n Image width: %d\"),\n",
+    "  paste(\"Labeled Faces in the Wild Dataset:\\n Number of examples: %d\\n \",\n",
+    "        \"Number of features: %d\\n Image height: %d\\n Image width: %d\"),\n",
     "  n_examples, n_features, height, width\n",
     "))"
    ]
