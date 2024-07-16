@@ -24,7 +24,10 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "_67DDyL8kzXV",
-    "outputId": "8c8ac5d4-b0b1-4a10-ed14-ddb50956add0"
+    "outputId": "8c8ac5d4-b0b1-4a10-ed14-ddb50956add0",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
@@ -63,17 +66,22 @@
      "height": 35
     },
     "id": "0vvfKbSzkzXZ",
-    "outputId": "2c8dd4d2-ba1b-42ea-fb02-a326b6cc62ec"
+    "outputId": "2c8dd4d2-ba1b-42ea-fb02-a326b6cc62ec",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- \"p(y,d,x)\"  #data structure\n",
+    "data <- \"p(y, d, x)\" # data structure\n",
     "\n",
-    "query <- \"p(y | do(d),x)\" #query -- target parameter\n",
+    "query <- \"p(y | do(d), x)\" # query -- target parameter\n",
     "\n",
-    "graph <- \"x -> y\n",
+    "graph <- \"\n",
+    "  x -> y\n",
     "  x -> d\n",
-    "  d -> y\"\n",
+    "  d -> y\n",
+    "\"\n",
     "\n",
     "dosearch(data, query, graph)"
    ]
@@ -99,20 +107,24 @@
      "height": 35
     },
     "id": "tXw8HnV2kzXZ",
-    "outputId": "29481c74-cc2e-4042-f39d-5612862bfb68"
+    "outputId": "29481c74-cc2e-4042-f39d-5612862bfb68",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- \"p(y,d,x)\"\n",
+    "data <- \"p(y, d, x)\"\n",
     "\n",
     "query <- \"p(y | do(d))\"\n",
     "\n",
-    "graph <- \"x -> y\n",
+    "graph <- \"\n",
+    "  x -> y\n",
     "  x -> d\n",
-    "  d -> y\"\n",
+    "  d -> y\n",
+    "\"\n",
     "\n",
-    "\n",
-    "dosearch(data, query, graph)\n"
+    "dosearch(data, query, graph)"
    ]
   },
   {
@@ -146,17 +158,22 @@
      "height": 35
     },
     "id": "cjis082KkzXa",
-    "outputId": "c803c856-acab-4cc7-9e20-f6e5c790ffc1"
+    "outputId": "c803c856-acab-4cc7-9e20-f6e5c790ffc1",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- \"p(y,d)\"\n",
+    "data <- \"p(y, d)\"\n",
     "\n",
     "query <- \"p(y | do(d))\"\n",
     "\n",
-    "graph <- \"x -> y\n",
+    "graph <- \"\n",
+    "  x -> y\n",
     "  x -> d\n",
-    "  d -> y\"\n",
+    "  d -> y\n",
+    "\"\n",
     "\n",
     "dosearch(data, query, graph)"
    ]
@@ -181,28 +198,31 @@
      "height": 35
     },
     "id": "J4mz88VZkzXa",
-    "outputId": "30f73953-79de-448d-ddc2-aa470a97840e"
+    "outputId": "30f73953-79de-448d-ddc2-aa470a97840e",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
+    "data <- \"p(y, d, x2)\" # observed only (Y, D, X_2)\n",
     "\n",
-    "data <- \"p(y,d,x2)\"   #observed only (Y, D, X_2)\n",
+    "query <- \"p(y | do(d))\" # target parameter\n",
     "\n",
-    "query<- \"p(y|do(d))\"   #target parameter\n",
-    "\n",
-    "graph<- \"z1 -> x1\n",
-    "z1 -> x2\n",
-    "z2 -> x2\n",
-    "z2 -> x3\n",
-    "x2 -> d\n",
-    "x2 -> y\n",
-    "x3 -> y\n",
-    "x1 -> d\n",
-    "d -> m\n",
-    "m -> y\n",
+    "graph <- \"\n",
+    "  z1 -> x1\n",
+    "  z1 -> x2\n",
+    "  z2 -> x2\n",
+    "  z2 -> x3\n",
+    "  x2 -> d\n",
+    "  x2 -> y\n",
+    "  x3 -> y\n",
+    "  x1 -> d\n",
+    "  d -> m\n",
+    "  m -> y\n",
     "\"\n",
     "\n",
-    "dosearch(data, query, graph)\n"
+    "dosearch(data, query, graph)"
    ]
   },
   {
@@ -222,30 +242,33 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "wGIVqPAIkzXb",
-    "outputId": "0402b81b-ca16-4274-df93-33c0c2ae2327"
+    "outputId": "0402b81b-ca16-4274-df93-33c0c2ae2327",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
+    "data <- \"p(y, d, x2, x3)\"\n",
     "\n",
-    "data <- \"p(y,d,x2,x3)\"\n",
+    "conditional_query <- \"p(y | do(d), x2, x3)\" # can ID conditional average effect?\n",
+    "query <- \"p(y | do(d))\" # can ID unconditional effect?\n",
     "\n",
-    "conditional.query<- \"p(y|do(d),x2, x3)\"  #can ID conditional average effect?\n",
-    "query<- \"p(y|do(d))\"  #can ID unconditional effect?\n",
-    "\n",
-    "graph<- \"z1 -> x1\n",
-    "z1 -> x2\n",
-    "z2 -> x2\n",
-    "z2 -> x3\n",
-    "x2 -> d\n",
-    "x2 -> y\n",
-    "x3 -> y\n",
-    "x1 -> d\n",
-    "d -> m\n",
-    "m -> y\n",
+    "graph <- \"\n",
+    "  z1 -> x1\n",
+    "  z1 -> x2\n",
+    "  z2 -> x2\n",
+    "  z2 -> x3\n",
+    "  x2 -> d\n",
+    "  x2 -> y\n",
+    "  x3 -> y\n",
+    "  x1 -> d\n",
+    "  d -> m\n",
+    "  m -> y\n",
     "\"\n",
     "\n",
-    "print(dosearch(data, conditional.query, graph))\n",
-    "print(dosearch(data, query, graph))\n"
+    "print(dosearch(data, conditional_query, graph))\n",
+    "print(dosearch(data, query, graph))"
    ]
   },
   {
@@ -287,30 +310,34 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "eaPrMHWTkzXb",
-    "outputId": "4cc25d7c-75ba-44a6-93df-41359b55495b"
+    "outputId": "4cc25d7c-75ba-44a6-93df-41359b55495b",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- \"p(y,d, m)\"\n",
+    "data <- \"p(y, d, m)\"\n",
     "\n",
-    "query.dm<- \"p(m|do(d))\"\n",
-    "query.md<- \"p(y|do(m))\"\n",
-    "query<- \"p(y|do(d))\"\n",
+    "query_dm <- \"p(m | do(d))\"\n",
+    "query_md <- \"p(y | do(m))\"\n",
+    "query <- \"p(y | do(d))\"\n",
     "\n",
-    "graph<- \"z1 -> x1\n",
-    "z1 -> x2\n",
-    "z2 -> x2\n",
-    "z2 -> x3\n",
-    "x2 -> d\n",
-    "x2 -> y\n",
-    "x3 -> y\n",
-    "x1 -> d\n",
-    "d -> m\n",
-    "m -> y\n",
+    "graph <- \"\n",
+    "  z1 -> x1\n",
+    "  z1 -> x2\n",
+    "  z2 -> x2\n",
+    "  z2 -> x3\n",
+    "  x2 -> d\n",
+    "  x2 -> y\n",
+    "  x3 -> y\n",
+    "  x1 -> d\n",
+    "  d -> m\n",
+    "  m -> y\n",
     "\"\n",
-    "print(dosearch(data, query.dm, graph))\n",
-    "print(dosearch(data, query.md, graph))\n",
-    "print(dosearch(data, query, graph))\n"
+    "print(dosearch(data, query_dm, graph))\n",
+    "print(dosearch(data, query_md, graph))\n",
+    "print(dosearch(data, query, graph))"
    ]
   },
   {
@@ -351,30 +378,34 @@
      "base_uri": "https://localhost:8080/"
     },
     "id": "x-ACaOv_kzXc",
-    "outputId": "e5ba4476-2eb2-4806-fa2d-71c73dac986d"
+    "outputId": "e5ba4476-2eb2-4806-fa2d-71c73dac986d",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "data <- \"p(y,m)\n",
-    "         p(m,d)\"\n",
+    "data <- \"p(y, m)\n",
+    "         p(m, d)\"\n",
     "\n",
-    "query.dm<- \"p(m|do(d))\"\n",
-    "query.md<- \"p(y|do(m))\"\n",
-    "query<- \"p(y|do(d))\"\n",
+    "query_dm <- \"p(m | do(d))\"\n",
+    "query_md <- \"p(y | do(m))\"\n",
+    "query <- \"p(y | do(d))\"\n",
     "\n",
-    "graph<- \"z1 -> x1\n",
-    "z1 -> x2\n",
-    "z2 -> x2\n",
-    "z2 -> x3\n",
-    "x2 -> d\n",
-    "x2 -> y\n",
-    "x3 -> y\n",
-    "x1 -> d\n",
-    "d -> m\n",
-    "m -> y\n",
+    "graph <- \"\n",
+    "  z1 -> x1\n",
+    "  z1 -> x2\n",
+    "  z2 -> x2\n",
+    "  z2 -> x3\n",
+    "  x2 -> d\n",
+    "  x2 -> y\n",
+    "  x3 -> y\n",
+    "  x1 -> d\n",
+    "  d -> m\n",
+    "  m -> y\n",
     "\"\n",
-    "print(dosearch(data, query.dm, graph))\n",
-    "print(dosearch(data, query.md, graph))\n",
+    "print(dosearch(data, query_dm, graph))\n",
+    "print(dosearch(data, query_md, graph))\n",
     "print(dosearch(data, query, graph))"
    ]
   }
