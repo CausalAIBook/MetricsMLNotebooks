@@ -1676,6 +1676,16 @@
    ]
   },
   {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "On a unix system, installation of the package h2o also requires the RCurl package, which requires the libcurl library to have been installed. If the installation of the h2o package fails, try installing the libcurl package first and repeating the cell. You can install the libcurl package for instance by running:\n",
+    "```bash\n",
+    "sudo apt-get install -y libcurl4-openssl-dev\n",
+    "```"
+   ]
+  },
+  {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
