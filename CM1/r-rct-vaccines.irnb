@@ -20,7 +20,19 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"PropCIs\") # Exact CI exploiting Bernoulli outcome using the Cornfield Procedure\n",
+    "install.packages(\"PropCIs\") # Exact CI exploiting Bernoulli outcome using the Cornfield Procedure"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(PropCIs)"
    ]
   },

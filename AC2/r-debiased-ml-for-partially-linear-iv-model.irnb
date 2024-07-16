@@ -149,8 +149,19 @@
     "install.packages(\"AER\")\n",
     "install.packages(\"randomForest\")\n",
     "install.packages(\"lfe\")\n",
-    "install.packages(\"glmnet\")\n",
-    "\n",
+    "install.packages(\"glmnet\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(AER) # applied econometrics library\n",
     "library(randomForest) # random Forest library\n",

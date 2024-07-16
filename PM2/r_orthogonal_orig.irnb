@@ -35,6 +35,19 @@
    "outputs": [],
    "source": [
     "install.packages(\"hdm\")\n",
+    "install.packages(\"ggplot2\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(ggplot2)"
    ]

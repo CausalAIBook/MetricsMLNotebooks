@@ -20,12 +20,27 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "1Yr5aL2yAgYN"
+    "id": "1Yr5aL2yAgYN",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "dependencies <- c(\"rdrobust\", \"fastDummies\", \"randomForest\", \"hdm\", \"gbm\", \"rdd\")\n",
-    "install.packages(dependencies)\n",
+    "install.packages(dependencies)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "lapply(dependencies, library, character.only = TRUE)"
    ]
   },
@@ -44,13 +59,17 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "Rzbv0XXCxxJt"
+    "id": "Rzbv0XXCxxJt",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "df <- read.csv(\"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/progresa.csv\", row.names=1)\n",
+    "df <- read.csv(\"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/progresa.csv\",\n",
+    "               row.names = 1)\n",
     "comp <- complete.cases(df)\n",
-    "df <- df[comp,]\n",
+    "df <- df[comp, ]\n",
     "print(\"Shape of Data:\")\n",
     "print(dim(df))\n",
     "print(\"Variable Names:\")\n",
@@ -95,12 +114,15 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "1LAMZP540pLn"
+    "id": "1LAMZP540pLn",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "triangular_kernel <- function(index, h) {\n",
-    "  weights <- 1 - abs(index)/h\n",
+    "  weights <- 1 - abs(index) / h\n",
     "  weights[weights < 0] <- 0\n",
     "  return(weights)\n",
     "}"
@@ -119,11 +141,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "bFuzAouP04lO"
+    "id": "bFuzAouP04lO",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "h <- IKbandwidth(X=df$index, Y=df$conspcfood_t1, cutpoint = 0)"
+    "h <- IKbandwidth(X = df$index, Y = df$conspcfood_t1, cutpoint = 0)"
    ]
   },
   {
@@ -139,13 +164,16 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "cjc7f7F6qM36"
+    "id": "cjc7f7F6qM36",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "weights <- triangular_kernel(df$index, h)\n",
-    "model_treated <- lm(conspcfood_t1 ~ index, data = df[df$index > 0,], weights = weights[df$index > 0])\n",
-    "model_control <- lm(conspcfood_t1 ~ index, data = df[df$index < 0,], weights = weights[df$index < 0])"
+    "model_treated <- lm(conspcfood_t1 ~ index, data = df[df$index > 0, ], weights = weights[df$index > 0])\n",
+    "model_control <- lm(conspcfood_t1 ~ index, data = df[df$index < 0, ], weights = weights[df$index < 0])"
    ]
   },
   {
@@ -161,13 +189,16 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "279my1C8o9a3"
+    "id": "279my1C8o9a3",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "cutoff <- 0\n",
     "treatment_effect <- predict(model_treated, newdata = data.frame(index = cutoff)) -\n",
-    "                    predict(model_control, newdata = data.frame(index = cutoff))\n",
+    "  predict(model_control, newdata = data.frame(index = cutoff))\n",
     "treatment_effect"
    ]
   },
@@ -184,14 +215,17 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "6rLo9c_YGWIq"
+    "id": "6rLo9c_YGWIq",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "result <- c()\n",
-    "for (outcome in c(\"conspcfood_t1\", \"conspcnonfood_t1\", \"conspcfood_t2\", \"conspcnonfood_t2\")){\n",
-    "  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho=1)\n",
-    "  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "for (outcome in c(\"conspcfood_t1\", \"conspcnonfood_t1\", \"conspcfood_t2\", \"conspcnonfood_t2\")) {\n",
+    "  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho = 1)\n",
+    "  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "}\n",
     "resframe <- as.data.frame(result)\n",
     "colnames(resframe) <- c(\"LATE\", \"s.e.\")\n",
@@ -214,11 +248,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "gBbbIMxEZb6V"
+    "id": "gBbbIMxEZb6V",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "rdplot(df$conspcfood_t1, df$index, c=0, x.lim = c(-1,1), y.lim = c(250,400))"
+    "rdplot(df$conspcfood_t1, df$index, c = 0, x.lim = c(-1, 1), y.lim = c(250, 400))"
    ]
   },
   {
@@ -239,22 +276,31 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "JRdUQ8gcsGCg"
+    "id": "JRdUQ8gcsGCg",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "model_treated <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc, data = df[df$index > 0,], weights = weights[df$index > 0])\n",
-    "model_control <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc, data = df[df$index < 0,], weights = weights[df$index < 0])\n",
-    "prediction_treated <- predict(model_treated, newdata = data.frame(index = cutoff,\n",
-    "                                                                  hhownhouse = weighted.mean(df[df$index > 0,]$hhownhouse, w =weights[df$index > 0]),\n",
-    "                                                                  headage = weighted.mean(df[df$index > 0,]$headage, w =weights[df$index > 0]),\n",
-    "                                                                  heademp = weighted.mean(df[df$index > 0,]$heademp, w =weights[df$index > 0]),\n",
-    "                                                                  headeduc = weighted.mean(df[df$index > 0,]$headeduc, w =weights[df$index > 0])))\n",
-    "prediction_control <- predict(model_control, newdata = data.frame(index = cutoff,\n",
-    "                                                                  hhownhouse = weighted.mean(df[df$index < 0,]$hhownhouse, w = weights[df$index < 0]),\n",
-    "                                                                  headage = weighted.mean(df[df$index < 0,]$headage, w = weights[df$index < 0]),\n",
-    "                                                                  heademp = weighted.mean(df[df$index < 0,]$heademp, w = weights[df$index < 0]),\n",
-    "                                                                  headeduc = weighted.mean(df[df$index < 0,]$headeduc, w = weights[df$index < 0])))\n",
+    "model_treated <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc,\n",
+    "                    data = df[df$index > 0, ], weights = weights[df$index > 0])\n",
+    "model_control <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc,\n",
+    "                    data = df[df$index < 0, ], weights = weights[df$index < 0])\n",
+    "prediction_treated <- predict(model_treated, newdata = data.frame(\n",
+    "  index = cutoff,\n",
+    "  hhownhouse = weighted.mean(df[df$index > 0, ]$hhownhouse, w = weights[df$index > 0]),\n",
+    "  headage = weighted.mean(df[df$index > 0, ]$headage, w = weights[df$index > 0]),\n",
+    "  heademp = weighted.mean(df[df$index > 0, ]$heademp, w = weights[df$index > 0]),\n",
+    "  headeduc = weighted.mean(df[df$index > 0, ]$headeduc, w = weights[df$index > 0])\n",
+    "))\n",
+    "prediction_control <- predict(model_control, newdata = data.frame(\n",
+    "  index = cutoff,\n",
+    "  hhownhouse = weighted.mean(df[df$index < 0, ]$hhownhouse, w = weights[df$index < 0]),\n",
+    "  headage = weighted.mean(df[df$index < 0, ]$headage, w = weights[df$index < 0]),\n",
+    "  heademp = weighted.mean(df[df$index < 0, ]$heademp, w = weights[df$index < 0]),\n",
+    "  headeduc = weighted.mean(df[df$index < 0, ]$headeduc, w = weights[df$index < 0])\n",
+    "))\n",
     "treatment_effect <- prediction_treated - prediction_control\n",
     "treatment_effect"
    ]
@@ -274,19 +320,22 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "OYQuZcvjyYx6"
+    "id": "OYQuZcvjyYx6",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "result <- c()\n",
-    "for (outcome in c(\"conspcfood_t1\", \"conspcnonfood_t1\", \"conspcfood_t2\", \"conspcnonfood_t2\")){\n",
-    "  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho=1, covs = df[,c(1:8,10:17,19,22)])\n",
-    "  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "for (outcome in c(\"conspcfood_t1\", \"conspcnonfood_t1\", \"conspcfood_t2\", \"conspcnonfood_t2\")) {\n",
+    "  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho = 1, covs = df[, c(1:8, 10:17, 19, 22)])\n",
+    "  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "}\n",
     "resframe_adj <- as.data.frame(result)\n",
     "colnames(resframe_adj) <- c(\"LATE\", \"s.e.\")\n",
     "rownames(resframe_adj) <- c(\"Food T_1\", \"Non-Food T_1\", \"Food T_2\", \"Non-Food T_2\")\n",
-    "resframe_adj[\"% reduction\"] = (resframe_adj[\"s.e.\"] - resframe[,2]) * 100 / resframe[,2]\n",
+    "resframe_adj[\"% reduction\"] <- (resframe_adj[\"s.e.\"] - resframe[, 2]) * 100 / resframe[, 2]\n",
     "print(resframe_adj)"
    ]
   },
@@ -329,25 +378,28 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "n2uoMwzkCq4P"
+    "id": "n2uoMwzkCq4P",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Running Variable and Outcome\n",
-    "df_ml = df\n",
-    "investigated_outcome = \"conspcfood_t1\"\n",
+    "df_ml <- df\n",
+    "investigated_outcome <- \"conspcfood_t1\"\n",
     "names(df_ml)[names(df_ml) == \"index\"] <- \"X\"\n",
     "names(df_ml)[names(df_ml) == investigated_outcome] <- \"Y\"\n",
     "\n",
     "# Baseline covariates including consumption\n",
-    "b.covs <- names(df_ml[,c(1:8,10:17,19,22)])\n",
+    "b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])\n",
     "\n",
     "# Fixed effects for localities\n",
-    "i.fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
+    "i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
     "\n",
     "# Flexible covariates including localities indicators\n",
-    "f.covs <- as.matrix(model.matrix(~ .^2, data=df_ml[b.covs] ))[,-1]\n",
-    "Z.lasso <- as.matrix(cbind(i.fe, f.covs))"
+    "f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]\n",
+    "Zlasso <- as.matrix(cbind(i_fe, f_covs))"
    ]
   },
   {
@@ -363,11 +415,14 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "VIO-PQEtOKob"
+    "id": "VIO-PQEtOKob",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "h.fs <- 2*rdrobust(df_ml$Y, df_ml$X, rho=1)$bws[[1]]"
+    "h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]"
    ]
   },
   {
@@ -383,64 +438,71 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "y-tGMe5iQhVd"
+    "id": "y-tGMe5iQhVd",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "first_stage <- function(){\n",
+    "first_stage <- function() {\n",
     "  # Set up the cross-fitting\n",
     "  n <- nrow(df_ml)\n",
     "  Kf <- 5 # Number of folds\n",
-    "  sampleframe <- rep(1:Kf, ceiling(n/Kf))\n",
-    "  cfgroup <- sample(sampleframe, size=n, replace = FALSE)\n",
+    "  sampleframe <- rep(1:Kf, ceiling(n / Kf))\n",
+    "  cfgroup <- sample(sampleframe, size = n, replace = FALSE)\n",
     "\n",
     "  # Matrix to store eta predictions\n",
-    "  eta.fit <- matrix(NA, n, 5)\n",
+    "  eta_fit <- matrix(NA, n, 5)\n",
     "\n",
     "  # Create vector of observations to be considered in the first stage model\n",
-    "  weights <- (abs(df_ml$X)<h.fs)\n",
+    "  weights <- (abs(df_ml$X) < h_fs)\n",
     "\n",
-    "  for (k in 1:Kf){\n",
-    "    fold = (cfgroup == k)\n",
+    "  for (k in 1:Kf) {\n",
+    "    fold <- (cfgroup == k)\n",
     "\n",
-    "    data_treated <- df_ml[df_ml$X>0 & !fold & weights>0,]\n",
-    "    data_control <- df_ml[df_ml$X<0 & !fold & weights>0,]\n",
+    "    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]\n",
+    "    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]\n",
     "\n",
-    "    data_fold <- df_ml[fold,]\n",
+    "    data_fold <- df_ml[fold, ]\n",
     "\n",
-    "    model <- as.formula(paste(\"Y~\", paste(b.covs, collapse = \"+\")))\n",
+    "    model <- as.formula(paste(\"Y~\", paste(b_covs, collapse = \"+\")))\n",
     "\n",
     "    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)\n",
     "    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)\n",
-    "    eta.fit[fold,1] <- (predict(rf1, data_fold) + predict(rf0, data_fold))/2\n",
+    "    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2\n",
     "\n",
-    "    gbm1 <- gbm(model, data = data_treated, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    gbm0 <- gbm(model, data = data_control, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    eta.fit[fold,2] <- (predict(gbm1, data_fold, n.trees=100) + predict(gbm0, data_fold, n.trees=100))/2\n",
+    "    gbm1 <- gbm(model,\n",
+    "      data = data_treated, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    gbm0 <- gbm(model,\n",
+    "      data = data_control, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2\n",
     "\n",
     "    lm1 <- lm(model, data = data_treated)\n",
     "    lm0 <- lm(model, data = data_control)\n",
-    "    eta.fit[fold,3] <- (predict(lm1, data_fold) + predict(lm0, data_fold))/2\n",
+    "    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2\n",
     "\n",
     "    las_base1 <- rlasso(model, data = data_treated)\n",
     "    las_base0 <- rlasso(model, data = data_control)\n",
-    "    eta.fit[fold,4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold))/2\n",
+    "    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2\n",
     "\n",
-    "    data_treated_extended = cbind(Z.lasso[rownames(data_treated),], data_treated)\n",
-    "    data_control_extended = cbind(Z.lasso[rownames(data_control),], data_control)\n",
-    "    data_fold_extended = cbind(Z.lasso[rownames(data_fold),], data_fold)\n",
-    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b.covs, colnames(Z.lasso)), collapse = \"+\")))\n",
+    "    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)\n",
+    "    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)\n",
+    "    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)\n",
+    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b_covs, colnames(Zlasso)), collapse = \"+\")))\n",
     "\n",
     "    las_flex1 <- rlasso(model_flex, data = data_treated_extended)\n",
     "    las_flex0 <- rlasso(model_flex, data = data_control_extended)\n",
-    "    eta.fit[fold,5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended))/2\n",
+    "    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2\n",
     "  }\n",
-    "  return(eta.fit)\n",
+    "  return(eta_fit)\n",
     "}\n",
     "\n",
-    "eta.fit <- first_stage()"
+    "eta_fit <- first_stage()"
    ]
   },
   {
@@ -456,24 +518,27 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "WdJkfePmx4iN"
+    "id": "WdJkfePmx4iN",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "methods <- c(\"Random Forest\", \"Gradient Boosting\", \"Linear Regression\", \"Lasso Baseline\", \"Lasso Flexible\")\n",
     "\n",
-    "second_stage <- function(eta.fit){\n",
+    "second_stage <- function(eta_fit) {\n",
     "  adj_results <- NULL\n",
     "\n",
-    "  for(i in 1:length(methods)){\n",
-    "    M.Y <- df_ml$Y - eta.fit[,i]\n",
-    "    rdd_result <- rdrobust(M.Y, df$index, c = cutoff, rho=1)\n",
-    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "  for (i in seq_along(methods)) {\n",
+    "    m_y <- df_ml$Y - eta_fit[, i]\n",
+    "    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)\n",
+    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "  }\n",
     "  return(adj_results)\n",
     "}\n",
     "\n",
-    "adj_frame <- as.data.frame(second_stage(eta.fit))\n",
+    "adj_frame <- as.data.frame(second_stage(eta_fit))\n",
     "rownames(adj_frame) <- methods\n",
     "colnames(adj_frame) <- c(\"LATE\", \"s.e.\")\n",
     "print(adj_frame)"
@@ -492,19 +557,22 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "U8kFY0gzClWK"
+    "id": "U8kFY0gzClWK",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "estimates <- adj_frame[,1]\n",
-    "std.err <- adj_frame[,2]\n",
+    "estimates <- adj_frame[, 1]\n",
+    "std_err <- adj_frame[, 2]\n",
     "R <- 19\n",
     "\n",
-    "for (i in 1:R){\n",
-    "  eta.fit <- first_stage()\n",
-    "  adj_results <- second_stage(eta.fit)\n",
-    "  estimates <- cbind(estimates, adj_results[,1])\n",
-    "  std.err <- cbind(std.err, adj_results[,2])\n",
+    "for (i in 1:R) {\n",
+    "  eta_fit <- first_stage()\n",
+    "  adj_results <- second_stage(eta_fit)\n",
+    "  estimates <- cbind(estimates, adj_results[, 1])\n",
+    "  std_err <- cbind(std_err, adj_results[, 2])\n",
     "}"
    ]
   },
@@ -521,17 +589,20 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "LqHHecS-FtEI"
+    "id": "LqHHecS-FtEI",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "med.est <- apply(estimates,  1, median)\n",
-    "mean.se <- apply(std.err,  1, mean)\n",
-    "adj_frame <- as.data.frame(cbind(med.est, mean.se))\n",
+    "med_est <- apply(estimates, 1, median)\n",
+    "mean_se <- apply(std_err, 1, mean)\n",
+    "adj_frame <- as.data.frame(cbind(med_est, mean_se))\n",
     "rownames(adj_frame) <- methods\n",
     "colnames(adj_frame) <- c(\"LATE\", \"s.e.\")\n",
-    "adj_frame[\"% reduction\"] <- (adj_frame[\"s.e.\"] - resframe[1,2]) * 100 / resframe[1,2]\n",
-    "adj_frame[\"Linear Adjusted (no cross-fit)\", ] = resframe_adj[1,]\n",
+    "adj_frame[\"% reduction\"] <- (adj_frame[\"s.e.\"] - resframe[1, 2]) * 100 / resframe[1, 2]\n",
+    "adj_frame[\"Linear Adjusted (no cross-fit)\", ] <- resframe_adj[1, ]\n",
     "print(adj_frame)"
    ]
   },
@@ -557,100 +628,107 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "nlp1hAxEQyAN"
+    "id": "nlp1hAxEQyAN",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Running Variable and Outcome\n",
-    "df_ml = df\n",
-    "investigated_outcome = \"conspcnonfood_t1\"\n",
+    "df_ml <- df\n",
+    "investigated_outcome <- \"conspcnonfood_t1\"\n",
     "names(df_ml)[names(df_ml) == \"index\"] <- \"X\"\n",
     "names(df_ml)[names(df_ml) == investigated_outcome] <- \"Y\"\n",
     "\n",
     "# Baseline covariates including consumption\n",
-    "b.covs <- names(df_ml[,c(1:8,10:17,19,22)])\n",
+    "b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])\n",
     "\n",
     "# Fixed effects for localities\n",
-    "i.fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
+    "i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
     "\n",
     "# Flexible covariates including localities indicators\n",
-    "f.covs <- as.matrix(model.matrix(~ .^2, data=df_ml[b.covs] ))[,-1]\n",
-    "Z.lasso <- as.matrix(cbind(i.fe, f.covs))\n",
+    "f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]\n",
+    "Zlasso <- as.matrix(cbind(i_fe, f_covs))\n",
     "\n",
-    "h.fs <- 2*rdrobust(df_ml$Y, df_ml$X, rho=1)$bws[[1]]\n",
+    "h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]\n",
     "\n",
-    "first_stage <- function(){\n",
+    "first_stage <- function() {\n",
     "  # Set up the cross-fitting\n",
     "  n <- nrow(df_ml)\n",
     "  Kf <- 5 # Number of folds\n",
-    "  sampleframe <- rep(1:Kf, ceiling(n/Kf))\n",
-    "  cfgroup <- sample(sampleframe, size=n, replace = FALSE)\n",
+    "  sampleframe <- rep(1:Kf, ceiling(n / Kf))\n",
+    "  cfgroup <- sample(sampleframe, size = n, replace = FALSE)\n",
     "\n",
     "  # Matrix to store eta predictions\n",
-    "  eta.fit <- matrix(NA, n, 5)\n",
+    "  eta_fit <- matrix(NA, n, 5)\n",
     "\n",
     "  # Create vector of observations to be considered in the first stage model\n",
-    "  weights <- (abs(df_ml$X)<h.fs)\n",
+    "  weights <- (abs(df_ml$X) < h_fs)\n",
     "\n",
-    "  for (k in 1:Kf){\n",
-    "    fold = (cfgroup == k)\n",
+    "  for (k in 1:Kf) {\n",
+    "    fold <- (cfgroup == k)\n",
     "\n",
-    "    data_treated <- df_ml[df_ml$X>0 & !fold & weights>0,]\n",
-    "    data_control <- df_ml[df_ml$X<0 & !fold & weights>0,]\n",
+    "    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]\n",
+    "    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]\n",
     "\n",
-    "    data_fold <- df_ml[fold,]\n",
+    "    data_fold <- df_ml[fold, ]\n",
     "\n",
-    "    model <- as.formula(paste(\"Y~\", paste(b.covs, collapse = \"+\")))\n",
+    "    model <- as.formula(paste(\"Y~\", paste(b_covs, collapse = \"+\")))\n",
     "\n",
     "    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)\n",
     "    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)\n",
-    "    eta.fit[fold,1] <- (predict(rf1, data_fold) + predict(rf0, data_fold))/2\n",
+    "    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2\n",
     "\n",
-    "    gbm1 <- gbm(model, data = data_treated, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    gbm0 <- gbm(model, data = data_control, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    eta.fit[fold,2] <- (predict(gbm1, data_fold, n.trees=100) + predict(gbm0, data_fold, n.trees=100))/2\n",
+    "    gbm1 <- gbm(model,\n",
+    "      data = data_treated, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    gbm0 <- gbm(model,\n",
+    "      data = data_control, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2\n",
     "\n",
     "    lm1 <- lm(model, data = data_treated)\n",
     "    lm0 <- lm(model, data = data_control)\n",
-    "    eta.fit[fold,3] <- (predict(lm1, data_fold) + predict(lm0, data_fold))/2\n",
+    "    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2\n",
     "\n",
     "    las_base1 <- rlasso(model, data = data_treated)\n",
     "    las_base0 <- rlasso(model, data = data_control)\n",
-    "    eta.fit[fold,4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold))/2\n",
+    "    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2\n",
     "\n",
-    "    data_treated_extended = cbind(Z.lasso[rownames(data_treated),], data_treated)\n",
-    "    data_control_extended = cbind(Z.lasso[rownames(data_control),], data_control)\n",
-    "    data_fold_extended = cbind(Z.lasso[rownames(data_fold),], data_fold)\n",
-    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b.covs, colnames(Z.lasso)), collapse = \"+\")))\n",
+    "    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)\n",
+    "    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)\n",
+    "    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)\n",
+    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b_covs, colnames(Zlasso)), collapse = \"+\")))\n",
     "\n",
     "    las_flex1 <- rlasso(model_flex, data = data_treated_extended)\n",
     "    las_flex0 <- rlasso(model_flex, data = data_control_extended)\n",
-    "    eta.fit[fold,5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended))/2\n",
+    "    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2\n",
     "  }\n",
-    "  return(eta.fit)\n",
+    "  return(eta_fit)\n",
     "}\n",
     "\n",
-    "eta.fit <- first_stage()\n",
+    "eta_fit <- first_stage()\n",
     "\n",
     "methods <- c(\"Random Forest\", \"Gradient Boosting\", \"Linear Regression\", \"Lasso Baseline\", \"Lasso Flexible\")\n",
     "\n",
-    "second_stage <- function(eta.fit){\n",
+    "second_stage <- function(eta_fit) {\n",
     "  adj_results <- NULL\n",
     "\n",
-    "  for(i in 1:length(methods)){\n",
-    "    M.Y <- df_ml$Y - eta.fit[,i]\n",
-    "    rdd_result <- rdrobust(M.Y, df$index, c = cutoff, rho=1)\n",
-    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "  for (i in seq_along(methods)) {\n",
+    "    m_y <- df_ml$Y - eta_fit[, i]\n",
+    "    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)\n",
+    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "  }\n",
     "  return(adj_results)\n",
     "}\n",
     "\n",
-    "adj_frame <- as.data.frame(second_stage(eta.fit))\n",
+    "adj_frame <- as.data.frame(second_stage(eta_fit))\n",
     "rownames(adj_frame) <- methods\n",
     "colnames(adj_frame) <- c(\"LATE\", \"s.e.\")\n",
-    "print(adj_frame)\n"
+    "print(adj_frame)"
    ]
   },
   {
@@ -666,100 +744,107 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "QPTlptD3QeGk"
+    "id": "QPTlptD3QeGk",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Running Variable and Outcome\n",
-    "df_ml = df\n",
-    "investigated_outcome = \"conspcfood_t2\"\n",
+    "df_ml <- df\n",
+    "investigated_outcome <- \"conspcfood_t2\"\n",
     "names(df_ml)[names(df_ml) == \"index\"] <- \"X\"\n",
     "names(df_ml)[names(df_ml) == investigated_outcome] <- \"Y\"\n",
     "\n",
     "# Baseline covariates including consumption\n",
-    "b.covs <- names(df_ml[,c(1:8,10:17,19,22)])\n",
+    "b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])\n",
     "\n",
     "# Fixed effects for localities\n",
-    "i.fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
+    "i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
     "\n",
     "# Flexible covariates including localities indicators\n",
-    "f.covs <- as.matrix(model.matrix(~ .^2, data=df_ml[b.covs] ))[,-1]\n",
-    "Z.lasso <- as.matrix(cbind(i.fe, f.covs))\n",
+    "f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]\n",
+    "Zlasso <- as.matrix(cbind(i_fe, f_covs))\n",
     "\n",
-    "h.fs <- 2*rdrobust(df_ml$Y, df_ml$X, rho=1)$bws[[1]]\n",
+    "h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]\n",
     "\n",
-    "first_stage <- function(){\n",
+    "first_stage <- function() {\n",
     "  # Set up the cross-fitting\n",
     "  n <- nrow(df_ml)\n",
     "  Kf <- 5 # Number of folds\n",
-    "  sampleframe <- rep(1:Kf, ceiling(n/Kf))\n",
-    "  cfgroup <- sample(sampleframe, size=n, replace = FALSE)\n",
+    "  sampleframe <- rep(1:Kf, ceiling(n / Kf))\n",
+    "  cfgroup <- sample(sampleframe, size = n, replace = FALSE)\n",
     "\n",
     "  # Matrix to store eta predictions\n",
-    "  eta.fit <- matrix(NA, n, 5)\n",
+    "  eta_fit <- matrix(NA, n, 5)\n",
     "\n",
     "  # Create vector of observations to be considered in the first stage model\n",
-    "  weights <- (abs(df_ml$X)<h.fs)\n",
+    "  weights <- (abs(df_ml$X) < h_fs)\n",
     "\n",
-    "  for (k in 1:Kf){\n",
-    "    fold = (cfgroup == k)\n",
+    "  for (k in 1:Kf) {\n",
+    "    fold <- (cfgroup == k)\n",
     "\n",
-    "    data_treated <- df_ml[df_ml$X>0 & !fold & weights>0,]\n",
-    "    data_control <- df_ml[df_ml$X<0 & !fold & weights>0,]\n",
+    "    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]\n",
+    "    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]\n",
     "\n",
-    "    data_fold <- df_ml[fold,]\n",
+    "    data_fold <- df_ml[fold, ]\n",
     "\n",
-    "    model <- as.formula(paste(\"Y~\", paste(b.covs, collapse = \"+\")))\n",
+    "    model <- as.formula(paste(\"Y~\", paste(b_covs, collapse = \"+\")))\n",
     "\n",
     "    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)\n",
     "    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)\n",
-    "    eta.fit[fold,1] <- (predict(rf1, data_fold) + predict(rf0, data_fold))/2\n",
+    "    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2\n",
     "\n",
-    "    gbm1 <- gbm(model, data = data_treated, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    gbm0 <- gbm(model, data = data_control, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    eta.fit[fold,2] <- (predict(gbm1, data_fold, n.trees=100) + predict(gbm0, data_fold, n.trees=100))/2\n",
+    "    gbm1 <- gbm(model,\n",
+    "      data = data_treated, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    gbm0 <- gbm(model,\n",
+    "      data = data_control, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2\n",
     "\n",
     "    lm1 <- lm(model, data = data_treated)\n",
     "    lm0 <- lm(model, data = data_control)\n",
-    "    eta.fit[fold,3] <- (predict(lm1, data_fold) + predict(lm0, data_fold))/2\n",
+    "    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2\n",
     "\n",
     "    las_base1 <- rlasso(model, data = data_treated)\n",
     "    las_base0 <- rlasso(model, data = data_control)\n",
-    "    eta.fit[fold,4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold))/2\n",
+    "    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2\n",
     "\n",
-    "    data_treated_extended = cbind(Z.lasso[rownames(data_treated),], data_treated)\n",
-    "    data_control_extended = cbind(Z.lasso[rownames(data_control),], data_control)\n",
-    "    data_fold_extended = cbind(Z.lasso[rownames(data_fold),], data_fold)\n",
-    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b.covs, colnames(Z.lasso)), collapse = \"+\")))\n",
+    "    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)\n",
+    "    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)\n",
+    "    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)\n",
+    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b_covs, colnames(Zlasso)), collapse = \"+\")))\n",
     "\n",
     "    las_flex1 <- rlasso(model_flex, data = data_treated_extended)\n",
     "    las_flex0 <- rlasso(model_flex, data = data_control_extended)\n",
-    "    eta.fit[fold,5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended))/2\n",
+    "    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2\n",
     "  }\n",
-    "  return(eta.fit)\n",
+    "  return(eta_fit)\n",
     "}\n",
     "\n",
-    "eta.fit <- first_stage()\n",
+    "eta_fit <- first_stage()\n",
     "\n",
     "methods <- c(\"Random Forest\", \"Gradient Boosting\", \"Linear Regression\", \"Lasso Baseline\", \"Lasso Flexible\")\n",
     "\n",
-    "second_stage <- function(eta.fit){\n",
+    "second_stage <- function(eta_fit) {\n",
     "  adj_results <- NULL\n",
     "\n",
-    "  for(i in 1:length(methods)){\n",
-    "    M.Y <- df_ml$Y - eta.fit[,i]\n",
-    "    rdd_result <- rdrobust(M.Y, df$index, c = cutoff, rho=1)\n",
-    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "  for (i in seq_along(methods)) {\n",
+    "    m_y <- df_ml$Y - eta_fit[, i]\n",
+    "    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)\n",
+    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "  }\n",
     "  return(adj_results)\n",
     "}\n",
     "\n",
-    "adj_frame <- as.data.frame(second_stage(eta.fit))\n",
+    "adj_frame <- as.data.frame(second_stage(eta_fit))\n",
     "rownames(adj_frame) <- methods\n",
     "colnames(adj_frame) <- c(\"LATE\", \"s.e.\")\n",
-    "print(adj_frame)\n"
+    "print(adj_frame)"
    ]
   },
   {
@@ -775,100 +860,107 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "_w5j1NYOQwqz"
+    "id": "_w5j1NYOQwqz",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Running Variable and Outcome\n",
-    "df_ml = df\n",
-    "investigated_outcome = \"conspcnonfood_t2\"\n",
+    "df_ml <- df\n",
+    "investigated_outcome <- \"conspcnonfood_t2\"\n",
     "names(df_ml)[names(df_ml) == \"index\"] <- \"X\"\n",
     "names(df_ml)[names(df_ml) == investigated_outcome] <- \"Y\"\n",
     "\n",
     "# Baseline covariates including consumption\n",
-    "b.covs <- names(df_ml[,c(1:8,10:17,19,22)])\n",
+    "b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])\n",
     "\n",
     "# Fixed effects for localities\n",
-    "i.fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
+    "i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))\n",
     "\n",
     "# Flexible covariates including localities indicators\n",
-    "f.covs <- as.matrix(model.matrix(~ .^2, data=df_ml[b.covs] ))[,-1]\n",
-    "Z.lasso <- as.matrix(cbind(i.fe, f.covs))\n",
+    "f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]\n",
+    "Zlasso <- as.matrix(cbind(i_fe, f_covs))\n",
     "\n",
-    "h.fs <- 2*rdrobust(df_ml$Y, df_ml$X, rho=1)$bws[[1]]\n",
+    "h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]\n",
     "\n",
-    "first_stage <- function(){\n",
+    "first_stage <- function() {\n",
     "  # Set up the cross-fitting\n",
     "  n <- nrow(df_ml)\n",
     "  Kf <- 5 # Number of folds\n",
-    "  sampleframe <- rep(1:Kf, ceiling(n/Kf))\n",
-    "  cfgroup <- sample(sampleframe, size=n, replace = FALSE)\n",
+    "  sampleframe <- rep(1:Kf, ceiling(n / Kf))\n",
+    "  cfgroup <- sample(sampleframe, size = n, replace = FALSE)\n",
     "\n",
     "  # Matrix to store eta predictions\n",
-    "  eta.fit <- matrix(NA, n, 5)\n",
+    "  eta_fit <- matrix(NA, n, 5)\n",
     "\n",
     "  # Create vector of observations to be considered in the first stage model\n",
-    "  weights <- (abs(df_ml$X)<h.fs)\n",
+    "  weights <- (abs(df_ml$X) < h_fs)\n",
     "\n",
-    "  for (k in 1:Kf){\n",
-    "    fold = (cfgroup == k)\n",
+    "  for (k in 1:Kf) {\n",
+    "    fold <- (cfgroup == k)\n",
     "\n",
-    "    data_treated <- df_ml[df_ml$X>0 & !fold & weights>0,]\n",
-    "    data_control <- df_ml[df_ml$X<0 & !fold & weights>0,]\n",
+    "    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]\n",
+    "    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]\n",
     "\n",
-    "    data_fold <- df_ml[fold,]\n",
+    "    data_fold <- df_ml[fold, ]\n",
     "\n",
-    "    model <- as.formula(paste(\"Y~\", paste(b.covs, collapse = \"+\")))\n",
+    "    model <- as.formula(paste(\"Y~\", paste(b_covs, collapse = \"+\")))\n",
     "\n",
     "    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)\n",
     "    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)\n",
-    "    eta.fit[fold,1] <- (predict(rf1, data_fold) + predict(rf0, data_fold))/2\n",
+    "    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2\n",
     "\n",
-    "    gbm1 <- gbm(model, data = data_treated, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    gbm0 <- gbm(model, data = data_control, n.trees = 100, interaction.depth = 1,\n",
-    "                shrinkage = .1, distribution=\"gaussian\")\n",
-    "    eta.fit[fold,2] <- (predict(gbm1, data_fold, n.trees=100) + predict(gbm0, data_fold, n.trees=100))/2\n",
+    "    gbm1 <- gbm(model,\n",
+    "      data = data_treated, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    gbm0 <- gbm(model,\n",
+    "      data = data_control, n.trees = 100, interaction.depth = 1,\n",
+    "      shrinkage = .1, distribution = \"gaussian\"\n",
+    "    )\n",
+    "    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2\n",
     "\n",
     "    lm1 <- lm(model, data = data_treated)\n",
     "    lm0 <- lm(model, data = data_control)\n",
-    "    eta.fit[fold,3] <- (predict(lm1, data_fold) + predict(lm0, data_fold))/2\n",
+    "    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2\n",
     "\n",
     "    las_base1 <- rlasso(model, data = data_treated)\n",
     "    las_base0 <- rlasso(model, data = data_control)\n",
-    "    eta.fit[fold,4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold))/2\n",
+    "    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2\n",
     "\n",
-    "    data_treated_extended = cbind(Z.lasso[rownames(data_treated),], data_treated)\n",
-    "    data_control_extended = cbind(Z.lasso[rownames(data_control),], data_control)\n",
-    "    data_fold_extended = cbind(Z.lasso[rownames(data_fold),], data_fold)\n",
-    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b.covs, colnames(Z.lasso)), collapse = \"+\")))\n",
+    "    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)\n",
+    "    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)\n",
+    "    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)\n",
+    "    model_flex <- as.formula(paste(\"Y~\", paste(c(b_covs, colnames(Zlasso)), collapse = \"+\")))\n",
     "\n",
     "    las_flex1 <- rlasso(model_flex, data = data_treated_extended)\n",
     "    las_flex0 <- rlasso(model_flex, data = data_control_extended)\n",
-    "    eta.fit[fold,5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended))/2\n",
+    "    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2\n",
     "  }\n",
-    "  return(eta.fit)\n",
+    "  return(eta_fit)\n",
     "}\n",
     "\n",
-    "eta.fit <- first_stage()\n",
+    "eta_fit <- first_stage()\n",
     "\n",
     "methods <- c(\"Random Forest\", \"Gradient Boosting\", \"Linear Regression\", \"Lasso Baseline\", \"Lasso Flexible\")\n",
     "\n",
-    "second_stage <- function(eta.fit){\n",
+    "second_stage <- function(eta_fit) {\n",
     "  adj_results <- NULL\n",
     "\n",
-    "  for(i in 1:length(methods)){\n",
-    "    M.Y <- df_ml$Y - eta.fit[,i]\n",
-    "    rdd_result <- rdrobust(M.Y, df$index, c = cutoff, rho=1)\n",
-    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\",]))\n",
+    "  for (i in seq_along(methods)) {\n",
+    "    m_y <- df_ml$Y - eta_fit[, i]\n",
+    "    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)\n",
+    "    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se[\"Robust\", ]))\n",
     "  }\n",
     "  return(adj_results)\n",
     "}\n",
     "\n",
-    "adj_frame <- as.data.frame(second_stage(eta.fit))\n",
+    "adj_frame <- as.data.frame(second_stage(eta_fit))\n",
     "rownames(adj_frame) <- methods\n",
     "colnames(adj_frame) <- c(\"LATE\", \"s.e.\")\n",
-    "print(adj_frame)\n"
+    "print(adj_frame)"
    ]
   }
  ],

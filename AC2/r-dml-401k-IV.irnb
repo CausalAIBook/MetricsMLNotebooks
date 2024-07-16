@@ -60,8 +60,20 @@
     "install.packages(\"randomForest\")\n",
     "install.packages(\"glmnet\")\n",
     "install.packages(\"rpart\")\n",
-    "install.packages(\"gbm\")\n",
-    "\n",
+    "install.packages(\"gbm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "98d3d8e0",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(xtable)\n",
     "library(hdm)\n",
     "library(sandwich)\n",
@@ -1829,8 +1841,20 @@
     "install.packages(\"mlr3learners\")\n",
     "install.packages(\"mlr3\")\n",
     "install.packages(\"data.table\")\n",
-    "install.packages(\"ranger\")\n",
-    "\n",
+    "install.packages(\"ranger\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1bd37969",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(DoubleML)\n",
     "library(mlr3learners)\n",
     "library(mlr3)\n",
@@ -2123,7 +2147,20 @@
     "# needed to run boosting\n",
     "remotes::install_github(\"mlr-org/mlr3extralearners\")\n",
     "install.packages(\"mlr3extralearners\")\n",
-    "install.packages(\"mboost\")\n",
+    "install.packages(\"mboost\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "66979b8b",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(mlr3extralearners)\n",
     "library(mboost)"
    ]

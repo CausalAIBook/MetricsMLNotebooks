@@ -33,7 +33,19 @@
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\")\n",
     "install.packages(\"glmnet\")\n",
-    "\n",
+    "install.packages(\"ggplot2\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)\n",

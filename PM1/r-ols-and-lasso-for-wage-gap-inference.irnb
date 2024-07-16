@@ -56,8 +56,19 @@
    "source": [
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
-    "install.packages(\"sandwich\") # a package used to compute robust standard errors\n",
-    "\n",
+    "install.packages(\"sandwich\") # a package used to compute robust standard errors"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(xtable)\n",
     "library(sandwich)"

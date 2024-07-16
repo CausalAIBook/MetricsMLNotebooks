@@ -21,7 +21,19 @@
    "outputs": [],
    "source": [
     "install.packages(\"sandwich\")\n",
-    "install.packages(\"lmtest\")\n",
+    "install.packages(\"lmtest\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(sandwich) # heterokedasticity robust standard errors\n",
     "library(lmtest) # coefficient testing"
    ]

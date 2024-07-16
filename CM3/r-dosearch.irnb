@@ -31,7 +31,19 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"dosearch\")\n",
+    "install.packages(\"dosearch\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(\"dosearch\")"
    ]
   },

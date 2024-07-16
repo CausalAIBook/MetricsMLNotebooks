@@ -59,8 +59,19 @@
    "source": [
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\") # a library for high-dimensional metrics\n",
-    "install.packages(\"glmnet\") # for lasso CV\n",
-    "\n",
+    "install.packages(\"glmnet\") # for lasso CV"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)"

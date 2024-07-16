@@ -76,7 +76,9 @@
     "install.packages(\"gridExtra\")\n",
     "install.packages(\"dplyr\")\n",
     "install.packages(\"purrr\")\n",
-    "install.packages(\"reshape2\")"
+    "install.packages(\"reshape2\")\n",
+    "install.packages(\"ggplot2\")\n",
+    "install.packages(\"stats\")"
    ]
   },
   {

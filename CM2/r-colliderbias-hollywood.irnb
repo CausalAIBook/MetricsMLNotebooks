@@ -31,7 +31,19 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"dagitty\")\n",
+    "install.packages(\"dagitty\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(dagitty)"
    ]
   },

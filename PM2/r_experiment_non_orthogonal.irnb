@@ -21,6 +21,19 @@
    "outputs": [],
    "source": [
     "install.packages(\"hdm\")\n",
+    "install.packages(\"stats\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(stats)"
    ]

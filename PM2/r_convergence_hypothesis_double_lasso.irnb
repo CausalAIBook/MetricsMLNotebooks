@@ -75,7 +75,19 @@
         "install.packages(\"lmtest\")\n",
         "install.packages(\"sandwich\")\n",
         "install.packages(\"glmnet\")\n",
-        "install.packages(\"ggplot2\")\n",
+        "install.packages(\"ggplot2\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
         "library(hdm)\n",
         "library(xtable)\n",
         "library(lmtest)\n",

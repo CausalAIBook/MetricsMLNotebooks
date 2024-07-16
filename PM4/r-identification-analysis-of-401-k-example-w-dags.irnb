@@ -40,7 +40,19 @@
    "source": [
     "# install and load package\n",
     "install.packages(\"dagitty\")\n",
-    "install.packages(\"ggdag\")\n",
+    "install.packages(\"ggdag\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(dagitty)\n",
     "library(ggdag)"
    ]

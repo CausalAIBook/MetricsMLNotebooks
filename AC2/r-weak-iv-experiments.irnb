@@ -13,12 +13,26 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "Fr38spdV-Xdr"
+    "id": "Fr38spdV-Xdr",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "install.packages(\"hdm\")\n",
-    "\n",
+    "install.packages(\"hdm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)"
    ]
   },
@@ -35,36 +49,40 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "svk7GbHx-MNz"
+    "id": "svk7GbHx-MNz",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Simulation Design\n",
     "set.seed(1)\n",
     "\n",
-    "n=100\n",
-    "beta = .1   # .1 weak IV\n",
-    "#beta = 1   #  1 strong IV\n",
+    "n <- 100\n",
+    "beta <- .1 # .1 weak IV (change to 1.0 for strong IV)\n",
     "\n",
     "# One realization\n",
-    "U = rnorm(n)\n",
-    "Z = rnorm(n)    # generate instrument\n",
-    "D = beta*Z + U  # generate endogenougs variable\n",
-    "Y = D + U       # the true causal effect is 1\n",
+    "U <- rnorm(n)\n",
+    "Z <- rnorm(n) # generate instrument\n",
+    "D <- beta * Z + U # generate endogenougs variable\n",
+    "Y <- D + U # the true causal effect is 1\n",
     "\n",
-    "\n",
-    "summary(lm(D~Z))  # first stage is very weak here when we set beta = .1"
+    "summary(lm(D ~ Z)) # first stage is very weak here when we set beta = .1"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "086YR0feH0LU"
+    "id": "086YR0feH0LU",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "summary(tsls(x=NULL, d=D, y=Y, z=Z))"
+    "summary(tsls(x = NULL, d = D, y = Y, z = Z))"
    ]
   },
   {
@@ -89,24 +107,26 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "Fc2Sjzhk-MN1"
+    "id": "Fc2Sjzhk-MN1",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
     "# Simulation Design\n",
     "\n",
     "set.seed(1)\n",
-    "B= 10000 # trials\n",
-    "IVEst = rep(0, B)\n",
+    "B <- 10000 # trials\n",
+    "IVEst <- rep(0, B)\n",
     "\n",
-    "for(i in 1:B){\n",
-    "U =  rnorm(n)\n",
-    "Z = rnorm(n)  #generate instrument\n",
-    "D = beta*Z + U  #generate endogenougs variable\n",
-    "Y =  D+ U  # the true causal effect is 1\n",
-    "IVEst[i] = coef(tsls(x=NULL, d=D, y=Y, z=Z))[1,1]\n",
-    "}\n",
-    "\n"
+    "for (i in 1:B) {\n",
+    "  U <- rnorm(n)\n",
+    "  Z <- rnorm(n) # generate instrument\n",
+    "  D <- beta * Z + U # generate endogenougs variable\n",
+    "  Y <- D + U # the true causal effect is 1\n",
+    "  IVEst[i] <- coef(tsls(x = NULL, d = D, y = Y, z = Z))[1, 1]\n",
+    "}"
    ]
   },
   {
@@ -122,21 +142,26 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "Mvq4cLzC-MN2"
+    "id": "Mvq4cLzC-MN2",
+    "vscode": {
+     "languageId": "r"
+    }
    },
    "outputs": [],
    "source": [
-    "plot(density(IVEst-1, n=1000, from=-5, to=5),col=4, xlim= c(-5, 5),\n",
-    "     xlab= \"IV Estimator -True Effect\", main=\"Actual Distribution vs Gaussian\")\n",
+    "plot(density(IVEst - 1, n = 1000, from = -5, to = 5),\n",
+    "  col = 4, xlim = c(-5, 5),\n",
+    "  xlab = \"IV Estimator -True Effect\", main = \"Actual Distribution vs Gaussian\"\n",
+    ")\n",
     "\n",
-    "val=seq(-5, 5, by=.05)\n",
-    "var = (1/beta^2)*(1/100) # theoretical variance of IV\n",
-    "sd = sqrt(var)\n",
-    "lines(val, dnorm(val, sd=sd), col=2, lty=2)\n",
+    "val <- seq(-5, 5, by = .05)\n",
+    "var <- (1 / beta^2) * (1 / 100) # theoretical variance of IV\n",
+    "sd <- sqrt(var)\n",
+    "lines(val, dnorm(val, sd = sd), col = 2, lty = 2)\n",
     "\n",
-    "rejection.frequency = sum(( abs(IVEst-1)/sd > 1.96))/B\n",
+    "rejection_frequency <- sum((abs(IVEst - 1) / sd > 1.96)) / B\n",
     "\n",
-    "cat(c(\"Rejection Frequency is \", rejection.frequency, \" while we expect it to be .05\"))\n"
+    "cat(c(\"Rejection Frequency is \", rejection_frequency, \" while we expect it to be .05\"))"
    ]
   }
  ],

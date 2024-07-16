@@ -49,7 +49,6 @@
    "outputs": [],
    "source": [
     "# Import relevant packages\n",
-    "\n",
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\")\n",
     "install.packages(\"glmnet\")\n",
@@ -58,8 +57,19 @@
     "install.packages(\"nnet\")\n",
     "install.packages(\"gbm\")\n",
     "install.packages(\"rpart.plot\")\n",
-    "install.packages(\"keras\")\n",
-    "\n",
+    "install.packages(\"keras\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)\n",
@@ -1697,7 +1707,19 @@
    "outputs": [],
    "source": [
     "# load the H2O package\n",
-    "install.packages(\"h2o\")\n",
+    "install.packages(\"h2o\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(h2o)"
    ]
   },

@@ -60,8 +60,20 @@
     "install.packages(\"randomForest\")\n",
     "install.packages(\"glmnet\")\n",
     "install.packages(\"rpart\")\n",
-    "install.packages(\"gbm\")\n",
-    "\n",
+    "install.packages(\"gbm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "04026d3c",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(xtable)\n",
     "library(hdm)\n",
     "library(sandwich)\n",

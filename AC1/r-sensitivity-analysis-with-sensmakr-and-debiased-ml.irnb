@@ -168,7 +168,20 @@
     "install.packages(\"sensemakr\")\n",
     "install.packages(\"lfe\")\n",
     "install.packages(\"hdm\")\n",
-    "install.packages(\"randomForest\")\n",
+    "install.packages(\"randomForest\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "aac06c33",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(sensemakr)\n",
     "library(lfe)\n",
     "library(hdm)\n",

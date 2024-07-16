@@ -23,7 +23,19 @@
     "install.packages(\"sandwich\")\n",
     "install.packages(\"lmtest\")\n",
     "install.packages(\"xtable\")\n",
-    "install.packages(\"hdm\")\n",
+    "install.packages(\"hdm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(sandwich)\n",
     "library(lmtest)\n",
     "library(xtable)\n",

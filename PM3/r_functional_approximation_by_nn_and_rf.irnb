@@ -39,9 +39,20 @@
     "install.packages(\"randomForest\")\n",
     "install.packages(\"rpart\")\n",
     "install.packages(\"gbm\")\n",
-    "install.packages(\"keras\")\n",
-    "\n",
-    "\n",
+    "install.packages(\"keras\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c39fef90",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(randomForest)\n",
     "library(rpart)\n",
     "library(gbm)\n",

@@ -50,8 +50,19 @@
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\")\n",
     "install.packages(\"glmnet\")\n",
-    "install.packages(\"MLmetrics\")\n",
-    "\n",
+    "install.packages(\"MLmetrics\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)\n",

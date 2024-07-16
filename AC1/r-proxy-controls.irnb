@@ -64,8 +64,19 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"hdm\")\n",
-    "\n",
+    "install.packages(\"hdm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "library(hdm)\n",
     "\n",
     "set.seed(1)"
