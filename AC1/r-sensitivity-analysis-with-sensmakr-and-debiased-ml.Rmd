@@ -95,6 +95,9 @@ install.packages("sensemakr")
 install.packages("lfe")
 install.packages("hdm")
 install.packages("randomForest")
+```
+
+```{r}
 library(sensemakr)
 library(lfe)
 library(hdm)

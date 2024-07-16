@@ -30,7 +30,9 @@ Since we're considering only linear models and in a low-dimensional setting, we'
 
 ```{r}
 install.packages("hdm")
+```
 
+```{r}
 library(hdm)
 
 set.seed(1)
