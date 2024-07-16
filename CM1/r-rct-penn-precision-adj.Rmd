@@ -23,17 +23,17 @@ In this lab, we analyze the Pennsylvania re-employment bonus experiment, which w
 
 ```{r}
 ## loading the data
-file = "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat"
-Penn <- as.data.frame(read.table(file, header=T))
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat"
+Penn <- as.data.frame(read.table(file, header = TRUE))
 
 n <- dim(Penn)[1]
 p_1 <- dim(Penn)[2]
-Penn<- subset(Penn, tg==4 | tg==0)
+Penn <- subset(Penn, tg == 4 | tg == 0)
 attach(Penn)
 ```
 
 ```{r}
-T4<- (tg==4)
+T4 <- (tg == 4)
 summary(T4)
 ```
 
@@ -85,11 +85,13 @@ We first look at the coefficients individually with a $t$-test, and then we adju
 The regression below is done using "type='HC1'" which computes the correct Eicker-Huber-White standard errors, instead of the classical non-robust formula based on homoscedasticity.
 
 ```{r}
-data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 + agelt35 + agegt54 + durable + lusd + husd)^2)
+data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                             agelt35 + agegt54 + durable + lusd + husd)^2)
 
 # individual t-tests
-m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 + agelt35 + agegt54 + durable + lusd + husd)^2, data = as.data.frame(data))
-coeftest(m, vcov = vcovHC(m, type="HC1"))
+m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                agelt35 + agegt54 + durable + lusd + husd)^2, data = as.data.frame(data))
+coeftest(m, vcov = vcovHC(m, type = "HC1"))
 ```
 
 <!-- We could conduct a Wald test to jointly test the hypothesis that all coefficients are zero. If the resulting p-value from such a test is small, we would reject the the null hypothesis that $\beta_i=0 \ \forall i$, i.e. the balance conditions fail.
@@ -124,7 +126,7 @@ holm_bonferroni <- function(p, alpha = 0.05) {
   return(sig_beta)
 }
 
-p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type="HC1"))[,4])
+p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = "HC1"))[, 4])
 significant_indices <- holm_bonferroni(p_values, alpha = 0.05)
 print(paste("Significant Coefficients (Indices): ", significant_indices))
 ```
@@ -132,7 +134,7 @@ print(paste("Significant Coefficients (Indices): ", significant_indices))
 There is also a built in R function to do this.
 
 ```{r}
-p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type="HC1"))[,4])
+p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = "HC1"))[, 4])
 holm_reject <- p.adjust(sort(p_values), "holm") <= 0.05
 holm_reject
 ```
@@ -146,84 +148,82 @@ The holm method fails to reject any hypothesis. That is, we fail to reject the h
 ```{r}
 # model specifications
 
-
 # no adjustment (2-sample approach)
-formula_cl <- log(inuidur1)~T4
+formula_cl <- log(inuidur1) ~ T4
 
 # adding controls
-formula_cra <- log(inuidur1)~T4+ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2
+formula_cra <- log(inuidur1) ~ T4 + (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                                       agelt35 + agegt54 + durable + lusd + husd)^2
 # Omitted dummies: q1, nondurable, muld
 
+ols_cl <- lm(formula_cl)
+ols_cra <- lm(formula_cra)
 
-ols.cl <- lm(formula_cl)
-ols.cra <- lm(formula_cra)
+ols_cl <- coeftest(ols_cl, vcov = vcovHC(ols_cl, type = "HC1"))
+ols_cra <- coeftest(ols_cra, vcov = vcovHC(ols_cra, type = "HC1"))
 
-
-ols.cl = coeftest(ols.cl, vcov = vcovHC(ols.cl, type="HC1"))
-ols.cra = coeftest(ols.cra, vcov = vcovHC(ols.cra, type="HC1"))
-
-print(ols.cl)
-print(ols.cra)
-
+print(ols_cl)
+print(ols_cra)
 ```
 
 The interactive specificaiton corresponds to the approach introduced in Lin (2013).
 
 ```{r}
+# interactive regression model;
 
-#interactive regression model;
-
-X = model.matrix (~ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2)[,-1]
+X <- model.matrix(~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                       agelt35 + agegt54 + durable + lusd + husd)^2)[, -1]
 dim(X)
-demean<- function(x){ x - mean(x)}
-X = apply(X, 2, demean)
 
-ols.ira = lm(log(inuidur1) ~ T4*X)
-ols.ira= coeftest(ols.ira, vcov = vcovHC(ols.ira, type="HC1"))
-print(ols.ira)
+demean <- function(x) {
+  x - mean(x)
+}
 
+X <- apply(X, 2, demean)
 
+ols_ira <- lm(log(inuidur1) ~ T4 * X)
+ols_ira <- coeftest(ols_ira, vcov = vcovHC(ols_ira, type = "HC1"))
+print(ols_ira)
 ```
 
 Next we try out partialling out with lasso
 
 ```{r}
-T4 = demean(T4)
+T4 <- demean(T4)
 
-DX = model.matrix(~T4*X)[,-1]
+DX <- model.matrix(~ T4 * X)[, -1]
 
-rlasso.ira = summary(rlassoEffects(DX, log(inuidur1), index = 1))
+rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1))
 
-
-print(rlasso.ira)
+print(rlasso_ira)
 ```
 
 ### Results
 
 ```{r}
-str(ols.ira)
-ols.ira[2,1]
+str(ols_ira)
+ols_ira[2, 1]
 ```
 
 ```{r}
-table<- matrix(0, 2, 4)
-table[1,1]<-  ols.cl[2,1]
-table[1,2]<-  ols.cra[2,1]
-table[1,3]<-  ols.ira[2,1]
-table[1,4]<-  rlasso.ira[[1]][1]
+table <- matrix(0, 2, 4)
+table[1, 1] <- ols_cl[2, 1]
+table[1, 2] <- ols_cra[2, 1]
+table[1, 3] <- ols_ira[2, 1]
+table[1, 4] <- rlasso_ira[[1]][1]
 
-table[2,1]<-  ols.cl[2,2]
-table[2,2]<-  ols.cra[2,2]
-table[2,3]<-  ols.ira[2,2]
-table[2,4]<-  rlasso.ira[[1]][2]
+table[2, 1] <- ols_cl[2, 2]
+table[2, 2] <- ols_cra[2, 2]
+table[2, 3] <- ols_ira[2, 2]
+table[2, 4] <- rlasso_ira[[1]][2]
 
 
-colnames(table)<- c("CL","CRA","IRA", "IRA w Lasso")
-rownames(table)<- c("estimate", "standard error")
-tab<- xtable(table, digits=5)
+colnames(table) <- c("CL", "CRA", "IRA", "IRA w Lasso")
+rownames(table) <- c("estimate", "standard error")
+tab <- xtable(table, digits = 5)
 tab
 
-print(tab, type="latex", digits=5)
+print(tab, type = "latex", digits = 5)
 ```
 
 Treatment group 4 experiences an average decrease of about $7.8\%$ in the length of unemployment spell.
