@@ -105,13 +105,24 @@
     "adjustmentSets(causal_graph, \"Talent\", \"Beauty\")\n",
     "\n",
     "## empty set -- we should not condition on the additional\n",
-    "## variable Congen.\n",
-    "\n",
+    "## variable Congen."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
     "## Generate data where Congen = .5*Talent + .5*Beauty\n",
     "set.seed(123)\n",
     "data <- simulateSEM(causal_graph, .5)\n",
-    "confint(lm(Talent ~ Beauty, data))[\"Beauty\", ] # includes 0\n",
-    "confint(lm(Talent ~ Beauty + Congen, data))[\"Beauty\", ] # does not include 0"
+    "confint(lm(Talent ~ Beauty, data))[\"Beauty\", ]\n",
+    "confint(lm(Talent ~ Beauty + Congen, data))[\"Beauty\", ]"
    ]
   }
  ],
