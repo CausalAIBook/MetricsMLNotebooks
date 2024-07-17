@@ -60,6 +60,7 @@
     "install.packages(\"randomForest\")\n",
     "install.packages(\"glmnet\")\n",
     "install.packages(\"rpart\")\n",
+    "install.packages(\"data.table\")\n",
     "install.packages(\"gbm\")"
    ]
   },
