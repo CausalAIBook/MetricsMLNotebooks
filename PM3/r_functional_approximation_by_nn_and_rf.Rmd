@@ -16,8 +16,9 @@ install.packages("randomForest")
 install.packages("rpart")
 install.packages("gbm")
 install.packages("keras")
+```
 
-
+```{r}
 library(randomForest)
 library(rpart)
 library(gbm)
@@ -108,16 +109,16 @@ points(x_train, pred_bt, col = 4, pch = 19)
 ```{r}
 build_model <- function() {
 
-  model <- keras::keras_model_sequential() %>%
-    keras::layer_dense(
+  model <- keras_model_sequential() %>%
+    layer_dense(
       units = 200, activation = "relu",
       input_shape = 1
     ) %>%
-    keras::layer_dense(units = 20, activation = "relu") %>%
-    keras::layer_dense(units = 1)
+    layer_dense(units = 20, activation = "relu") %>%
+    layer_dense(units = 1)
 
-  model %>% keras::compile(
-    optimizer = keras::optimizer_adam(lr = 0.01),
+  model %>% compile(
+    optimizer = optimizer_adam(lr = 0.01),
     loss = "mse",
     metrics = c("mae"),
   )

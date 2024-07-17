@@ -10,7 +10,6 @@ Now, we also consider nonlinear prediction rules including tree-based methods.
 
 ```{r}
 # Import relevant packages
-
 install.packages("xtable")
 install.packages("hdm")
 install.packages("glmnet")
@@ -20,7 +19,9 @@ install.packages("nnet")
 install.packages("gbm")
 install.packages("rpart.plot")
 install.packages("keras")
+```
 
+```{r}
 library(hdm)
 library(xtable)
 library(glmnet)
@@ -495,9 +496,17 @@ We illustrate how to predict an outcome variable Y in a high-dimensional setting
 
 We can use AutoML as a benchmark and compare it to the methods that we used previously where we applied one machine learning method after the other.
 
+On a unix system, installation of the package h2o also requires the RCurl package, which requires the libcurl library to have been installed. If the installation of the h2o package fails, try installing the libcurl package first and repeating the cell. You can install the libcurl package for instance by running:
+```bash
+sudo apt-get install -y libcurl4-openssl-dev
+```
+
 ```{r}
 # load the H2O package
 install.packages("h2o")
+```
+
+```{r}
 library(h2o)
 ```
 
