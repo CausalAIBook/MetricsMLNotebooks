@@ -39,7 +39,8 @@
     "install.packages(\"randomForest\")\n",
     "install.packages(\"rpart\")\n",
     "install.packages(\"gbm\")\n",
-    "install.packages(\"keras\")"
+    "install.packages(\"keras\")\n",
+    "keras::install_keras()"
    ]
   },
   {

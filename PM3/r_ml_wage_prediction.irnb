@@ -57,7 +57,8 @@
     "install.packages(\"nnet\")\n",
     "install.packages(\"gbm\")\n",
     "install.packages(\"rpart.plot\")\n",
-    "install.packages(\"keras\")"
+    "install.packages(\"keras\")\n",
+    "keras::install_keras()"
    ]
   },
   {
