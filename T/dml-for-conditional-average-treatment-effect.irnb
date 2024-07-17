@@ -595,8 +595,8 @@
    "outputs": [],
    "source": [
     "msqrt <- function(C) {\n",
-    "  C.eig <- eigen(C)\n",
-    "  return(C.eig$vectors %*% diag(sqrt(C.eig$values)) %*% solve(C.eig$vectors))\n",
+    "  Ceig <- eigen(C)\n",
+    "  return(Ceig$vectors %*% diag(sqrt(Ceig$values)) %*% solve(Ceig$vectors))\n",
     "}\n",
     "\n",
     "tboot <- function(regressors_grid, omega_hat, alpha, B = 10000) {\n",
