@@ -87,24 +87,24 @@ jobs:
         run: |
           log_file="${{ matrix.directory }}_r_script_execution.log"
           R -e '
+            options(show.error.locations = TRUE)
             files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
             log_con <- file("'$log_file'", open = "wt")
             sink(log_con, type = "output")
             sink(log_con, type = "message")
             errors <- list()
             for (gitrfile in files) {
-              tryCatch(
-                {
-                  source(gitrfile)
-                },
+              withCallingHandlers(
+                withRestarts(
+                  source(gitrfile),
+                  muffleStop = function() NULL
+                ),
                 error = function(e) {
-                  traceback_info <- capture.output({
-                    cat("Traceback:\n")
-                    traceback()
-                  })
-                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, message = e$message, traceback = traceback_info)
-                }
-              )
+                  traceback_info <- sys.calls()
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, location = capture.output(print(e$call)), message = e$message, traceback = traceback_info)
+                  invokeRestart("muffleStop")
+                  }
+                )
             }
             sink(type = "output")
             sink(type = "message")
@@ -112,8 +112,11 @@ jobs:
             if (length(errors) > 0) {
               for (error in errors) {
                 cat("Error found in file:", error$gitrfile, "\n")
+                cat("at line::", error$location, "\n")
                 cat("Error message:", error$message, "\n")
+                print("Traceback:\n")
                 cat(paste(error$traceback, collapse = "\n"))
+                print("\n")
               }
               quit(status = 1, save = "no")  # Exit with an error status if errors are found
             }
