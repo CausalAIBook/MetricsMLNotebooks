@@ -186,7 +186,7 @@
    "source": [
     "# generate a table of means of variables\n",
     "Zsubset <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\",\n",
-    "                                             \"clg\", \"ad\", \"mw\", \"so\", \"we\", \"ne\", \"exp1\"))]\n",
+    "                                            \"clg\", \"ad\", \"mw\", \"so\", \"we\", \"ne\", \"exp1\"))]\n",
     "table <- matrix(0, 12, 1)\n",
     "table[1:12, 1] <- as.numeric(lapply(Zsubset, mean))\n",
     "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Some High School\",\n",
