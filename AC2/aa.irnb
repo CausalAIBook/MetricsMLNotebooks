@@ -95,11 +95,8 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"DoubleML\")\n",
     "install.packages(\"mlr3learners\")\n",
-    "install.packages(\"mlr3\")\n",
-    "install.packages(\"data.table\")\n",
-    "install.packages(\"ranger\")"
+    "install.packages(\"mlr3\")"
    ]
   },
   {
@@ -113,11 +110,8 @@
    },
    "outputs": [],
    "source": [
-    "library(DoubleML)\n",
     "library(mlr3learners)\n",
-    "library(mlr3)\n",
-    "library(data.table)\n",
-    "library(ranger)"
+    "library(mlr3)"
    ]
   },
   {
@@ -153,8 +147,7 @@
     "# needed to run boosting\n",
     "options(timeout = max(6000, getOption(\"timeout\")))\n",
     "remotes::install_github(\"mlr-org/mlr3extralearners\")\n",
-    "install.packages(\"mlr3extralearners\")\n",
-    "install.packages(\"mboost\")"
+    "install.packages(\"mlr3extralearners\")"
    ]
   },
   {
@@ -168,8 +161,7 @@
    },
    "outputs": [],
    "source": [
-    "library(mlr3extralearners)\n",
-    "library(mboost)"
+    "library(mlr3extralearners)"
    ]
   }
  ],
