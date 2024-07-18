@@ -20,7 +20,6 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"stats\")\n",
     "install.packages(\"hdm\")"
    ]
   },
@@ -34,7 +33,6 @@
    },
    "outputs": [],
    "source": [
-    "library(stats)\n",
     "library(hdm)"
    ]
   },

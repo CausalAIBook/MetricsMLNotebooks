@@ -77,8 +77,7 @@
     "install.packages(\"dplyr\")\n",
     "install.packages(\"purrr\")\n",
     "install.packages(\"reshape2\")\n",
-    "install.packages(\"ggplot2\")\n",
-    "install.packages(\"stats\")"
+    "install.packages(\"ggplot2\")"
    ]
   },
   {
