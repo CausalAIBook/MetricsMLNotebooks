@@ -55,8 +55,8 @@ We construct the output variable $Y$ and the matrix $Z$ which includes the chara
 # construct matrices for estimation from the data
 y <- log(data$wage)
 n <- length(y)
-z <- data[- which(colnames(data) %in% c("wage", "lwage"))]
-p <- dim(z)[2]
+Z <- data[- which(colnames(data) %in% c("wage", "lwage"))]
+p <- dim(Z)[2]
 
 cat("Number of observations:", n, "\n")
 cat("Number of raw regressors:", p)
@@ -66,10 +66,10 @@ For the outcome variable *wage* and a subset of the raw regressors, we calculate
 
 ```{r}
 # generate a table of means of variables
-z_subset <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl",
-                                             "clg", "ad", "mw", "so", "we", "ne", "exp1"))]
+Zsubset <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl",
+                                            "clg", "ad", "mw", "so", "we", "ne", "exp1"))]
 table <- matrix(0, 12, 1)
-table[1:12, 1] <- as.numeric(lapply(z_subset, mean))
+table[1:12, 1] <- as.numeric(lapply(Zsubset, mean))
 rownames(table) <- c("Log Wage", "Sex", "Some High School",
                      "High School Graduate", "Some College", "College Graduate",
                      "Advanced Degree", "Midwest", "South", "West", "Northeast", "Experience")
