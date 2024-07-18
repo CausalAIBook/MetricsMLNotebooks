@@ -13,15 +13,15 @@ set.seed(123)
 n <- 1000
 
 p <- n
-x <- matrix(rnorm(n * p), n, p)
+X <- matrix(rnorm(n * p), n, p)
 y <- rnorm(n)
 
 print("p/n is")
 print(p / n)
 print("R2 is")
-print(summary(lm(y ~ x))$r.squared)
+print(summary(lm(y ~ X))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(y ~ x))$adj.r.squared)
+print(summary(lm(y ~ X))$adj.r.squared)
 ```
 
 Second, set p=n/2.
@@ -32,15 +32,15 @@ set.seed(123)
 n <- 1000
 
 p <- n / 2
-x <- matrix(rnorm(n * p), n, p)
+X <- matrix(rnorm(n * p), n, p)
 y <- rnorm(n)
 
 print("p/n is")
 print(p / n)
 print("R2 is")
-print(summary(lm(y ~ x))$r.squared)
+print(summary(lm(y ~ X))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(y ~ x))$adj.r.squared)
+print(summary(lm(y ~ X))$adj.r.squared)
 ```
 
 Third, set p/n =.05
@@ -51,14 +51,14 @@ set.seed(123)
 n <- 1000
 
 p <- .05 * n
-x <- matrix(rnorm(n * p), n, p)
+X <- matrix(rnorm(n * p), n, p)
 y <- rnorm(n)
 
 print("p/n is")
 print(p / n)
 print("R2 is")
-print(summary(lm(y ~ x))$r.squared)
+print(summary(lm(y ~ X))$r.squared)
 print("Adjusted R2 is")
-print(summary(lm(y ~ x))$adj.r.squared)
+print(summary(lm(y ~ X))$adj.r.squared)
 ```
 
