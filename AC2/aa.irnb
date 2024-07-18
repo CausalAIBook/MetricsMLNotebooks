@@ -1,0 +1,208 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "0",
+   "metadata": {
+    "id": "f02fa044",
+    "papermill": {
+     "duration": 0.012988,
+     "end_time": "2022-04-19T09:06:48.772902",
+     "exception": false,
+     "start_time": "2022-04-19T09:06:48.759914",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Inference on Predictive and Causal Effects in High-Dimensional Nonlinear Models"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1",
+   "metadata": {
+    "id": "23154404",
+    "papermill": {
+     "duration": 0.009437,
+     "end_time": "2022-04-19T09:06:48.791895",
+     "exception": false,
+     "start_time": "2022-04-19T09:06:48.782458",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Impact of 401(k) on  Financial Wealth\n",
+    "\n",
+    "We consider estimation of the effect of 401(k) participation\n",
+    "on accumulated assets. 401(k) plans are pension accounts sponsored by employers. The key problem in determining the effect of participation in 401(k) plans on accumulated assets is saver heterogeneity coupled with the fact that the decision to enroll in a 401(k) is non-random. It is generally recognized that some people have a higher preference for saving than others. It also seems likely that those individuals with high unobserved preference for saving would be most likely to choose to participate in tax-advantaged retirement savings plans and would tend to have otherwise high amounts of accumulated assets. The presence of unobserved savings preferences with these properties then implies that conventional estimates that do not account for saver heterogeneity and endogeneity of participation will be biased upward, tending to overstate the savings effects of 401(k) participation.\n",
+    "\n",
+    "One can argue that eligibility for enrolling in a 401(k) plan in this data can be taken as exogenous after conditioning on a few observables of which the most important for their argument is income. The basic idea is that, at least around the time 401(k)’s initially became available, people were unlikely to be basing their employment decisions on whether an employer offered a 401(k) but would instead focus on income and other aspects of the job."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "66",
+   "metadata": {
+    "id": "akCGDMZJCN3h"
+   },
+   "source": [
+    "We find again that the robust inference confidence region is almost identical to the normal based inference. We are most probably in the strong instrument regime. We can check the t-statistic for the effect of the instrument on the treatment to verify this."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "67",
+   "metadata": {
+    "id": "01de9f24",
+    "papermill": {
+     "duration": 0.010725,
+     "end_time": "2022-04-19T09:06:51.098483",
+     "exception": false,
+     "start_time": "2022-04-19T09:06:51.087758",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# DoubleML package\n",
+    "\n",
+    "There exist nice packages out there that can help us do our estimation with the simple call of a function. Such packages include `EconML` (Python) and `DoubleML` (Python and R).\n",
+    "\n",
+    "We run through IIVM using `DoubleML` below to illustrate. The `DoubleML` package internally builds on `mlr3`. We use the meta package `mlr3` to generate predictions with machine learning methods. A comprehensive introduction and description of the `mlr3` package is provided in the [mlr3book](https://mlr3book.mlr-org.com/). A list of all learners that you can use in `mlr3` can be found [here](https://mlr3extralearners.mlr-org.com/articles/learners/list_learners.html). The entry in the columns *mlr3 Package* and *Packages* indicate which packages must be installed/loaded in your R session.\n",
+    "\n",
+    "You find additional information about `DoubleML` on the package on the package website https://docs.doubleml.org/ and the R documentation page https://docs.doubleml.org/r/stable/."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "68",
+   "metadata": {
+    "id": "2846a36a",
+    "papermill": {
+     "duration": 20.239271,
+     "end_time": "2022-04-19T09:07:11.369618",
+     "exception": false,
+     "start_time": "2022-04-19T09:06:51.130347",
+     "status": "completed"
+    },
+    "tags": [],
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"DoubleML\")\n",
+    "install.packages(\"mlr3learners\")\n",
+    "install.packages(\"mlr3\")\n",
+    "install.packages(\"data.table\")\n",
+    "install.packages(\"ranger\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1bd37969",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(DoubleML)\n",
+    "library(mlr3learners)\n",
+    "library(mlr3)\n",
+    "library(data.table)\n",
+    "library(ranger)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "79",
+   "metadata": {
+    "id": "a7461966",
+    "papermill": {
+     "duration": 0.016468,
+     "end_time": "2022-04-19T09:12:22.311250",
+     "exception": false,
+     "start_time": "2022-04-19T09:12:22.294782",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Again, we repeat the procedure for the other machine learning methods:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "80",
+   "metadata": {
+    "id": "59YzwIcpEnyV",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# needed to run boosting\n",
+    "options(timeout = max(6000, getOption(\"timeout\")))\n",
+    "remotes::install_github(\"mlr-org/mlr3extralearners\")\n",
+    "install.packages(\"mlr3extralearners\")\n",
+    "install.packages(\"mboost\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "66979b8b",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(mlr3extralearners)\n",
+    "library(mboost)"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.0.5"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 427.936706,
+   "end_time": "2022-04-19T09:13:53.230849",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2022-04-19T09:06:45.294143",
+   "version": "2.3.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

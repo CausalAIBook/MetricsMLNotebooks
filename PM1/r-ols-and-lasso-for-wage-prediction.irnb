@@ -157,8 +157,8 @@
     "# construct matrices for estimation from the data\n",
     "y <- log(data$wage)\n",
     "n <- length(y)\n",
-    "z <- data[- which(colnames(data) %in% c(\"wage\", \"lwage\"))]\n",
-    "p <- dim(z)[2]\n",
+    "Z <- data[- which(colnames(data) %in% c(\"wage\", \"lwage\"))]\n",
+    "p <- dim(Z)[2]\n",
     "\n",
     "cat(\"Number of observations:\", n, \"\\n\")\n",
     "cat(\"Number of raw regressors:\", p)"
@@ -185,10 +185,10 @@
    "outputs": [],
    "source": [
     "# generate a table of means of variables\n",
-    "z_subset <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\",\n",
+    "Zsubset <- data[which(colnames(data) %in% c(\"lwage\", \"sex\", \"shs\", \"hsg\", \"scl\",\n",
     "                                             \"clg\", \"ad\", \"mw\", \"so\", \"we\", \"ne\", \"exp1\"))]\n",
     "table <- matrix(0, 12, 1)\n",
-    "table[1:12, 1] <- as.numeric(lapply(z_subset, mean))\n",
+    "table[1:12, 1] <- as.numeric(lapply(Zsubset, mean))\n",
     "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Some High School\",\n",
     "                     \"High School Graduate\", \"Some College\", \"College Graduate\",\n",
     "                     \"Advanced Degree\", \"Midwest\", \"South\", \"West\", \"Northeast\", \"Experience\")\n",
