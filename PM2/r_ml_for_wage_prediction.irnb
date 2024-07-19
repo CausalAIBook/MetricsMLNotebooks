@@ -551,8 +551,8 @@
    },
    "outputs": [],
    "source": [
-    "x_flex <- \"sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we \" +\n",
-    "  \"+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\"\n",
+    "x_flex <- paste(\"sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we \",\n",
+    "                \"+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\")\n",
     "formula_flex <- as.formula(paste(\"lwage\", \"~\", x_flex))\n",
     "model_x_flex_train <- model.matrix(formula_flex, data_train)\n",
     "model_x_flex_test <- model.matrix(formula_flex, data_test)\n",
