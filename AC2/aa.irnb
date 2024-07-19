@@ -145,7 +145,6 @@
    "outputs": [],
    "source": [
     "# needed to run boosting\n",
-    "options(timeout = max(6000, getOption(\"timeout\")))\n",
     "remotes::install_github(\"mlr-org/mlr3extralearners\")\n",
     "install.packages(\"mlr3extralearners\")"
    ]

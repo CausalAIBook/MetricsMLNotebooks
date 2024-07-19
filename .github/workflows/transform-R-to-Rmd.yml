@@ -88,6 +88,7 @@ jobs:
           log_file="${{ matrix.directory }}_r_script_execution.log"
           R -e '
             options(show.error.locations = TRUE)
+            options(download.file.method = "libcurl")
             options(timeout = max(6000, getOption("timeout")))
             files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
             log_con <- file("'$log_file'", open = "wt")
