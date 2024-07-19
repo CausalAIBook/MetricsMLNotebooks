@@ -41,7 +41,18 @@ jobs:
 
       - name: Install rmarkdown, knitr, and lintr packages
         run: |
-          R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun"), repos="https://cloud.r-project.org")'
+          R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun", "remotes", "devtools"), repos="https://cloud.r-project.org")'
+
+      - name: Check github installation
+        id: check-github
+        run: |
+          R -e '
+            options(show.error.locations = TRUE)
+            options(download.file.method = "libcurl")
+            options(timeout = max(6000, getOption("timeout")))
+            remotes::install_github("mlr-org/mlr3extralearners")
+            library(mlr3extralearners)
+            '
 
       - name: Strip outputs from .irnb files
         run: |
@@ -80,7 +91,7 @@ jobs:
                 stop("Linting failed with warnings")
               }
             })
-          '
+          ' 2>/dev/null
 
       - name: Execute R scripts and log output
         id: execute
