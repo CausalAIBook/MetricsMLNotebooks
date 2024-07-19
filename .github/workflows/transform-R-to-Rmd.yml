@@ -14,11 +14,28 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
+        directory: ['PM1'] #, 'PM2', 'PM3', 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+      
+      - name: Install rmarkdown, knitr, and lintr packages
+        run: |
+          R -e 'install.packages(c("remotes"), repos="https://cloud.r-project.org")'
+
+      - name: Check github installation
+        id: check-github
+        run: |
+          R -e '
+            remotes::install_github("mlr-org/mlr3extralearners")
+            library(mlr3extralearners)
+            '
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+  
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -42,17 +59,6 @@ jobs:
       - name: Install rmarkdown, knitr, and lintr packages
         run: |
           R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun", "remotes", "devtools"), repos="https://cloud.r-project.org")'
-
-      - name: Check github installation
-        id: check-github
-        run: |
-          R -e '
-            options(show.error.locations = TRUE)
-            options(download.file.method = "libcurl")
-            options(timeout = max(6000, getOption("timeout")))
-            remotes::install_github("mlr-org/mlr3extralearners")
-            library(mlr3extralearners)
-            '
 
       - name: Strip outputs from .irnb files
         run: |
