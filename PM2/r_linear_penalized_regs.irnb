@@ -33,7 +33,8 @@
     "install.packages(\"xtable\")\n",
     "install.packages(\"hdm\")\n",
     "install.packages(\"glmnet\")\n",
-    "install.packages(\"ggplot2\")"
+    "install.packages(\"ggplot2\")\n",
+    "install.packages(\"tidyr\")"
    ]
   },
   {
@@ -49,7 +50,8 @@
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)\n",
-    "library(ggplot2)"
+    "library(ggplot2)\n",
+    "library(tidyr)"
    ]
   },
   {

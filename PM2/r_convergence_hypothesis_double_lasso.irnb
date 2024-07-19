@@ -938,7 +938,7 @@
       "outputs": [],
       "source": [
         "tmp_df <- as.data.frame(cbind(res_y, res_d))\n",
-        "colnames(tmp_df) <- c(\"res_y\", \"res_D\")"
+        "colnames(tmp_df) <- c(\"res_y\", \"res_d\")"
       ]
     },
     {
@@ -953,7 +953,7 @@
       "outputs": [],
       "source": [
         "fit_cv <- lm(res_y ~ res_d, data = tmp_df)\n",
-        "est_cv <- summary(fit_cv)$coef[\"res_D\", 1]\n",
+        "est_cv <- summary(fit_cv)$coef[\"res_d\", 1]\n",
         "\n",
         "hcv_cv_coefs <- vcovHC(fit_cv, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
         "se_cv <- sqrt(diag(hcv_cv_coefs))[2] # Estimated std errors\n",
