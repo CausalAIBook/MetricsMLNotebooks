@@ -15,6 +15,9 @@ This analysis allows a closer look how the gender wage gap is related to other s
 ```{r}
 install.packages("hdm")
 install.packages("xtable")
+```
+
+```{r}
 library(hdm)
 library(xtable)
 ```
@@ -33,14 +36,14 @@ Z <- subset(data, select = -c(lwage, wage))
 
 ```{r}
 center_colmeans <- function(x) {
-    xcenter <- colMeans(x)
-    x - rep(xcenter, rep.int(nrow(x), ncol(x)))
+  xcenter <- colMeans(x)
+  x - rep(xcenter, rep.int(nrow(x), ncol(x)))
 }
 ```
 
 ```{r}
 # create the model matrix for the covariates
-controls_formula <- '~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2'
+controls_formula <- "~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2"
 Zcontrols <- model.matrix(as.formula(controls_formula), data = Z)
 Zcontrols <- center_colmeans(Zcontrols)
 ```
@@ -49,7 +52,7 @@ Construct all the variables that we will use to model heterogeneity of effect in
 
 ```{r}
 # create the model matrix for the linear heterogeneity
-linear_het_formula <- '~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)'
+linear_het_formula <- "~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)"
 Zhet <- model.matrix(as.formula(linear_het_formula), data = Z)
 Zhet <- center_colmeans(Zhet)
 ```
@@ -59,7 +62,7 @@ Construct all interaction variables between sex and heterogeneity variables
 ```{r}
 # create the model matrix for the higher order heterogeneity
 Zhet <- as.data.frame(cbind(Zhet, "sex" = Z$sex))
-nonlin_het_formula <- '~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)'
+nonlin_het_formula <- "~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)"
 Zinteractions <- model.matrix(as.formula(nonlin_het_formula), data = Zhet)
 interaction_cols <- Zinteractions[, grepl("sex", colnames(Zinteractions))]
 ```
@@ -75,7 +78,7 @@ Get estimates and CIs
 ```{r}
 # this cell takes 30 minutes to run
 index_gender <- grep("sex", colnames(Zinteractions))
-effects_female <- rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)
+effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)
 result <- summary(effects_female)
 result$coef
 print(xtable(result$coef[, c(1, 2, 4)], type = "latex"), digits = 3)

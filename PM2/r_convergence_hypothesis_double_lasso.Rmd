@@ -12,6 +12,9 @@ install.packages("lmtest")
 install.packages("sandwich")
 install.packages("glmnet")
 install.packages("ggplot2")
+```
+
+```{r}
 library(hdm)
 library(xtable)
 library(lmtest)
@@ -121,16 +124,15 @@ We report the results using cross validation at the end of this notebook for com
 
 ```{r}
 double_lasso <- function(y, D, W) {
-  require(hdm)
 
   # residualize outcome with Lasso
-  yfit_rlasso <- rlasso(W, y, post = FALSE)
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
   yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
   yres <- y - as.numeric(yhat_rlasso)
 
 
   # residualize treatment with Lasso
-  dfit_rlasso <- rlasso(W, D, post = FALSE)
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
   dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
   dres <- D - as.numeric(dhat_rlasso)
 
@@ -208,12 +210,12 @@ res_d <- D - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(W))
 
 ```{r}
 tmp_df <- as.data.frame(cbind(res_y, res_d))
-colnames(tmp_df) = c("res_y", "res_D")
+colnames(tmp_df) <- c("res_y", "res_d")
 ```
 
 ```{r}
 fit_cv <- lm(res_y ~ res_d, data = tmp_df)
-est_cv <- summary(fit_cv)$coef["res_D", 1]
+est_cv <- summary(fit_cv)$coef["res_d", 1]
 
 hcv_cv_coefs <- vcovHC(fit_cv, type = "HC1") # HC - "heteroskedasticity cosistent"
 se_cv <- sqrt(diag(hcv_cv_coefs))[2] # Estimated std errors

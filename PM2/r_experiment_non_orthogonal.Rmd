@@ -7,8 +7,10 @@ output: html_document
 
 ```{r}
 install.packages("hdm")
+```
+
+```{r}
 library(hdm)
-library(stats)
 ```
 
 ## Generating RCT data
@@ -20,7 +22,7 @@ gen_data <- function(n, d, p, delta, base) {
   y0 <- base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
   y1 <- delta + base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
   y <- y1 * D + y0 * (1 - D)
-  return(list(y=y, D=D, X=X))
+  return(list(y = y, D = D, X = X))
 }
 ```
 
@@ -41,7 +43,8 @@ twomeans <- function(y, D) {
   V0 <- var(y[D == 0]) / mean(1 - D) # asymptotic variance of the mean of outcome of untreated
   V1 <- var(y[D == 1]) / mean(D) # asymptotic variance of the mean of outcome of treated
   hat <- hat1 - hat0 # estimate of the treatment effect
-  stderr <- sqrt((V0 + V1) / n) # standard error of the estimate of the treatment effect
+  # standard error of the estimate of the treatment effect
+  stderr <- sqrt((V0 + V1) / length(y))
   return(list(hat = hat, stderr = stderr))
 }
 ```
@@ -99,16 +102,15 @@ partialling_out(y, D, cbind(D * X, X))
 # Now we simply replace OLS with Lasso to implement the Double Lasso process
 
 double_lasso <- function(y, D, W) {
-  require(hdm)
 
   # residualize outcome with Lasso
-  yfit_rlasso <- rlasso(W, y, post = FALSE)
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
   yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
   yres <- y - as.numeric(yhat_rlasso)
 
 
   # residualize treatment with Lasso
-  dfit_rlasso <- rlasso(W, D, post = FALSE)
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
   dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
   Dres <- D - as.numeric(dhat_rlasso)
 
@@ -294,16 +296,15 @@ mean(stderrs) # and close to the calculate standard errors; we correctly estimat
 # Now we simply replace OLS with Lasso to implement the Double Lasso process
 
 double_lasso <- function(y, D, W) {
-  require(hdm)
 
   # residualize outcome with Lasso
-  yfit_rlasso <- rlasso(W, y, post = FALSE)
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
   yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
   yres <- y - as.numeric(yhat_rlasso)
 
 
   # residualize treatment with Lasso
-  dfit_rlasso <- rlasso(W, D, post=FALSE)
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
   dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
   Dres <- D - as.numeric(dhat_rlasso)
 
@@ -311,7 +312,7 @@ double_lasso <- function(y, D, W) {
   hat <- mean(yres * Dres) / mean(Dres^2)
   epsilon <- yres - hat * Dres
   V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
-  stderr = sqrt(V / length(y))
+  stderr <- sqrt(V / length(y))
 
   return(list(hat = hat, stderr = stderr))
 }
@@ -333,7 +334,7 @@ for (i in 1:n_experiments) {
   # Calculate single lasso estimate
 
 
-  yfit_rlasso <- rlasso(cbind(D, X), y, post = FALSE)
+  yfit_rlasso <- hdm::rlasso(cbind(D, X), y, post = FALSE)
   hat <- yfit_rlasso$coefficients[2]
 
   hats[i] <- hat
@@ -369,8 +370,8 @@ for (i in 1:n_experiments) {
 
 
   # run a big lasso y ~ D, X
-  DX = cbind(D,X)
-  yfit_rlasso <- rlasso(DX, y, post=FALSE) # could just use this functionality
+  DX <- cbind(D, X)
+  yfit_rlasso <- hdm::rlasso(DX, y, post = FALSE) # could just use this functionality
   coefs <- yfit_rlasso$coefficients[2:n]
   selected_columns <- X[, abs(coefs) > 0.0]
   # run OLS on y ~ D, X[chosen by lasso]
@@ -412,9 +413,9 @@ mean(stderrs)
 ### Not RCT Data
 
 ```{r}
-gen_data_nonRCT <- function(n, d, p, delta, base) {
+gen_data_non_rct <- function(n, d, p, delta, base) {
   X <- matrix(rnorm(n * d), nrow = n, ncol = d)
-  D <- X[, 1] + rnorm(n, mean = 0, sd = 1/4)
+  D <- X[, 1] + rnorm(n, mean = 0, sd = 1 / 4)
   y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)
   return(list(y = y, D = D, X = X))
 }
@@ -429,15 +430,15 @@ stderrs <- numeric(n_experiments)
 
 for (i in 1:n_experiments) {
   # Generate data for each experiment
-  data <- gen_data_nonRCT(n, d, p, delta, base)
+  data <- gen_data_non_rct(n, d, p, delta, base)
   y <- data$y
   D <- data$D
   X <- data$X
 
 
   # run a big lasso y ~ D, X
-  DX = cbind(D, X)
-  yfit_rlasso <- rlasso(DX, y, post=FALSE) # could just use this functionality
+  DX <- cbind(D, X)
+  yfit_rlasso <- hdm::rlasso(DX, y, post = FALSE) # could just use this functionality
   coefs <- yfit_rlasso$coefficients[2:n]
   selected_columns <- X[, abs(coefs) > 0.0]
   # run OLS on y ~ D, X[chosen by lasso]
@@ -477,7 +478,7 @@ stderrs <- numeric(n_experiments)
 
 for (i in 1:n_experiments) {
   # Generate data for each experiment
-  data <- gen_data_nonRCT(n, d, p, delta, base)
+  data <- gen_data_non_rct(n, d, p, delta, base)
   y <- data$y
   D <- data$D
   X <- data$X

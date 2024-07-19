@@ -14,6 +14,10 @@ The true treatment effect here is 1. From the plots produced in this notebook (e
 
 ```{r}
 install.packages("hdm")
+install.packages("ggplot2")
+```
+
+```{r}
 library(hdm)
 library(ggplot2)
 ```
@@ -29,8 +33,8 @@ Naive <- rep(0, B)
 Orthogonal <- rep(0, B)
 
 
-lambdaYs <- rep(0,B)
-lambdaDs <- rep(0,B)
+lambdaYs <- rep(0, B)
+lambdaDs <- rep(0, B)
 
 for (i in 1:B) {
   # Generate parameters
@@ -45,25 +49,23 @@ for (i in 1:B) {
   Y <- D + X %*% beta + rnorm(n)
 
   # Single selection method
-  rlasso_result <- rlasso(Y ~ D + X)  # Fit lasso regression
-  SX_IDs <- which(rlasso_result$coef[-c(1, 2)] != 0)  # Selected covariates
+  rlasso_result <- hdm::rlasso(Y ~ D + X)  # Fit lasso regression
+  sx_ids <- which(rlasso_result$coef[-c(1, 2)] != 0)  # Selected covariates
 
   # Check if any Xs are selected
-  if (sum(SX_IDs) == 0) {
+  if (sum(sx_ids) == 0) {
     Naive[i] <- lm(Y ~ D)$coef[2]  # Fit linear regression with only D if no Xs are selected
   } else {
-    Naive[i] <- lm(Y ~ D + X[, SX_IDs])$coef[2]  # Fit linear regression with selected X otherwise
+    Naive[i] <- lm(Y ~ D + X[, sx_ids])$coef[2]  # Fit linear regression with selected X otherwise
   }
 
   # Partialling out / Double Lasso
 
-  fitY <- rlasso(Y ~ X, post = TRUE)
+  fitY <- hdm::rlasso(Y ~ X, post = TRUE)
   resY <- fitY$res
-  #cat("lambda Y mean: ", mean(fitY$lambda))
 
-  fitD <- rlasso(D ~ X, post = TRUE)
+  fitD <- hdm::rlasso(D ~ X, post = TRUE)
   resD <- fitD$res
-  #cat("\nlambda D mean: ", mean(fitD$lambda))
 
   Orthogonal[i] <- lm(resY ~ resD)$coef[2]  # Fit linear regression for residuals
 }
@@ -72,14 +74,15 @@ for (i in 1:B) {
 ## Make a Nice Plot
 
 ```{r}
-#Specify ratio
-img_width = 15
-img_height = img_width/2
+# Specify ratio
+img_width <- 15
+img_height <- img_width / 2
 ```
 
 ```{r}
 # Create a data frame for the estimates
-df <- data.frame(Method = rep(c("Naive", "Orthogonal"), each = B), Value = c(Naive-1,Orthogonal-1))
+df <- data.frame(Method = rep(c("Naive", "Orthogonal"), each = B),
+                 Value = c(Naive - 1, Orthogonal - 1))
 
 # Create the histogram using ggplot2
 hist_plot <- ggplot(df, aes(x = Value, fill = Method)) +

@@ -9,7 +9,11 @@ output: html_document
 install.packages("xtable")
 install.packages("hdm")
 install.packages("glmnet")
+install.packages("ggplot2")
+install.packages("tidyr")
+```
 
+```{r}
 library(hdm)
 library(xtable)
 library(glmnet)
@@ -210,8 +214,8 @@ To select those parameters, they use $\lambda$ as variable to penalize\
 **Funny thing: the function rlasso was named like that because it is the "rigorous" Lasso.**
 
 ```{r}
-fit_rlasso <- rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
-fit_rlasso_post <- rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
+fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
+fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
 ```
 
 ```{r}
@@ -242,19 +246,18 @@ Next we code up lava, which alternates the fitting of lasso and ridge
 # Define function to compute lava estimator. Doing an iterative scheme with fixed
 # number of iteration. Could iterate until a convergence criterion is met.
 lava_predict <- function(X, Y, newX, lambda1, lambda2, iter = 5) {
-  require(glmnet)
 
   # Need to demean internally
   dy <- Y - mean(Y)
   dx <- scale(X, scale = FALSE)
 
-  sp1 <- glmnet(dx, dy, lambda = lambda1) # lasso step fits "sparse part"
-  de1 <- glmnet(dx, dy - predict(sp1, newx = dx), alpha = 0, lambda = lambda2)
+  sp1 <- glmnet::glmnet(dx, dy, lambda = lambda1) # lasso step fits "sparse part"
+  de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx), alpha = 0, lambda = lambda2)
 
   i <- 1
   while (i <= iter) {
-    sp1 <- glmnet(dx, dy - predict(de1, newx = dx, s = "lambda.min"), lambda = lambda1)
-    de1 <- glmnet(dx, dy - predict(sp1, newx = dx, s = "lambda.min"), alpha = 0, lambda = lambda2)
+    sp1 <- glmnet::glmnet(dx, dy - predict(de1, newx = dx, s = "lambda.min"), lambda = lambda1)
+    de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx, s = "lambda.min"), alpha = 0, lambda = lambda2)
     i <- i + 1
   }
 
@@ -290,11 +293,11 @@ lava_yhat_r2 <- function(xtr_mod, xte_mod, ytr, yte, num_folds = 5) {
   # of the default implementation in glmnet for everything. Could do better here - maybe
 
   ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.
-  ridge_mod <- glmnet(xtr_mod, ytr, alpha = 0) # alpha = 0 gives ridge
+  ridge_mod <- glmnet::glmnet(xtr_mod, ytr, alpha = 0) # alpha = 0 gives ridge
   ridge_lambda <- ridge_mod$lambda # values of penalty parameter
 
   ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.
-  lasso_mod <- glmnet(xtr_mod, ytr) # default is lasso (equivalent to alpha = 1)
+  lasso_mod <- glmnet::glmnet(xtr_mod, ytr) # default is lasso (equivalent to alpha = 1)
   lasso_lambda <- lasso_mod$lambda # values of penalty parameter
 
   ## ------------------------------------------------------------
@@ -529,8 +532,8 @@ fit_lasso_cv <- cv.glmnet(X, y, family = "gaussian", alpha = 1, nfolds = 5)
 fit_ridge <- cv.glmnet(X, y, family = "gaussian", alpha = 0, nfolds = 5)
 # family gaussian means that we'll be using square loss
 fit_elnet <- cv.glmnet(X, y, family = "gaussian", alpha = .5, nfolds = 5)
-fit_rlasso <- rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
-fit_rlasso_post <- rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
+fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
+fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
 
 r2_lasso_cv <- r2_score(predict(fit_lasso_cv, newx = Xpop, s = "lambda.min"), ypop)
 r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = "lambda.min"), ypop)
