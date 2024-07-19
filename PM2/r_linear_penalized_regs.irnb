@@ -50,8 +50,7 @@
     "library(hdm)\n",
     "library(xtable)\n",
     "library(glmnet)\n",
-    "library(ggplot2)\n",
-    "library(tidyr)"
+    "library(ggplot2)"
    ]
   },
   {
