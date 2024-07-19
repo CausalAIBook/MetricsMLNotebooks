@@ -6,9 +6,12 @@ output: html_document
 # Using Dagitty in the Analysis of Impact of 401(k) on Net Financial Wealth
 
 ```{r}
-#install and load package
+# install and load package
 install.packages("dagitty")
 install.packages("ggdag")
+```
+
+```{r}
 library(dagitty)
 library(ggdag)
 ```
@@ -24,9 +27,9 @@ Here we have
 **One graph (where F determines X):**
 
 ```{r}
-#generate a DAGs and plot them
+# generate a DAGs and plot them
 
-G1 = dagitty('dag{
+G1 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -38,14 +41,14 @@ F -> D
 X -> Y}')
 
 
-ggdag(G1)+  theme_dag()
+ggdag(G1) + theme_dag()
 ```
 
 **List minimal adjustment sets to identify causal effects $D \to Y$**
 
 
 ```{r}
-adjustmentSets( G1, "D", "Y",effect="total" )
+adjustmentSets(G1, "D", "Y", effect = "total")
 ```
 
 **What is the underlying principle?**
@@ -55,9 +58,9 @@ Here conditioning on X blocks backdoor paths from Y to D (Pearl).  Dagitty corre
 **Another Graph (wherere $X$ determines $F$):**
 
 ```{r}
-#generate a couple of DAGs and plot them
+# generate a couple of DAGs and plot them
 
-G2 = dagitty('dag{
+G2 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -69,11 +72,11 @@ F -> D
 X -> Y}')
 
 
-ggdag(G2)+  theme_dag()
+ggdag(G2) + theme_dag()
 ```
 
 ```{r}
-adjustmentSets( G2, "D", "Y", effect="total" )
+adjustmentSets(G2, "D", "Y", effect = "total")
 ```
 
 **One more graph (encompassing the previous ones), where (F, X) are jointly determined by latent factors $A$.**
@@ -83,7 +86,7 @@ We can allow in fact the whole triple (D, F, X) to be jointly determined by late
 This is much more realistic graph to consider.
 
 ```{r}
-G3 = dagitty('dag{
+G3 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -97,9 +100,9 @@ A -> X
 A -> D
 X -> Y}')
 
-adjustmentSets( G3, "D", "Y", effect="total"  )
+adjustmentSets(G3, "D", "Y", effect = "total")
 
-ggdag(G3)+  theme_dag()
+ggdag(G3) + theme_dag()
 ```
 
 # Threat to Identification:
@@ -107,7 +110,7 @@ ggdag(G3)+  theme_dag()
 What if $F$ also directly affects $Y$? (Note that there are no valid adjustment sets in this case.)
 
 ```{r}
-G4 = dagitty('dag{
+G4 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -123,11 +126,11 @@ F -> Y
 X -> Y}')
 
 
-ggdag(G4)+  theme_dag()
+ggdag(G4) + theme_dag()
 ```
 
 ```{r}
-adjustmentSets( G4, "D", "Y",effect="total"  )
+adjustmentSets(G4, "D", "Y", effect = "total")
 ```
 
 **Note that no output means that there is no valid adustment set (among observed variables).**
@@ -137,7 +140,7 @@ adjustmentSets( G4, "D", "Y",effect="total"  )
 Introduce Match Amount $M$. The match amount is a potential important mediator (why mediator?). $M$ is not observed. Luckily, adjusting for $X$ still works if there is no arrow $F \to M$.
 
 ```{r}
-G5 = dagitty('dag{
+G5 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -155,15 +158,15 @@ M -> Y
 X -> M
 X -> Y}')
 
-print( adjustmentSets( G5, "D", "Y",effect="total"  ) )
+print(adjustmentSets(G5, "D", "Y", effect = "total"))
 
-ggdag(G5)+  theme_dag()
+ggdag(G5) + theme_dag()
 ```
 
 If there is an $F \to M$ arrow, then adjusting for $X$ is not sufficient.
 
 ```{r}
-G6 = dagitty('dag{
+G6 <- dagitty('dag{
 Y [outcome,pos="4, 0"]
 D [exposure,pos="0, 0"]
 X [confounder, pos="2,-2"]
@@ -182,9 +185,9 @@ M -> Y
 X -> M
 X -> Y}')
 
-print( adjustmentSets( G6, "D", "Y" ),effect="total"  )
+print(adjustmentSets(G6, "D", "Y"), effect = "total")
 
-ggdag(G6)+  theme_dag()
+ggdag(G6) + theme_dag()
 ```
 
 Again, note that no output was returned for the adjustment set. There is no valid adjustment set here.

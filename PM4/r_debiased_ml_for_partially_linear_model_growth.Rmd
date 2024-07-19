@@ -21,7 +21,9 @@ install.packages("hdm")
 install.packages("randomForest")
 install.packages("glmnet")
 install.packages("sandwich")
+```
 
+```{r}
 library(xtable)
 library(randomForest)
 library(hdm)
@@ -40,16 +42,17 @@ dim(data)
 ```
 
 ```{r}
-y = as.matrix(data[,1])         # outcome: growth rate
-d = as.matrix(data[,3])         # treatment: initial wealth
-x = as.matrix(data[,-c(1,2,3)]) # controls: country characteristics
+y <- as.matrix(data[, 1]) # outcome: growth rate
+d <- as.matrix(data[, 3]) # treatment: initial wealth
+x <- as.matrix(data[, -c(1, 2, 3)]) # controls: country characteristics
 
 # some summary statistics
-cat(sprintf("\nThe length of y is %g \n", length(y) ))
-cat(sprintf("\nThe number of features in x is %g \n", dim(x)[2] ))
+cat(sprintf("\nThe length of y is %g \n", length(y)))
+cat(sprintf("\nThe number of features in x is %g \n", dim(x)[2]))
 
-lres=summary(lm(y~d +x))$coef[2,1:2]
-cat(sprintf("\nNaive OLS that uses all features w/o cross-fitting Y ~ D+X yields: \ncoef (se) = %g (%g)\n", lres[1] , lres[2]))
+lres <- summary(lm(y ~ d + x))$coef[2, 1:2]
+cat(sprintf("\nNaive OLS that uses all features w/o cross-fitting Y ~ D+X yields: \ncoef (se) = %g (%g)\n",
+            lres[1], lres[2]))
 ```
 
 # DML algorithm
@@ -72,26 +75,26 @@ Y(d) = d\alpha + g(X) + U(d),\quad  U(d) \text{ indep } D |X, \quad Y = Y(D), \q
 $$
 
 ```{r}
-DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=2) {
-  nobs <- nrow(x) #number of observations
-  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices
-  I <- split(1:nobs, foldid)  #split observation indices into folds
+dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 2) {
+  nobs <- nrow(x) # number of observations
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid) # split observation indices into folds
   ytil <- dtil <- rep(NA, nobs)
   cat("fold: ")
-  for(b in 1:length(I)){
-    dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out
-    yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out
-    dhat <- predict(dfit, x[I[[b]],], type="response") #predict the left-out fold
-    yhat <- predict(yfit, x[I[[b]],], type="response") #predict the left-out fold
-    dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-    ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
-    cat(b," ")
-        }
-  rfit <- lm(ytil ~ dtil)    #estimate the main parameter by regressing one residual on the other
-  coef.est <- coef(rfit)[2]  #extract coefficient
-  se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error
-  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est , se))  #printing output
-  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals
+  for (b in seq_along(I)) {
+    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out
+    dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
+    cat(b, " ")
+  }
+  rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other
+  coef.est <- coef(rfit)[2] # extract coefficient
+  se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est, se)) # printing output
+  return(list(coef.est = coef.est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals
 }
 ```
 
@@ -102,84 +105,100 @@ We now run through DML using as first stage models:
  4. Mix of Random Forest and Lasso
 
 ```{r}
-#DML with OLS
+# DML with OLS
 cat(sprintf("\nDML with OLS w/o feature selection \n"))
-dreg <- function(x,d){ glmnet(x, d, lambda = 0) } #ML method= OLS using glmnet; using lm gives bugs
-yreg <- function(x,y){ glmnet(x, y, lambda = 0) } #ML method = OLS
-DML2.OLS = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)
+dreg <- function(x, d) {
+  glmnet(x, d, lambda = 0)
+} # ML method= OLS using glmnet; using lm gives bugs
+yreg <- function(x, y) {
+  glmnet(x, y, lambda = 0)
+} # ML method = OLS
+dml2_ols <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)
 
 
-#DML with Lasso:
+# DML with Lasso:
 cat(sprintf("\nDML with Lasso \n"))
-dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method= lasso from hdm
-yreg <- function(x,y){ rlasso(x,y, post=FALSE) } #ML method = lasso from hdm
-DML2.lasso = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)
+dreg <- function(x, d) {
+  rlasso(x, d, post = FALSE)
+} # ML method= lasso from hdm
+yreg <- function(x, y) {
+  rlasso(x, y, post = FALSE)
+} # ML method = lasso from hdm
+dml2_lasso <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)
 
 
-#DML with Random Forest:
+# DML with Random Forest:
 cat(sprintf("\nDML with Random Forest \n"))
-dreg <- function(x,d){ randomForest(x, d) } #ML method=Forest
-yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest
-DML2.RF = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)
+dreg <- function(x, d) {
+  randomForest(x, d)
+} # ML method=Forest
+yreg <- function(x, y) {
+  randomForest(x, y)
+} # ML method=Forest
+dml2_rf <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)
 
-#DML MIX:
+# DML MIX:
 cat(sprintf("\nDML with Lasso for D and Random Forest for Y \n"))
-dreg <- function(x,d){ rlasso(x,d, post=FALSE) } #ML method=Forest
-yreg <- function(x,y){ randomForest(x, y) } #ML method=Forest
-DML2.mix = DML2.for.PLM(x, d, y, dreg, yreg, nfold=10)
+dreg <- function(x, d) {
+  rlasso(x, d, post = FALSE)
+} # ML method=Forest
+yreg <- function(x, y) {
+  randomForest(x, y)
+} # ML method=Forest
+dml2_mix <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10)
 ```
 
 Now we examine the RMSE of D and Y to see which method performs well in the first-stage. We print all results below in the following table:
 
 ```{r}
-prRes.D<- c( mean((DML2.OLS$dtil)^2), mean((DML2.lasso$dtil)^2), mean((DML2.RF$dtil)^2), mean((DML2.mix$dtil)^2));
-prRes.Y<- c(mean((DML2.OLS$ytil)^2), mean((DML2.lasso$ytil)^2),mean((DML2.RF$ytil)^2),mean((DML2.mix$ytil)^2));
-prRes<- rbind(sqrt(prRes.D), sqrt(prRes.Y));
-rownames(prRes)<- c("RMSE D", "RMSE Y");
-colnames(prRes)<- c("OLS", "Lasso", "RF", "Mix")
+pr_res_d <- c(mean((dml2_ols$dtil)^2), mean((dml2_lasso$dtil)^2), mean((dml2_rf$dtil)^2), mean((dml2_mix$dtil)^2))
+pr_res_y <- c(mean((dml2_ols$ytil)^2), mean((dml2_lasso$ytil)^2), mean((dml2_rf$ytil)^2), mean((dml2_mix$ytil)^2))
+pr_res <- rbind(sqrt(pr_res_d), sqrt(pr_res_y))
+rownames(pr_res) <- c("RMSE D", "RMSE Y")
+colnames(pr_res) <- c("OLS", "Lasso", "RF", "Mix")
 ```
 
 ```{r}
-table <- matrix(0,4,4)
+table <- matrix(0, 4, 4)
 
 # Point Estimate
-table[1,1] <- as.numeric(DML2.OLS$coef.est)
-table[2,1] <- as.numeric(DML2.lasso$coef.est)
-table[3,1] <- as.numeric(DML2.RF$coef.est)
-table[4,1]   <- as.numeric(DML2.mix$coef.est)
+table[1, 1] <- as.numeric(dml2_ols$coef.est)
+table[2, 1] <- as.numeric(dml2_lasso$coef.est)
+table[3, 1] <- as.numeric(dml2_rf$coef.est)
+table[4, 1] <- as.numeric(dml2_mix$coef.est)
 
 # SE
-table[1,2] <- as.numeric(DML2.OLS$se)
-table[2,2] <- as.numeric(DML2.lasso$se)
-table[3,2] <- as.numeric(DML2.RF$se)
-table[4,2]   <- as.numeric(DML2.mix$se)
+table[1, 2] <- as.numeric(dml2_ols$se)
+table[2, 2] <- as.numeric(dml2_lasso$se)
+table[3, 2] <- as.numeric(dml2_rf$se)
+table[4, 2] <- as.numeric(dml2_mix$se)
 
 # RMSE Y
-table[1,3] <- as.numeric(prRes[2,1])
-table[2,3] <- as.numeric(prRes[2,2])
-table[3,3] <- as.numeric(prRes[2,3])
-table[4,3]   <- as.numeric(prRes[2,4])
+table[1, 3] <- as.numeric(pr_res[2, 1])
+table[2, 3] <- as.numeric(pr_res[2, 2])
+table[3, 3] <- as.numeric(pr_res[2, 3])
+table[4, 3] <- as.numeric(pr_res[2, 4])
 
 # RMSE D
-table[1,4] <- as.numeric(prRes[1,1])
-table[2,4] <- as.numeric(prRes[1,2])
-table[3,4] <- as.numeric(prRes[1,3])
-table[4,4]   <- as.numeric(prRes[1,4])
+table[1, 4] <- as.numeric(pr_res[1, 1])
+table[2, 4] <- as.numeric(pr_res[1, 2])
+table[3, 4] <- as.numeric(pr_res[1, 3])
+table[4, 4] <- as.numeric(pr_res[1, 4])
 
 
 
 # print results
-colnames(table) <- c("Estimate","Standard Error", "RMSE Y", "RMSE D")
+colnames(table) <- c("Estimate", "Standard Error", "RMSE Y", "RMSE D")
 rownames(table) <- c("OLS", "Lasso", "RF", "RF/Lasso Mix")
 table
 ```
 
 ```{r}
-print(table, digit=3)
+print(table, digit = 3)
 ```
 
 ```{r}
-tab<- xtable(table, digits=3)
-print(tab, type="latex")
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex")
 ```
 

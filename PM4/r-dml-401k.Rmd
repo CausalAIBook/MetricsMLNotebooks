@@ -21,7 +21,9 @@ install.packages("randomForest")
 install.packages("glmnet")
 install.packages("rpart")
 install.packages("gbm")
+```
 
+```{r}
 library(xtable)
 library(hdm)
 library(sandwich)
@@ -56,16 +58,18 @@ The data consist of 9,915 observations at the household level drawn from the 199
 Among the $9915$ individuals, $3682$ are eligible to participate in the program. The variable *e401* indicates eligibility and *p401* indicates participation, respectively.
 
 ```{r}
-hist_e401 = ggplot(data, aes(x = e401, fill = factor(e401))) + geom_bar()
+hist_e401 <- ggplot(data, aes(x = e401, fill = factor(e401))) +
+  geom_bar()
 hist_e401
 ```
 
 Eligibility is highly associated with financial wealth:
 
 ```{r}
-dens_net_tfa = ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401)) ) +
-                    geom_density() + xlim(c(-20000, 150000)) +
-                    facet_wrap(.~e401)
+dens_net_tfa <- ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401))) +
+  geom_density() +
+  xlim(c(-20000, 150000)) +
+  facet_wrap(. ~ e401)
 
 dens_net_tfa
 ```
@@ -73,35 +77,37 @@ dens_net_tfa
 The unconditional APE of e401 is about $19559$:
 
 ```{r}
-e1 <- data[data$e401==1,]
-e0 <- data[data$e401==0,]
-round(mean(e1$net_tfa)-mean(e0$net_tfa),0)
+e1 <- data[data$e401 == 1, ]
+e0 <- data[data$e401 == 0, ]
+round(mean(e1$net_tfa) - mean(e0$net_tfa), 0)
 ```
 
 Among the $3682$ individuals that  are eligible, $2594$ decided to participate in the program. The unconditional APE of p401 is about $27372$:
 
 ```{r}
-p1 <- data[data$p401==1,]
-p0 <- data[data$p401==0,]
-round(mean(p1$net_tfa)-mean(p0$net_tfa),0)
+p1 <- data[data$p401 == 1, ]
+p0 <- data[data$p401 == 0, ]
+round(mean(p1$net_tfa) - mean(p0$net_tfa), 0)
 ```
 
 As discussed, these estimates are biased since they do not account for saver heterogeneity and endogeneity of participation.
 
 ```{r}
 # outcome variable
-y <- data[,'net_tfa']
+y <- data[, "net_tfa"]
 # treatment variable
-D <- data[,'e401']
-D2 <- data[,"p401"]
-D3 <- data[,"a401"]
+D <- data[, "e401"]
+D2 <- data[, "p401"]
+D3 <- data[, "a401"]
 
-columns_to_drop <- c('e401', 'p401', 'a401', 'tw', 'tfa', 'net_tfa', 'tfa_he',
-               'hval', 'hmort', 'hequity',
-               'nifa', 'net_nifa', 'net_n401', 'ira',
-               'dum91', 'icat', 'ecat', 'zhat',
-               'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7',
-               'a1', 'a2', 'a3', 'a4', 'a5')
+columns_to_drop <- c(
+  "e401", "p401", "a401", "tw", "tfa", "net_tfa", "tfa_he",
+  "hval", "hmort", "hequity",
+  "nifa", "net_nifa", "net_n401", "ira",
+  "dum91", "icat", "ecat", "zhat",
+  "i1", "i2", "i3", "i4", "i5", "i6", "i7",
+  "a1", "a2", "a3", "a4", "a5"
+)
 
 # covariates
 X <- data[, !(names(data) %in% columns_to_drop)]
@@ -109,8 +115,9 @@ X <- data[, !(names(data) %in% columns_to_drop)]
 
 ```{r}
 # Constructing the controls
-X_formula = "~ 0 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown"
-X = as.data.table(model.frame(X_formula, pension))
+x_formula <- paste("~ 0 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) ",
+                   "+ poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown")
+X <- as.data.table(model.frame(x_formula, X))
 head(X)
 ```
 
@@ -118,59 +125,57 @@ head(X)
 
 We are interested in valid estimators of the average treatment effect of `e401` and `p401` on `net_tfa`. We start using ML approaches to estimate the function $g_0$ and $m_0$ in the following PLR model:
 
-\begin{eqnarray}
+\begin{align}
  &  Y = D\theta_0 + g_0(X) + \zeta,  &  E[\zeta \mid D,X]= 0,\\
  & D = m_0(X) +  V,   &  E[V \mid X] = 0.
-\end{eqnarray}
+\end{align}
 
 ## Partially Linear Regression Models (PLR)
 
 ```{r}
-DML2.for.PLM <- function(x, d, y, dreg, yreg, nfold=3, method = "regression") {
-  nobs <- nrow(x) #number of observations
-  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices
-  I <- split(1:nobs, foldid)  #split observation indices into folds
+dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 3, method = "regression") {
+  nobs <- nrow(x) # number of observations
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid) # split observation indices into folds
   ytil <- dtil <- rep(NA, nobs)
   cat("fold: ")
-  for(b in 1:length(I)){
-
+  for (b in seq_along(I)) {
     if (method == "regression") {
-        dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out
-        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a foldt out
-        dhat <- predict(dfit, x[I[[b]],], type="response") #predict the left-out fold
-        yhat <- predict(yfit, x[I[[b]],], type="response") #predict the left-out fold
-        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
+      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out
+      dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the left-out fold
+      yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
     } else if (method == "randomforest") {
-        dfit <- dreg(x[-I[[b]],], as.factor(d)[-I[[b]]]) #take a fold out
-        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out
-        dhat <- predict(dfit, x[I[[b]],], type="prob")[,2] #predict the left-out fold
-        yhat <- predict(yfit, x[I[[b]],], type="response") #predict the left-out fold
-        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
+      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out
+      dhat <- predict(dfit, x[I[[b]], ], type = "prob")[, 2] # predict the left-out fold
+      yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
     } else if (method == "decisiontrees") {
-        dfit <- dreg(x[-I[[b]],], as.factor(d)[-I[[b]]]) #take a fold out
-        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out
-        dhat <- predict(dfit, x[I[[b]],])[,2] #predict the left-out fold
-        yhat <- predict(yfit, x[I[[b]],]) #predict the left-out fold
-        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
+      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out
+      dhat <- predict(dfit, x[I[[b]], ])[, 2] # predict the left-out fold
+      yhat <- predict(yfit, x[I[[b]], ]) # predict the left-out fold
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
     } else if (method == "boostedtrees") {
-        dfit <- dreg(x[-I[[b]],], d[-I[[b]]]) #take a fold out
-        yfit <- yreg(x[-I[[b]],], y[-I[[b]]]) # take a fold out
-        dhat <- predict(dfit, x[I[[b]],], type="response") #predict the left-out fold
-        yhat <- predict(yfit, x[I[[b]],], type="response") #predict the left-out fold
-        dtil[I[[b]]] <- (d[I[[b]]] - dhat) #record residual for the left-out fold
-        ytil[I[[b]]] <- (y[I[[b]]] - yhat) #record residial for the left-out fold
+      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out
+      dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the left-out fold
+      yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
     }
-    cat(b," ")
-
+    cat(b, " ")
   }
-  rfit <- lm(ytil ~ dtil)    #estimate the main parameter by regressing one residual on the other
-  coef.est <- coef(rfit)[2]  #extract coefficient
-  se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error
-  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est , se))  #printing output
-  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil) ) #save output and residuals
+  rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other
+  coef_est <- coef(rfit)[2] # extract coefficient
+  se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef_est, se)) # printing output
+  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals
 }
 ```
 
@@ -183,7 +188,7 @@ summaryPLR <- function(point, stderr, resD, resy, name) {
     upper = point + 1.96 * stderr, # upper end of 95% confidence interval
     `rmse y` = sqrt(mean(resy^2)), # RMSE of model that predicts outcome y
     `rmse D` = sqrt(mean(resD^2)), # RMSE of model that predicts treatment D
-    `accuracy D` = mean(abs(resD) < 0.5)# binary classification accuracy of model for D
+    `accuracy D` = mean(abs(resD) < 0.5) # binary classification accuracy of model for D
   )
   rownames(data) <- name
   return(data)
@@ -197,21 +202,26 @@ summaryPLR <- function(point, stderr, resD, resy, name) {
 set.seed(123)
 cat(sprintf("\nDML with Lasso CV \n"))
 
-dreg.lasso.cv <- function(x,d){ cv.glmnet(x, d, family="gaussian", alpha=1, nfolds=5)}
-yreg.lasso.cv <- function(x,y){ cv.glmnet(x, y, family="gaussian", alpha=1, nfolds=5)}
+dreg_lasso_cv <- function(x, d) {
+  cv.glmnet(x, d, family = "gaussian", alpha = 1, nfolds = 5)
+}
+yreg_lasso_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
 
-DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.lasso.cv, yreg.lasso.cv, nfold=5)
+dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_lasso_cv, yreg_lasso_cv, nfold = 5)
 
-sum.lasso.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV')
+sum_lasso_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                           dml2_results$ytil, name = "LassoCV")
 tableplr <- data.frame()
-tableplr <- rbind(sum.lasso.cv)
+tableplr <- rbind(sum_lasso_cv)
 tableplr
 ```
 
 ```{r}
 # Because residuals are output, reconstruct fitted values for use in ensemble
-dhat.lasso <- D - DML2.results$dtil
-yhat.lasso <- y - DML2.results$ytil
+dhat_lasso <- D - dml2_results$dtil
+yhat_lasso <- y - dml2_results$ytil
 ```
 
 #### Using a $\ell_2$ Penalized Logistic Regression for D
@@ -223,19 +233,24 @@ Note we are using the $\ell_2$ penalty here. You can use the $\ell_1$ penalty as
 set.seed(123)
 cat(sprintf("\nDML with Lasso/Logistic \n"))
 
-dreg.logistic.cv <- function(x,d){cv.glmnet(x, d, family="binomial", alpha=0, nfolds=5)}
-yreg.lasso.cv <- function(x,y){cv.glmnet(x, y, family="gaussian", alpha=1, nfolds=5)}
+dreg_logistic_cv <- function(x, d) {
+  cv.glmnet(x, d, family = "binomial", alpha = 0, nfolds = 5)
+}
+yreg_lasso_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
 
-DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.logistic.cv, yreg.lasso.cv, nfold=5)
-sum.lasso_logistic.cv <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'LassoCV/LogisticCV')
-tableplr <- rbind(tableplr, sum.lasso_logistic.cv)
+dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_logistic_cv, yreg_lasso_cv, nfold = 5)
+sum_lasso_logistic_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                                    dml2_results$ytil, name = "LassoCV/LogisticCV")
+tableplr <- rbind(tableplr, sum_lasso_logistic_cv)
 tableplr
 ```
 
 ```{r}
 # Because residuals are output, reconstruct fitted values for use in ensemble
-dhat.lasso_logistic <- D - DML2.results$dtil
-yhat.lasso_logistic <- y - DML2.results$ytil
+dhat_lasso_logistic <- D - dml2_results$dtil
+yhat_lasso_logistic <- y - dml2_results$ytil
 ```
 
 #### Random Forests
@@ -245,19 +260,24 @@ yhat.lasso_logistic <- y - DML2.results$ytil
 set.seed(123)
 cat(sprintf("\nDML with Random Forest \n"))
 
-dreg.rf <- function(x,d){randomForest(x, d, ntree=1000, nodesize=10)}  #ML method=Forest
-yreg.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest
+dreg_rf <- function(x, d) {
+  randomForest(x, d, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg_rf <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
 
-DML2.results <- DML2.for.PLM(as.matrix(X), D, y, dreg.rf, yreg.rf, nfold=5, method = "randomforest")
-sum.rf <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Random Forest')
-tableplr <- rbind(tableplr, sum.rf)
+dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_rf, yreg_rf, nfold = 5, method = "randomforest")
+sum_rf <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                     dml2_results$ytil, name = "Random Forest")
+tableplr <- rbind(tableplr, sum_rf)
 tableplr
 ```
 
 ```{r}
 # Because residuals are output, reconstruct fitted values for use in ensemble
-dhat.rf <- D - DML2.results$dtil
-yhat.rf <- y - DML2.results$ytil
+dhat_rf <- D - dml2_results$dtil
+dhat_rf <- y - dml2_results$ytil
 ```
 
 #### Decision Trees
@@ -267,19 +287,25 @@ yhat.rf <- y - DML2.results$ytil
 set.seed(123)
 cat(sprintf("\nDML with Decision Trees \n"))
 
-dreg.tr <- function(x,d){rpart(as.formula("D~."), cbind(data.frame(D=d),x), method = "class", minbucket=10, cp = 0.001)}
-yreg.tr <- function(x,y){rpart(as.formula("y~."), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}
+dreg_tr <- function(x, d) {
+  rpart(as.formula("D~."), cbind(data.frame(D = d), x), method = "class", minbucket = 10, cp = 0.001)
+}
+dreg_tr <- function(x, y) {
+  rpart(as.formula("y~."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
 
-DML2.results <- DML2.for.PLM(X, D, y, dreg.tr, yreg.tr, nfold=5, method = "decisiontrees") # decision tree takes in X as dataframe, not matrix/array
-sum.tr <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Decision Trees')
-tableplr <- rbind(tableplr, sum.tr)
+# decision tree takes in X as dataframe, not matrix/array
+dml2_results <- dml2_for_plm(X, D, y, dreg_tr, dreg_tr, nfold = 5, method = "decisiontrees")
+sum_tr <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                     dml2_results$ytil, name = "Decision Trees")
+tableplr <- rbind(tableplr, sum_tr)
 tableplr
 ```
 
 ```{r}
 # Because residuals are output, reconstruct fitted values for use in ensemble
-dhat.tr <- D - DML2.results$dtil
-yhat.tr <- y - DML2.results$ytil
+dhat_tr <- D - dml2_results$dtil
+yhat_tr <- y - dml2_results$ytil
 ```
 
 
@@ -293,21 +319,28 @@ set.seed(123)
 cat(sprintf("\nDML with Boosted Trees \n"))
 
 # NB: early stopping cannot easily be implemented with gbm
-## set n.trees = best, where best <- gbm.perf(dreg.boost, plot.it = FALSE)
-dreg.boost  <- function(x,d){gbm(as.formula("D~."), cbind(data.frame(D=d),x), distribution= "bernoulli", interaction.depth=2, n.trees=100, shrinkage=.1)}
-yreg.boost  <- function(x,y){gbm(as.formula("y~."), cbind(data.frame(y=y),x), distribution= "gaussian", interaction.depth=2, n.trees=100, shrinkage=.1)}
+## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)
+dreg_boost <- function(x, d) {
+  gbm(as.formula("D~."), cbind(data.frame(D = d), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg_boost <- function(x, y) {
+  gbm(as.formula("y~."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
 
 # passing these through regression as type="response", and D should not be factor!
-DML2.results = DML2.for.PLM(X, D, y, dreg.boost, yreg.boost, nfold=5, method = "boostedtrees")
-sum.boost <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Boosted Trees')
-tableplr <- rbind(tableplr, sum.boost)
+dml2_results <- dml2_for_plm(X, D, y, dreg_boost, yreg_boost, nfold = 5, method = "boostedtrees")
+sum_boost <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                        dml2_results$ytil, name = "Boosted Trees")
+tableplr <- rbind(tableplr, sum_boost)
 tableplr
 ```
 
 ```{r}
 # Because residuals are output, reconstruct fitted values for use in ensemble
-dhat.boost <- D - DML2.results$dtil
-yhat.boost <- y - DML2.results$ytil
+dhat_boost <- D - dml2_results$dtil
+yhat_boost <- y - dml2_results$ytil
 ```
 
 ## Ensembles
@@ -317,8 +350,9 @@ Boosted trees give the best RMSE for both Y and D, so the ensemble based on choo
 ```{r}
 # Best fit is boosted trees for both D and Y
 
-sum.best <- summaryPLR(DML2.results$coef.est, DML2.results$se, DML2.results$dtil, DML2.results$ytil, name = 'Best')
-tableplr <- rbind(tableplr, sum.best)
+sum_best <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,
+                       dml2_results$ytil, name = "Best")
+tableplr <- rbind(tableplr, sum_best)
 tableplr
 ```
 
@@ -327,14 +361,14 @@ We'll form a model average with unconstrained least squares weights.
 ```{r}
 # Least squares model average
 
-ma.dtil <- lm(D~dhat.lasso+dhat.lasso_logistic+dhat.rf+dhat.tr+dhat.boost)$residuals
-ma.ytil <- lm(y~yhat.lasso+yhat.lasso_logistic+yhat.rf+yhat.tr+yhat.boost)$residuals
+ma_dtil <- lm(D ~ dhat_lasso + dhat_lasso_logistic + dhat_rf + dhat_tr + dhat_boost)$residuals
+ma_ytil <- lm(y ~ yhat_lasso + yhat_lasso_logistic + dhat_rf + yhat_tr + yhat_boost)$residuals
 
-rfit <- lm(ma.ytil ~ ma.dtil)    #estimate the main parameter by regressing one residual on the other
-coef.est <- coef(rfit)[2]  #extract coefficient
-se <- sqrt(vcovHC(rfit)[2,2]) #record robust standard error
+rfit <- lm(ma_ytil ~ ma_dtil) # estimate the main parameter by regressing one residual on the other
+coef_est <- coef(rfit)[2] # extract coefficient
+se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error
 
-sum.ma <- summaryPLR(coef.est, se, ma.dtil, ma.ytil, name = 'Model Average')
+sum.ma <- summaryPLR(coef_est, se, ma_dtil, ma_ytil, name = "Model Average")
 tableplr <- rbind(tableplr, sum.ma)
 tableplr
 ```
@@ -343,107 +377,107 @@ tableplr
 
 Next, we consider estimation of average treatment effects when treatment effects are fully heterogeneous:
 
- \begin{eqnarray}\label{eq: HetPL1}
+ \begin{align}
  & Y  = g_0(D, X) + U,  &  \quad E[U \mid X, D]= 0,\\
   & D  = m_0(X) + V,  & \quad  E[V\mid X] = 0.
-\end{eqnarray}
+\end{align}
 
 To reduce the disproportionate impact of extreme propensity score weights in the interactive model
 we trim the propensity scores which are close to the bounds.
 
 ```{r}
-DML2.for.IRM <- function(x, d, y, dreg, yreg0, yreg1, trimming=0.01, nfold=5, method="regression") {
+dml2_for_irm <- function(x, d, y, dreg, yreg0, yreg1, trimming = 0.01, nfold = 5, method = "regression") {
   yhat0 <- rep(0, length(y))
   yhat1 <- rep(0, length(y))
   Dhat <- rep(0, length(d))
 
-  nobs <- nrow(x) #number of observations
-  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] #define folds indices
-  I <- split(1:nobs, foldid)  #split observation indices into folds
+  nobs <- nrow(x) # number of observations
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid) # split observation indices into folds
   ytil <- dtil <- rep(NA, nobs)
 
   cat("fold: ")
-  for(b in 1:length(I)){
-
+  for (b in seq_along(I)) {
     # define helpful variables
-    Dnotb = d[-I[[b]]]
-    Xb = X[I[[b]],]
-    Xnotb = X[-I[[b]],]
+    Dnotb <- d[-I[[b]]]
+    Xb <- X[I[[b]], ]
+    Xnotb <- X[-I[[b]], ]
 
     # training dfs subsetted on the -I[[b]] fold
-    XD0 = X[-I[[b]],][d[-I[[b]]]==0]
-    yD0 = y[-I[[b]]][d[-I[[b]]]==0]
-    XD1 = X[-I[[b]],][d[-I[[b]]]==1]
-    yD1 = y[-I[[b]]][d[-I[[b]]]==1]
+    XD0 <- X[-I[[b]], ][d[-I[[b]]] == 0]
+    yD0 <- y[-I[[b]]][d[-I[[b]]] == 0]
+    XD1 <- X[-I[[b]], ][d[-I[[b]]] == 1]
+    yD1 <- y[-I[[b]]][d[-I[[b]]] == 1]
 
     if (method == "regression") {
-        yfit0 <- yreg0(as.matrix(XD0), yD0)
-        yfit1 <- yreg1(as.matrix(XD1), yD1)
-        yhat0[I[[b]]] <- predict(yfit0, as.matrix(Xb)) # default is type = "response" for glmnet family gaussian
-        yhat1[I[[b]]] <- predict(yfit1, as.matrix(Xb))
+      yfit0 <- yreg0(as.matrix(XD0), yD0)
+      yfit1 <- yreg1(as.matrix(XD1), yD1)
+      yhat0[I[[b]]] <- predict(yfit0, as.matrix(Xb)) # default is type = "response" for glmnet family gaussian
+      yhat1[I[[b]]] <- predict(yfit1, as.matrix(Xb))
     } else if (method == "randomforest") {
-        yfit0 <- yreg0(XD0, yD0)
-        yfit1 <- yreg1(XD1, yD1)
-        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "response" for rf
-        yhat1[I[[b]]] <- predict(yfit1, Xb)
+      yfit0 <- yreg0(XD0, yD0)
+      yfit1 <- yreg1(XD1, yD1)
+      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "response" for rf
+      yhat1[I[[b]]] <- predict(yfit1, Xb)
     } else if (method == "decisiontrees") {
-        yfit0 <- yreg0(XD0, yD0)
-        yfit1 <- yreg1(XD1, yD1)
-        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "vector" for decision
-        yhat1[I[[b]]] <- predict(yfit1, Xb)
+      yfit0 <- yreg0(XD0, yD0)
+      yfit1 <- yreg1(XD1, yD1)
+      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "vector" for decision
+      yhat1[I[[b]]] <- predict(yfit1, Xb)
     } else if (method == "boostedtrees") {
-        yfit0 <- yreg0(as.data.frame(XD0), yD0)
-        yfit1 <- yreg1(as.data.frame(XD1), yD1)
-        yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "response" for boosted
-        yhat1[I[[b]]] <- predict(yfit1, Xb)
+      yfit0 <- yreg0(as.data.frame(XD0), yD0)
+      yfit1 <- yreg1(as.data.frame(XD1), yD1)
+      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = "response" for boosted
+      yhat1[I[[b]]] <- predict(yfit1, Xb)
     }
 
     # propensity scores:
-    if (method == "regression"){
-      Dfit_b <- dreg(as.matrix(Xnotb), Dnotb)
-      Dhat_b <- predict(Dfit_b, as.matrix(Xb), type="response") # default is type="link" for family binomial!
+    if (method == "regression") {
+      dfit_b <- dreg(as.matrix(Xnotb), Dnotb)
+      dhat_b <- predict(dfit_b, as.matrix(Xb), type = "response") # default is type="link" for family binomial!
     } else if (method == "randomforest") {
-      Dfit_b <- dreg(Xnotb, as.factor(Dnotb))
-      Dhat_b <- predict(Dfit_b, Xb, type = "prob")[,2]
+      dfit_b <- dreg(Xnotb, as.factor(Dnotb))
+      dhat_b <- predict(dfit_b, Xb, type = "prob")[, 2]
     } else if (method == "decisiontrees") {
-      Dfit_b <- dreg(Xnotb, Dnotb)
-      Dhat_b <- predict(Dfit_b, Xb)[,2]
+      dfit_b <- dreg(Xnotb, Dnotb)
+      dhat_b <- predict(dfit_b, Xb)[, 2]
     } else if (method == "boostedtrees") {
-      Dfit_b <- dreg(as.data.frame(Xnotb), Dnotb)
-      Dhat_b <- predict(Dfit_b, Xb, type="response")
+      dfit_b <- dreg(as.data.frame(Xnotb), Dnotb)
+      dhat_b <- predict(dfit_b, Xb, type = "response")
     }
-    Dhat_b <- pmax(pmin(Dhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]
-    Dhat[I[[b]]] <- Dhat_b
+    dhat_b <- pmax(pmin(dhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]
+    Dhat[I[[b]]] <- dhat_b
 
-
-    cat(b," ")
+    cat(b, " ")
   }
 
   # Prediction of treatment and outcome for observed instrument
   yhat <- yhat0 * (1 - D) + yhat1 * D
   # residuals
-  ytil <- y-yhat
-  dtil <- D-Dhat
+  ytil <- y - yhat
+  dtil <- D - Dhat
   # doubly robust quantity for every sample
-  drhat <- yhat1 - yhat0 + (y-yhat)* (D/Dhat - (1 - D)/(1 - Dhat))
-  coef.est <- mean(drhat)
+  drhat <- yhat1 - yhat0 + (y - yhat) * (D / Dhat - (1 - D) / (1 - Dhat))
+  coef_est <- mean(drhat)
   vari <- var(drhat)
-  se <- sqrt(vari/nrow(X))
-  cat("point", coef.est)
+  se <- sqrt(vari / nrow(X))
+  cat("point", coef_est)
   cat("se", se)
-  return(list(coef.est = coef.est, se = se, ytil = ytil, dtil = dtil, drhat = drhat, yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))
+  return(list(coef_est = coef_est, se = se, ytil = ytil, dtil = dtil, drhat = drhat,
+              yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))
 }
 ```
 
 ```{r}
-summaryIRM <- function(coef.est, se, ytil, dtil, drhat, name) {
-  summary_data <- data.frame(estimate = coef.est,  # point estimate
-                             se = se,  # standard error
-                             lower = coef.est - 1.96 * se,  # lower end of 95% confidence interval
-                             upper = coef.est + 1.96 * se,  # upper end of 95% confidence interval
-                             rmse_y = sqrt(mean(ytil^2)),  # res of model that predicts outcome y
-                             rmse_D = sqrt(mean(dtil^2)),  # res of model that predicts treatment D
-                             accuracy_D = mean(abs(dtil) < 0.5)  # binary classification accuracy of model for D
+summaryIRM <- function(coef_est, se, ytil, dtil, drhat, name) {
+  summary_data <- data.frame(
+    estimate = coef_est, # point estimate
+    se = se, # standard error
+    lower = coef_est - 1.96 * se, # lower end of 95% confidence interval
+    upper = coef_est + 1.96 * se, # upper end of 95% confidence interval
+    rmse_y = sqrt(mean(ytil^2)), # res of model that predicts outcome y
+    rmse_D = sqrt(mean(dtil^2)), # res of model that predicts treatment D
+    accuracy_D = mean(abs(dtil) < 0.5) # binary classification accuracy of model for D
   )
   row.names(summary_data) <- name
   return(summary_data)
@@ -457,20 +491,28 @@ summaryIRM <- function(coef.est, se, ytil, dtil, drhat, name) {
 set.seed(123)
 cat(sprintf("\nDML with LassoCV/Logistic \n"))
 
-dreg.lasso.cv <- function(x,d){cv.glmnet(x, d, family="binomial", alpha=0, nfolds=5)}
-yreg0.lasso.cv <- function(x,y){cv.glmnet(x, y, family="gaussian", alpha=1, nfolds=5)}
-yreg1.lasso.cv <- function(x,y){cv.glmnet(x, y, family="gaussian", alpha=1, nfolds=5)}
+dreg_lasso_cv <- function(x, d) {
+  cv.glmnet(x, d, family = "binomial", alpha = 0, nfolds = 5)
+}
+yreg0_lasso_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
+yreg1_lasso_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
 
-DML2.results <- DML2.for.IRM(X, D, y, dreg.lasso.cv, yreg0.lasso.cv, yreg1.lasso.cv, nfold=5) # more folds seems to help stabilize finite sample performance
-sum.lasso.cv <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'LassoCVLogistic')
+# more folds seems to help stabilize finite sample performance
+dml2_results <- dml2_for_irm(X, D, y, dreg_lasso_cv, yreg0_lasso_cv, yreg1_lasso_cv, nfold = 5)
+sum_lasso_cv <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                           dml2_results$drhat, name = "LassoCVLogistic")
 tableirm <- data.frame()
-tableirm <- rbind(sum.lasso.cv)
+tableirm <- rbind(sum_lasso_cv)
 tableirm
 
-yhat0.lasso <- DML2.results$yhat0
-yhat1.lasso <- DML2.results$yhat1
-dhat.lasso <- DML2.results$dhat
-yhat.lasso <- DML2.results$yhat
+yhat0_lasso <- dml2_results$yhat0
+yhat1_lasso <- dml2_results$yhat1
+dhat_lasso <- dml2_results$dhat
+yhat_lasso <- dml2_results$yhat
 ```
 
 ```{r}
@@ -478,20 +520,27 @@ yhat.lasso <- DML2.results$yhat
 set.seed(123)
 cat(sprintf("\nDML with Random Forest \n"))
 
-dreg.rf <- function(x,d){randomForest(x, d, ntree=1000, nodesize=10)}  #ML method=Forest
-yreg0.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest
-yreg1.rf <- function(x,y){randomForest(x, y, ntree=1000, nodesize=10)}  #ML method=Forest
+dreg_rf <- function(x, d) {
+  randomForest(x, d, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg0_rf <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg1_rf <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
 
 
-DML2.results <- DML2.for.IRM(as.matrix(X), D, y, dreg.rf, yreg0.rf, yreg1.rf, nfold=5, method = "randomforest")
-sum.rf <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Random Forest')
-tableirm <- rbind(tableirm, sum.rf)
+dml2_results <- dml2_for_irm(as.matrix(X), D, y, dreg_rf, yreg0_rf, yreg1_rf, nfold = 5, method = "randomforest")
+sum_rf <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                     dml2_results$drhat, name = "Random Forest")
+tableirm <- rbind(tableirm, sum_rf)
 tableirm
 
-yhat0.rf <- DML2.results$yhat0
-yhat1.rf <- DML2.results$yhat1
-dhat.rf <- DML2.results$dhat
-yhat.rf <- DML2.results$yhat
+yhat0_rf <- dml2_results$yhat0
+yhat1_rf <- dml2_results$yhat1
+dhat_rf <- dml2_results$dhat
+dhat_rf <- dml2_results$yhat
 ```
 
 ```{r}
@@ -499,19 +548,26 @@ yhat.rf <- DML2.results$yhat
 set.seed(123)
 cat(sprintf("\nDML with Decision Trees \n"))
 
-dreg.tr <- function(x,d){rpart(as.formula("D~."), cbind(data.frame(D=d),x), method = "class", minbucket=10, cp = 0.001)}
-yreg0.tr <- function(x,y){rpart(as.formula("y~."), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}
-yreg1.tr <- function(x,y){rpart(as.formula("y~."), cbind(data.frame(y=y),x), minbucket=10, cp = 0.001)}
+dreg_tr <- function(x, d) {
+  rpart(as.formula("D~."), cbind(data.frame(D = d), x), method = "class", minbucket = 10, cp = 0.001)
+}
+yreg0_tr <- function(x, y) {
+  rpart(as.formula("y~."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
+yreg1_tr <- function(x, y) {
+  rpart(as.formula("y~."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
 
-DML2.results <- DML2.for.IRM(X, D, y, dreg.tr, yreg0.tr, yreg1.tr, nfold=5, method = "decisiontrees")
-sum.tr <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Decision Trees')
-tableirm <- rbind(tableirm, sum.tr)
+dml2_results <- dml2_for_irm(X, D, y, dreg_tr, yreg0_tr, yreg1_tr, nfold = 5, method = "decisiontrees")
+sum_tr <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                     dml2_results$drhat, name = "Decision Trees")
+tableirm <- rbind(tableirm, sum_tr)
 tableirm
 
-yhat0.tr <- DML2.results$yhat0
-yhat1.tr <- DML2.results$yhat1
-dhat.tr <- DML2.results$dhat
-yhat.tr <- DML2.results$yhat
+yhat0_tr <- dml2_results$yhat0
+yhat1_tr <- dml2_results$yhat1
+dhat_tr <- dml2_results$dhat
+yhat_tr <- dml2_results$yhat
 ```
 
 ```{r}
@@ -520,21 +576,31 @@ set.seed(123)
 cat(sprintf("\nDML with Boosted Trees \n"))
 
 # NB: early stopping cannot easily be implemented with gbm
-## set n.trees = best, where best <- gbm.perf(dreg.boost, plot.it = FALSE)
-dreg.boost  <- function(x,d){gbm(as.formula("D~."), cbind(data.frame(D=d),x), distribution= "bernoulli", interaction.depth=2, n.trees=100, shrinkage=.1)}
-yreg0.boost  <- function(x,y){gbm(as.formula("y~."), cbind(data.frame(y=y),x), distribution= "gaussian", interaction.depth=2, n.trees=100, shrinkage=.1)}
-yreg1.boost  <- function(x,y){gbm(as.formula("y~."), cbind(data.frame(y=y),x), distribution= "gaussian", interaction.depth=2, n.trees=100, shrinkage=.1)}
+## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)
+dreg_boost <- function(x, d) {
+  gbm(as.formula("D~."), cbind(data.frame(D = d), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg0_boost <- function(x, y) {
+  gbm(as.formula("y~."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg1_boost <- function(x, y) {
+  gbm(as.formula("y~."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
 
 # passing these through regression as type="response", and D should not be factor!
-DML2.results = DML2.for.IRM(X, D, y, dreg.boost, yreg0.boost, yreg1.boost, nfold=5, method = "boostedtrees")
-sum.boost <- summaryIRM(DML2.results$coef.est, DML2.results$se, DML2.results$ytil, DML2.results$dtil, DML2.results$drhat, name = 'Boosted Trees')
-tableirm <- rbind(tableirm, sum.boost)
+dml2_results <- dml2_for_irm(X, D, y, dreg_boost, yreg0_boost, yreg1_boost, nfold = 5, method = "boostedtrees")
+sum_boost <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                        dml2_results$drhat, name = "Boosted Trees")
+tableirm <- rbind(tableirm, sum_boost)
 tableirm
 
-yhat0.boost <- DML2.results$yhat0
-yhat1.boost <- DML2.results$yhat1
-dhat.boost <- DML2.results$dhat
-yhat.boost <- DML2.results$yhat
+yhat0_boost <- dml2_results$yhat0
+yhat1_boost <- dml2_results$yhat1
+dhat_boost <- dml2_results$dhat
+yhat_boost <- dml2_results$yhat
 ```
 
 ```{r}
@@ -545,16 +611,16 @@ yhat.boost <- DML2.results$yhat
 # Here, the best performance for Y is the random forest and for D the boosted tree
 
 # residuals
-ytil <- y-yhat.rf
-dtil <- D-dhat.boost
+ytil <- y - dhat_rf
+dtil <- D - dhat_boost
 # doubly robust quantity for every sample
-drhat <- yhat1.rf - yhat0.rf + (y-yhat.rf)* (D/dhat.boost - (1 - D)/(1 - dhat.boost))
-coef.est <- mean(drhat)
+drhat <- yhat1_rf - yhat0_rf + (y - dhat_rf) * (D / dhat_boost - (1 - D) / (1 - dhat_boost))
+coef_est <- mean(drhat)
 vari <- var(drhat)
-se <- sqrt(vari/nrow(X))
+se <- sqrt(vari / nrow(X))
 
-sum.best <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Best')
-tableirm <- rbind(tableirm, sum.best)
+sum_best <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = "Best")
+tableirm <- rbind(tableirm, sum_best)
 tableirm
 ```
 
@@ -562,29 +628,29 @@ tableirm
 # Least squares model average
 # We'll look at weights that do best job for Y overall. Could also use different weights for Y0 and Y1
 
-ma.dw <- lm(D~dhat.lasso+dhat.rf+dhat.tr+dhat.boost)$coef
-ma.yw <- lm(y~yhat.lasso+yhat.rf+yhat.tr+yhat.boost)$coef
+ma_dw <- lm(D ~ dhat_lasso + dhat_rf + dhat_tr + dhat_boost)$coef
+ma_yw <- lm(y ~ yhat_lasso + dhat_rf + yhat_tr + yhat_boost)$coef
 
-Dhats <- cbind(as.matrix(rep(1,nrow(X))),dhat.lasso,dhat.rf,dhat.tr,dhat.boost)
-Y0s <- cbind(as.matrix(rep(1,nrow(X))),yhat0.lasso,yhat0.rf,yhat0.tr,yhat0.boost)
-Y1s <- cbind(as.matrix(rep(1,nrow(X))),yhat1.lasso,yhat1.rf,yhat1.tr,yhat1.boost)
+Dhats <- cbind(as.matrix(rep(1, nrow(X))), dhat_lasso, dhat_rf, dhat_tr, dhat_boost)
+Y0s <- cbind(as.matrix(rep(1, nrow(X))), yhat0_lasso, yhat0_rf, yhat0_tr, yhat0_boost)
+Y1s <- cbind(as.matrix(rep(1, nrow(X))), yhat1_lasso, yhat1_rf, yhat1_tr, yhat1_boost)
 
-dhat <- Dhats%*%as.matrix(ma.dw)
-yhat0 <- Y0s%*%as.matrix(ma.yw)
-yhat1 <- Y1s%*%as.matrix(ma.yw)
+dhat <- Dhats %*% as.matrix(ma_dw)
+yhat0 <- Y0s %*% as.matrix(ma_yw)
+yhat1 <- Y1s %*% as.matrix(ma_yw)
 
 # Prediction of treatment and outcome for observed instrument
 yhat <- yhat0 * (1 - D) + yhat1 * D
 # residuals
-ytil <- y-yhat
-dtil <- D-dhat
+ytil <- y - yhat
+dtil <- D - dhat
 # doubly robust quantity for every sample
-drhat <- yhat1 - yhat0 + (y-yhat)* (D/dhat - (1 - D)/(1 - dhat))
-coef.est <- mean(drhat)
+drhat <- yhat1 - yhat0 + (y - yhat) * (D / dhat - (1 - D) / (1 - dhat))
+coef_est <- mean(drhat)
 vari <- var(drhat)
-se <- sqrt(vari/nrow(X))
+se <- sqrt(vari / nrow(X))
 
-sum.ma <- summaryIRM(coef.est, se, ytil, dtil, drhat, name = 'Model Average')
+sum.ma <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = "Model Average")
 tableirm <- rbind(tableirm, sum.ma)
 tableirm
 ```
@@ -615,17 +681,14 @@ library(ranger)
 
 ```{r}
 # Constructing the data (as DoubleMLData)
-formula_flex = "net_tfa ~ e401 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + marr + twoearn + db + pira + hown"
-model_flex = as.data.table(model.frame(formula_flex, pension))
-x_cols = colnames(model_flex)[-c(1,2)]
-data_ml = DoubleMLData$new(model_flex, y_col = "net_tfa", d_cols = "e401", x_cols=x_cols)
+formula_flex <- paste("net_tfa ~ e401 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) ",
+                      "+ poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + marr + twoearn + db + pira + hown")
+model_flex <- as.data.table(model.frame(formula_flex, pension))
+x_cols <- colnames(model_flex)[-c(1, 2)]
+data_ml <- DoubleMLData$new(model_flex, y_col = "net_tfa", d_cols = "e401", x_cols = x_cols)
 
-
-p <- dim(model_flex)[2]-2
+p <- dim(model_flex)[2] - 2
 p
-
-# complex model with two-way interactions
-#data_interactions = fetch_401k(polynomial_features = TRUE, instrument = FALSE)
 ```
 
 As mentioned, in the tutorial we use the meta package `mlr3` to generate predictions with machine learning methods. A comprehensive introduction and description of the `mlr3` package is provided in the [mlr3book](https://mlr3book.mlr-org.com/). A list of all learners that you can use in `mlr3` can be found [here](https://mlr3extralearners.mlr-org.com/articles/learners/list_learners.html). The entry in the columns *mlr3 Package* and *Packages* indicate which packages must be installed/loaded in your R session.
@@ -635,11 +698,11 @@ As mentioned, in the tutorial we use the meta package `mlr3` to generate predict
 ```{r}
 # Estimating the PLR
 lgr::get_logger("mlr3")$set_threshold("warn")
-lasso <- lrn("regr.cv_glmnet",nfolds = 5, s = "lambda.min")
+lasso <- lrn("regr.cv_glmnet", nfolds = 5, s = "lambda.min")
 lasso_class <- lrn("classif.cv_glmnet", nfolds = 5, s = "lambda.min")
 
-dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds=5)
-dml_plr$fit(store_predictions=TRUE)
+dml_plr <- DoubleMLPLR$new(data_ml, ml_l = lasso, ml_m = lasso_class, n_folds = 5)
+dml_plr$fit(store_predictions = TRUE)
 dml_plr$summary()
 lasso_plr <- dml_plr$coef
 lasso_std_plr <- dml_plr$se
@@ -658,15 +721,15 @@ m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o
 y <- as.matrix(pension$net_tfa) # true observations
 theta <- as.numeric(dml_plr$coef) # estimated regression coefficient
 d <- as.matrix(pension$e401)
-predictions_y <- as.matrix(d*theta)+g_hat # predictions for y
-lasso_y_rmse <- sqrt(mean((y-predictions_y)^2))
+predictions_y <- as.matrix(d * theta) + g_hat # predictions for y
+lasso_y_rmse <- sqrt(mean((y - predictions_y)^2))
 lasso_y_rmse
 ```
 
 ```{r}
 # cross-fitted RMSE: treatment
 d <- as.matrix(pension$e401)
-lasso_d_rmse <- sqrt(mean((d-m_hat)^2))
+lasso_d_rmse <- sqrt(mean((d - m_hat)^2))
 lasso_d_rmse
 
 # cross-fitted ce: treatment
@@ -679,10 +742,10 @@ Then, we repeat this procedure for various machine learning methods.
 # Random Forest
 lgr::get_logger("mlr3")$set_threshold("warn")
 randomForest <- lrn("regr.ranger")
-randomForest_class <- lrn("classif.ranger")
+random_forest_class <- lrn("classif.ranger")
 
-dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = randomForest_class, n_folds=5)
-dml_plr$fit(store_predictions=TRUE) # set store_predictions=TRUE to evaluate the model
+dml_plr <- DoubleMLPLR$new(data_ml, ml_l = randomForest, ml_m = random_forest_class, n_folds = 5)
+dml_plr$fit(store_predictions = TRUE) # set store_predictions=TRUE to evaluate the model
 dml_plr$summary()
 forest_plr <- dml_plr$coef
 forest_std_plr <- dml_plr$se
@@ -695,12 +758,12 @@ We can compare the accuracy of this model to the model that has been estimated w
 g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o
 m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o
 theta <- as.numeric(dml_plr$coef) # estimated regression coefficient
-predictions_y <- as.matrix(d*theta)+g_hat # predictions for y
-forest_y_rmse <- sqrt(mean((y-predictions_y)^2))
+predictions_y <- as.matrix(d * theta) + g_hat # predictions for y
+forest_y_rmse <- sqrt(mean((y - predictions_y)^2))
 forest_y_rmse
 
 # cross-fitted RMSE: treatment
-forest_d_rmse <- sqrt(mean((d-m_hat)^2))
+forest_d_rmse <- sqrt(mean((d - m_hat)^2))
 forest_d_rmse
 
 # cross-fitted ce: treatment
@@ -714,8 +777,8 @@ lgr::get_logger("mlr3")$set_threshold("warn")
 trees <- lrn("regr.rpart")
 trees_class <- lrn("classif.rpart")
 
-dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds=5)
-dml_plr$fit(store_predictions=TRUE)
+dml_plr <- DoubleMLPLR$new(data_ml, ml_l = trees, ml_m = trees_class, n_folds = 5)
+dml_plr$fit(store_predictions = TRUE)
 dml_plr$summary()
 tree_plr <- dml_plr$coef
 tree_std_plr <- dml_plr$se
@@ -724,12 +787,12 @@ tree_std_plr <- dml_plr$se
 g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o
 m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o
 theta <- as.numeric(dml_plr$coef) # estimated regression coefficient
-predictions_y <- as.matrix(d*theta)+g_hat # predictions for y
-tree_y_rmse <- sqrt(mean((y-predictions_y)^2))
+predictions_y <- as.matrix(d * theta) + g_hat # predictions for y
+tree_y_rmse <- sqrt(mean((y - predictions_y)^2))
 tree_y_rmse
 
 # cross-fitted RMSE: treatment
-tree_d_rmse <- sqrt(mean((d-m_hat)^2))
+tree_d_rmse <- sqrt(mean((d - m_hat)^2))
 tree_d_rmse
 
 # cross-fitted ce: treatment
@@ -747,11 +810,11 @@ library(mboost)
 
 ```{r}
 # Boosting
-boost<- lrn("regr.glmboost")
+boost <- lrn("regr.glmboost")
 boost_class <- lrn("classif.glmboost")
 
-dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds=5)
-dml_plr$fit(store_predictions=TRUE)
+dml_plr <- DoubleMLPLR$new(data_ml, ml_l = boost, ml_m = boost_class, n_folds = 5)
+dml_plr$fit(store_predictions = TRUE)
 dml_plr$summary()
 boost_plr <- dml_plr$coef
 boost_std_plr <- dml_plr$se
@@ -760,12 +823,12 @@ boost_std_plr <- dml_plr$se
 g_hat <- as.matrix(dml_plr$predictions$ml_l) # predictions of g_o
 m_hat <- as.matrix(dml_plr$predictions$ml_m) # predictions of m_o
 theta <- as.numeric(dml_plr$coef) # estimated regression coefficient
-predictions_y <- as.matrix(d*theta)+g_hat # predictions for y
-boost_y_rmse <- sqrt(mean((y-predictions_y)^2))
+predictions_y <- as.matrix(d * theta) + g_hat # predictions for y
+boost_y_rmse <- sqrt(mean((y - predictions_y)^2))
 boost_y_rmse
 
 # cross-fitted RMSE: treatment
-boost_d_rmse <- sqrt(mean((d-m_hat)^2))
+boost_d_rmse <- sqrt(mean((d - m_hat)^2))
 boost_d_rmse
 
 # cross-fitted ce: treatment
@@ -776,13 +839,13 @@ Let's sum up the results:
 
 ```{r}
 table <- matrix(0, 4, 4)
-table[1,1:4]   <- c(lasso_plr,forest_plr,tree_plr,boost_plr)
-table[2,1:4]   <- c(lasso_std_plr,forest_std_plr,tree_std_plr,boost_std_plr)
-table[3,1:4]   <- c(lasso_y_rmse,forest_y_rmse,tree_y_rmse,boost_y_rmse)
-table[4,1:4]   <- c(lasso_d_rmse,forest_d_rmse,tree_d_rmse,boost_d_rmse)
-rownames(table) <- c("Estimate","Std.Error","RMSE Y","RMSE D")
-colnames(table) <- c("Lasso","Random Forest","Trees","Boosting")
-tab<- xtable(table, digits = 2)
+table[1, 1:4] <- c(lasso_plr, forest_plr, tree_plr, boost_plr)
+table[2, 1:4] <- c(lasso_std_plr, forest_std_plr, tree_std_plr, boost_std_plr)
+table[3, 1:4] <- c(lasso_y_rmse, forest_y_rmse, tree_y_rmse, boost_y_rmse)
+table[4, 1:4] <- c(lasso_d_rmse, forest_d_rmse, tree_d_rmse, boost_d_rmse)
+rownames(table) <- c("Estimate", "Std.Error", "RMSE Y", "RMSE D")
+colnames(table) <- c("Lasso", "Random Forest", "Trees", "Boosting")
+tab <- xtable(table, digits = 2)
 tab
 ```
 
@@ -796,10 +859,12 @@ lasso_plr
 
 ```{r}
 lgr::get_logger("mlr3")$set_threshold("warn")
-dml_irm = DoubleMLIRM$new(data_ml, ml_g = lasso,
-                          ml_m = lasso_class,
-                          trimming_threshold = 0.01, n_folds=5)
-dml_irm$fit(store_predictions=TRUE)
+dml_irm <- DoubleMLIRM$new(data_ml,
+  ml_g = lasso,
+  ml_m = lasso_class,
+  trimming_threshold = 0.01, n_folds = 5
+)
+dml_irm$fit(store_predictions = TRUE)
 dml_irm$summary()
 lasso_irm <- dml_irm$coef
 lasso_std_irm <- dml_irm$se
@@ -809,7 +874,7 @@ lasso_std_irm <- dml_irm$se
 dml_irm$params_names()
 g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)
 g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)
-g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0
+g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0
 m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o
 ```
 
@@ -817,11 +882,11 @@ m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o
 # cross-fitted RMSE: outcome
 y <- as.matrix(pension$net_tfa) # true observations
 d <- as.matrix(pension$e401)
-lasso_y_irm <- sqrt(mean((y-g_hat)^2))
+lasso_y_irm <- sqrt(mean((y - g_hat)^2))
 lasso_y_irm
 
 # cross-fitted RMSE: treatment
-lasso_d_irm <- sqrt(mean((d-m_hat)^2))
+lasso_d_irm <- sqrt(mean((d - m_hat)^2))
 lasso_d_irm
 
 # cross-fitted ce: treatment
@@ -831,10 +896,12 @@ mean(ifelse(m_hat > 0.5, 1, 0) != d)
 ```{r}
 ##### forest #####
 
-dml_irm = DoubleMLIRM$new(data_ml, ml_g = randomForest,
-                          ml_m = randomForest_class,
-                          trimming_threshold = 0.01, n_folds=5)
-dml_irm$fit(store_predictions=TRUE)
+dml_irm <- DoubleMLIRM$new(data_ml,
+  ml_g = randomForest,
+  ml_m = random_forest_class,
+  trimming_threshold = 0.01, n_folds = 5
+)
+dml_irm$fit(store_predictions = TRUE)
 dml_irm$summary()
 forest_irm <- dml_irm$coef
 forest_std_irm <- dml_plr$se
@@ -842,17 +909,17 @@ forest_std_irm <- dml_plr$se
 # predictions
 g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)
 g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)
-g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0
+g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0
 m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_0
 
 # cross-fitted RMSE: outcome
 y <- as.matrix(pension$net_tfa) # true observations
 d <- as.matrix(pension$e401)
-forest_y_irm <- sqrt(mean((y-g_hat)^2))
+forest_y_irm <- sqrt(mean((y - g_hat)^2))
 forest_y_irm
 
 # cross-fitted RMSE: treatment
-forest_d_irm <- sqrt(mean((d-m_hat)^2))
+forest_d_irm <- sqrt(mean((d - m_hat)^2))
 forest_d_irm
 
 # cross-fitted ce: treatment
@@ -860,9 +927,11 @@ mean(ifelse(m_hat > 0.5, 1, 0) != d)
 
 ##### trees #####
 
-dml_irm <- DoubleMLIRM$new(data_ml, ml_g = trees, ml_m = trees_class,
-                           trimming_threshold = 0.01, n_folds=5)
-dml_irm$fit(store_predictions=TRUE)
+dml_irm <- DoubleMLIRM$new(data_ml,
+  ml_g = trees, ml_m = trees_class,
+  trimming_threshold = 0.01, n_folds = 5
+)
+dml_irm$fit(store_predictions = TRUE)
 dml_irm$summary()
 tree_irm <- dml_irm$coef
 tree_std_irm <- dml_irm$se
@@ -870,17 +939,17 @@ tree_std_irm <- dml_irm$se
 # predictions
 g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)
 g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)
-g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0
+g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0
 m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o
 
 # cross-fitted RMSE: outcome
 y <- as.matrix(pension$net_tfa) # true observations
 d <- as.matrix(pension$e401)
-tree_y_irm <- sqrt(mean((y-g_hat)^2))
+tree_y_irm <- sqrt(mean((y - g_hat)^2))
 tree_y_irm
 
 # cross-fitted RMSE: treatment
-tree_d_irm <- sqrt(mean((d-m_hat)^2))
+tree_d_irm <- sqrt(mean((d - m_hat)^2))
 tree_d_irm
 
 # cross-fitted ce: treatment
@@ -889,9 +958,11 @@ mean(ifelse(m_hat > 0.5, 1, 0) != d)
 
 ##### boosting #####
 
-dml_irm <- DoubleMLIRM$new(data_ml, ml_g = boost, ml_m = boost_class,
-                           trimming_threshold = 0.01, n_folds=5)
-dml_irm$fit(store_predictions=TRUE)
+dml_irm <- DoubleMLIRM$new(data_ml,
+  ml_g = boost, ml_m = boost_class,
+  trimming_threshold = 0.01, n_folds = 5
+)
+dml_irm$fit(store_predictions = TRUE)
 dml_irm$summary()
 boost_irm <- dml_irm$coef
 boost_std_irm <- dml_irm$se
@@ -899,17 +970,17 @@ boost_std_irm <- dml_irm$se
 # predictions
 g0_hat <- as.matrix(dml_irm$predictions$ml_g0) # predictions of g_0(D=0, X)
 g1_hat <- as.matrix(dml_irm$predictions$ml_g1) # predictions of g_0(D=1, X)
-g_hat <- d*g1_hat+(1-d)*g0_hat # predictions of g_0
+g_hat <- d * g1_hat + (1 - d) * g0_hat # predictions of g_0
 m_hat <- as.matrix(dml_irm$predictions$ml_m) # predictions of m_o
 
 # cross-fitted RMSE: outcome
 y <- as.matrix(pension$net_tfa) # true observations
 d <- as.matrix(pension$e401)
-boost_y_irm <- sqrt(mean((y-g_hat)^2))
+boost_y_irm <- sqrt(mean((y - g_hat)^2))
 boost_y_irm
 
 # cross-fitted RMSE: treatment
-boost_d_irm <- sqrt(mean((d-m_hat)^2))
+boost_d_irm <- sqrt(mean((d - m_hat)^2))
 boost_d_irm
 
 # cross-fitted ce: treatment
@@ -918,13 +989,13 @@ mean(ifelse(m_hat > 0.5, 1, 0) != d)
 
 ```{r}
 table <- matrix(0, 4, 4)
-table[1,1:4]   <- c(lasso_irm,forest_irm,tree_irm,boost_irm)
-table[2,1:4]   <- c(lasso_std_irm,forest_std_irm,tree_std_irm,boost_std_irm)
-table[3,1:4]   <- c(lasso_y_irm,forest_y_irm,tree_y_irm,boost_y_irm)
-table[4,1:4]   <- c(lasso_d_irm,forest_d_irm,tree_d_irm,boost_d_irm)
-rownames(table) <- c("Estimate","Std.Error","RMSE Y","RMSE D")
-colnames(table) <- c("Lasso","Random Forest","Trees","Boosting")
-tab<- xtable(table, digits = 2)
+table[1, 1:4] <- c(lasso_irm, forest_irm, tree_irm, boost_irm)
+table[2, 1:4] <- c(lasso_std_irm, forest_std_irm, tree_std_irm, boost_std_irm)
+table[3, 1:4] <- c(lasso_y_irm, forest_y_irm, tree_y_irm, boost_y_irm)
+table[4, 1:4] <- c(lasso_d_irm, forest_d_irm, tree_d_irm, boost_d_irm)
+rownames(table) <- c("Estimate", "Std.Error", "RMSE Y", "RMSE D")
+colnames(table) <- c("Lasso", "Random Forest", "Trees", "Boosting")
+tab <- xtable(table, digits = 2)
 tab
 ```
 
@@ -932,10 +1003,12 @@ Here, Random Forest gives the best prediction rule for $g_0$ and Lasso the best 
 
 ```{r}
 lgr::get_logger("mlr3")$set_threshold("warn")
-dml_irm = DoubleMLIRM$new(data_ml, ml_g = randomForest,
-                          ml_m = lasso_class,
-                          trimming_threshold = 0.01, n_folds=5)
-dml_irm$fit(store_predictions=TRUE)
+dml_irm <- DoubleMLIRM$new(data_ml,
+  ml_g = randomForest,
+  ml_m = lasso_class,
+  trimming_threshold = 0.01, n_folds = 5
+)
+dml_irm$fit(store_predictions = TRUE)
 dml_irm$summary()
 best_irm <- dml_irm$coef
 best_std_irm <- dml_irm$se
