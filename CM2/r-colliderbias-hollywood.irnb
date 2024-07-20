@@ -31,7 +31,7 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"dagitty\");"
+    "install.packages(\"dagitty\")"
    ]
   },
   {
