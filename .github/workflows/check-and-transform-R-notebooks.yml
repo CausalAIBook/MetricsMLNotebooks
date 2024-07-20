@@ -28,8 +28,9 @@ jobs:
         if: github.event_name == 'pull_request'
         id: find_notebooks_pr
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
-          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
+          # git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+          # git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
+          git diff --name-only -r HEAD^1 HEAD > changed_files.txt
           grep -E '\.irnb$|\.Rmd$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Find changed notebooks in Push
