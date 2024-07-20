@@ -2,6 +2,8 @@ name: Run and Test Jupyter Notebooks
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
