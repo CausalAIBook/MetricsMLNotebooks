@@ -2,6 +2,8 @@ name: Check and Transform R Notebooks
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
