@@ -9,7 +9,7 @@ on:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
 
 concurrency:
-  group: convert-lint-notebooks
+  group: convert-lint-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

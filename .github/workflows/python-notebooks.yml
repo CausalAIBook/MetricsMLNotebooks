@@ -2,6 +2,7 @@ name: Run Jupyter Notebooks
 
 on:
   push:
+  pull_request:
     branches:
       - main
   schedule:
@@ -23,10 +24,47 @@ jobs:
     steps:
     - name: Checkout repository
       if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+    
+    - name: Find changed notebooks in PR
+      if: github.event_name == 'pull_request'
+      id: find_notebooks_pr
+      run: |
+        git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+        git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
+        grep -E '\.ipynb$|\.github/workflows/python-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
+    - name: Find changed notebooks in Push
+      if: github.event_name == 'push'
+      id: find_notebooks_push
+      run: |
+        git diff --name-only ${{ github.event.before }} ${{ github.event.after }} > changed_files.txt
+        grep -E '\.ipynb$|\.github/workflows/python-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+
+    - name: Check if any notebooks changed in PR or Push
+      if: (github.event_name == 'push') || (github.event_name == 'pull_request')
+      id: check_notebooks
+      run: |
+        cat changed_notebooks.txt
+        if grep -q -E '^${{ matrix.directory }}/.*\.ipynb$|\.github/workflows/python-notebooks.yml$' changed_notebooks.txt; then
+          echo "notebooks_changed=true" >> $GITHUB_ENV
+        else
+          echo "notebooks_changed=false" >> $GITHUB_ENV
+          echo "No Python notebooks changed in folder ${{ matrix.directory }} in this PR."
+        fi
+
+    - name: Set notebooks changed to true for schedule
+      if: github.event_name == 'schedule'
+      id: set_check_notebooks_true
+      run: |
+        # we run all folders if it is the weekly scheduled run to
+        # check if something broke due to changes in dependencies
+        echo "notebooks_changed=true" >> $GITHUB_ENV
+  
     - name: Install git
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
           sudo apt-get update
@@ -39,25 +77,25 @@ jobs:
       shell: bash
 
     - name: Install libgraphviz-dev if folder is CM3
-      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      if: "(env.notebooks_changed == 'true') && (matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest')"
       run: sudo apt-get install -y libgraphviz-dev
       shell: bash
 
     - name: Install R if folder is CM3
-      if: matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest'
+      if: "(env.notebooks_changed == 'true') && (matrix.folder == 'CM3' && matrix.os == 'ubuntu-latest')"
       run: |
         sudo apt-get update
         sudo apt-get install -y r-base
       shell: bash
 
     - name: Set up Python
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       uses: actions/setup-python@v2
       with:
         python-version: '3.10'  # Use Python 3.10
 
     - name: Install dependencies
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
@@ -65,7 +103,7 @@ jobs:
       shell: bash
 
     - name: Run Flake8 linting on notebooks
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       id: lint
       run: |
         mkdir -p linting_logs
@@ -78,7 +116,7 @@ jobs:
       shell: bash
 
     - name: Convert Jupyter notebooks to Python scripts
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       id: convert
       run: |
         mkdir -p converted_scripts
@@ -90,7 +128,7 @@ jobs:
       shell: bash
 
     - name: Run converted Python scripts with IPython
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       id: execute
       run: |
         mkdir -p logs
@@ -104,7 +142,7 @@ jobs:
       shell: bash
 
     - name: Aggregate and report errors and warnings
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       run: |
         echo "Aggregating errors and warnings..."
         grep -E "Traceback|Error:|Exception:|ModuleNotFoundError|FutureWarning|TypeError" logs/*.txt linting_logs/*.txt > logs/errors_and_warnings.txt || true
@@ -113,19 +151,19 @@ jobs:
       shell: bash
 
     - name: Upload linting logs
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       uses: actions/upload-artifact@v2
       with:
         name: linting-logs-${{ matrix.folder }}-${{ matrix.os }}
         path: linting_logs
 
     - name: Upload execution logs
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       uses: actions/upload-artifact@v2
       with:
         name: execution-logs-${{ matrix.folder }}-${{ matrix.os }}
         path: logs
 
     - name: Check for errors
-      if: "! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0')"
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
       run: exit 1
