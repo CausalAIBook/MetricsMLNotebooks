@@ -29,21 +29,7 @@
      "languageId": "r"
     }
    },
-   "outputs": [
-    "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "p/n is: 1.0\n",
-      "R^2 is 1.0\n",
-      "Adjusted R^2 is nan\n",
-      "p/n is: 0.5\n",
-      "R^2 is 0.5232392347513539\n",
-      "Adjusted R^2 is 0.04647846950270784\n",
-      "p/n is: 0.05\n",
-      "R^2 is 0.05610356497156044\n",
-      "Adjusted R^2 is 0.006424805233221531\n"
-     ]
-   ],
+   "outputs": [],
    "source": [
     "install.packages(\"dagitty\")"
    ]
