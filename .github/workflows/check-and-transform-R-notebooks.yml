@@ -9,11 +9,11 @@ on:
     - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
 
 concurrency:
-  group: convert-lint-notebooks-${{ github.ref }}
+  group: test-R-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  convert-lint-notebooks:
+  test-R-notebooks:
     runs-on: ubuntu-latest
     strategy:
       matrix:
