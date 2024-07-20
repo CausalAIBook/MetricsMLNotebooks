@@ -44,7 +44,6 @@ jobs:
         id: check_notebooks
         run: |
           cat changed_notebooks.txt
-          grep '^${{ matrix.directory }}/.*\.irnb$' changed_notebooks.txt
           if grep -q '^${{ matrix.directory }}/.*\.irnb$' changed_notebooks.txt; then
             echo "notebooks_changed=true" >> $GITHUB_ENV
           else
