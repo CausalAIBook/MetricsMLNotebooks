@@ -25,7 +25,7 @@ jobs:
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
 
       - name: Find changed notebooks in PR
-        if: "(github.event_name == 'pull_request')"
+        if: github.event_name == 'pull_request'
         id: find_notebooks_pr
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
@@ -33,27 +33,30 @@ jobs:
           grep '\.irnb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Find changed notebooks in Push
-        if: "(github.event_name == 'push')"
+        if: github.event_name == 'push'
         id: find_notebooks_push
         run: |
           git diff --name-only ${{ github.event.before }} ${{ github.event.after }} > changed_files.txt
           grep '\.irnb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
-      - name: Check if any notebooks changed
+      - name: Check if any notebooks changed in PR or Push
+        if: (github.event_name == 'push') || (github.event_name == 'pull_request')
         id: check_notebooks
         run: |
-          if [$GITHUB_EVENT_NAME == 'pull_request'] || [$GITHUB_EVENT_NAME == 'push']; then
-            grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt
-            if grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt; then
-              echo "notebooks_changed=true" >> $GITHUB_ENV
-            else
-              echo "notebooks_changed=false" >> $GITHUB_ENV
-              echo "No R notebooks changed in folder ${{ matrix.directory }} in this PR."
-            fi
-          else
-            # we run all folders if it is the weekly scheduled run
+          grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt
+          if grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt; then
             echo "notebooks_changed=true" >> $GITHUB_ENV
+          else
+            echo "notebooks_changed=false" >> $GITHUB_ENV
+            echo "No R notebooks changed in folder ${{ matrix.directory }} in this PR."
           fi
+
+      - name: Set notebooks changed to true for schedule
+        if: github.event_name == 'schedule'
+        id: set_check_notebooks_true
+        run: |
+          # we run all folders if it is the weekly scheduled run
+          echo "notebooks_changed=true" >> $GITHUB_ENV
 
       - name: Install system dependencies
         if: env.notebooks_changed == 'true'
