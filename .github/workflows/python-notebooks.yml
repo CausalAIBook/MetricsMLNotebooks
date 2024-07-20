@@ -1,4 +1,4 @@
-name: Run Jupyter Notebooks
+name: Run and Test Jupyter Notebooks
 
 on:
   push:
@@ -9,11 +9,11 @@ on:
     - cron: '0 0 * * 0'  # Runs once a week on Sunday at midnight
 
 concurrency:
-  group: run-notebooks-${{ github.ref }}
+  group: test-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  run-notebooks:
+  test-notebooks:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -99,8 +99,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install jupyter nbconvert flake8 flake8-nb ipython
+        pip install jupyter nbconvert flake8 flake8-nb ipython nbstripout
       shell: bash
+    
+    - name: Strip outputs from .ipynb files
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+      run: |
+        for notebook in ${{ matrix.directory }}/*.ipynb; do
+          nbstripout "$notebook"
+        done
 
     - name: Run Flake8 linting on notebooks
       if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
@@ -167,3 +174,22 @@ jobs:
     - name: Check for errors
       if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
       run: exit 1
+
+    - name: Check if there are any changes (e.g. stripped outputs)
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+      id: verify_diff
+      run: |
+        git pull
+        git diff --quiet ${{ matrix.directory }}/*.ipynb || echo "changed=true" >> $GITHUB_OUTPUT
+
+    - name: Commit and push stripped .ipynb files
+      if: "(env.notebooks_changed == 'true') && (! (matrix.folder == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))) && (steps.verify_diff.outputs.changed == 'true')"
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git pull
+        git add ${{ matrix.directory }}/*.ipynb
+        git commit -m 'Strip outputs from .ipynb files in ${{ matrix.directory }}'
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
