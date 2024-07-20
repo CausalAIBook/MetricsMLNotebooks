@@ -44,12 +44,12 @@ jobs:
         id: check_notebooks
         run: |
           grep '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt
-          if grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt; then
-            echo "notebooks_changed=true" >> $GITHUB_ENV
-          else
-            echo "notebooks_changed=false" >> $GITHUB_ENV
-            echo "No R notebooks changed in folder ${{ matrix.directory }} in this PR."
-          fi
+          # if grep -q '${{ matrix.directory }}/*.irnb$' changed_notebooks.txt; then
+          #   echo "notebooks_changed=true" >> $GITHUB_ENV
+          # else
+          #   echo "notebooks_changed=false" >> $GITHUB_ENV
+          #   echo "No R notebooks changed in folder ${{ matrix.directory }} in this PR."
+          # fi
 
       - name: Set notebooks changed to true for schedule
         if: github.event_name == 'schedule'
