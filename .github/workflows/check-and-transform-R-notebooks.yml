@@ -203,6 +203,11 @@ jobs:
           rm -rf r_scripts
           rm ${{ matrix.directory }}_r_scripts.zip
 
+      - name: Check out the branch for pull request
+        if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+        run: |
+          git checkout ${{ github.event.pull_request.head.ref }}
+
       - name: Check if there are any changes
         if: env.notebooks_changed == 'true'
         id: verify_diff

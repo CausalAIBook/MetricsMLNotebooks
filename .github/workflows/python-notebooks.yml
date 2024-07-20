@@ -177,12 +177,17 @@ jobs:
     - name: Check for errors
       if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
       run: exit 1
+    
+    - name: Check out the branch for pull request
+      if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+      run: |
+        git checkout ${{ github.event.pull_request.head.ref }}
 
     - name: Check if there are any changes (e.g. stripped outputs)
       if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       id: verify_diff
       run: |
-        git pull
+        git pull 
         git diff --quiet ${{ matrix.directory }}/*.ipynb || echo "changed=true" >> $GITHUB_OUTPUT
 
     - name: Commit and push stripped .ipynb files
