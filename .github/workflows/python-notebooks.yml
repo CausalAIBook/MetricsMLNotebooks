@@ -181,6 +181,7 @@ jobs:
     - name: Check out the branch for pull request
       if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
       run: |
+        git fetch --all
         git checkout ${{ github.event.pull_request.head.ref }}
 
     - name: Check if there are any changes (e.g. stripped outputs)
