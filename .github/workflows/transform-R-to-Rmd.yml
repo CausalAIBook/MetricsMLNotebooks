@@ -34,7 +34,12 @@ jobs:
         if: "(github.event_name == 'push')"
         id: find_notebooks_push
         run: |
-          git diff --name-only HEAD^ HEAD > changed_files.txt
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --name-only HEAD^ HEAD > changed_files.txt
+          else
+            # For initial commit or shallow clone
+            git diff --name-only HEAD > changed_files.txt
+          fi
           grep '\.irnb$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Check if any notebooks changed
