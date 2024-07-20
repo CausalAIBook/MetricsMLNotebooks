@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Set notebooks changed to true for schedule
-        if: github.event_name == 'schedule'
+        if: "! ((github.event_name == 'push') || (github.event_name == 'pull_request'))"
         id: set_check_notebooks_true
         run: |
           # we run all folders if it is the weekly scheduled run to

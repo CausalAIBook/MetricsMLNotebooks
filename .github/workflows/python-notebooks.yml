@@ -55,8 +55,8 @@ jobs:
           echo "No Python notebooks changed in folder ${{ matrix.directory }} in this PR."
         fi
 
-    - name: Set notebooks changed to true for schedule
-      if: github.event_name == 'schedule'
+    - name: Set notebooks changed to true for schedule (or other ways of triggering the job)
+      if: "! ((github.event_name == 'push') || (github.event_name == 'pull_request'))"
       id: set_check_notebooks_true
       run: |
         # we run all folders if it is the weekly scheduled run to
