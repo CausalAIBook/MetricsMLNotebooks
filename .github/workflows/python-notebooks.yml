@@ -198,7 +198,7 @@ jobs:
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git pull
         git add ${{ matrix.directory }}/*.ipynb
-        git commit -m 'Strip outputs from .ipynb files in ${{ matrix.directory }}'
-        git push
+        git commit -m 'Strip outputs from .ipynb files in ${{ matrix.directory }} [skip ci]'
+        git push --force-with-lease
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
