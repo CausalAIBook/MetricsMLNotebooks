@@ -65,6 +65,7 @@
      "languageId": "r"
     }
    },
+   "outputs": [],
    "source": [
     "\n",
     "set.seed(123)\n",
@@ -80,22 +81,7 @@
     "print(summary(lm(y ~ X))$r.squared)\n",
     "print(\"Adjusted R2 is\")\n",
     "print(summary(lm(y ~ X))$adj.r.squared)\n"
-   ],
-   "execution_count": 3,
-    "outputs": [
-      {
-        "output_type": "stream",
-        "name": "stdout",
-        "text": [
-          "[1] \"p/n is\"\n",
-          "[1] 0.5\n",
-          "[1] \"R2 is\"\n",
-          "[1] 0.4922339\n",
-          "[1] \"Adjusted R2 is\"\n",
-          "[1] -0.01654975\n"
-        ]
-      }
-    ]
+   ]
   },
   {
    "cell_type": "markdown",
