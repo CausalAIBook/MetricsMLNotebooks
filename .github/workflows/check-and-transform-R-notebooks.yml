@@ -30,21 +30,28 @@ jobs:
           # git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
           # git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
           git diff --name-only -r HEAD^1 HEAD > changed_files.txt
-          grep -E '\.irnb$|\.Rmd$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+          if grep -q -E '^${{ matrix.directory }}/.*\.Rmd$' changed_files.txt; then
+            echo "Changing directly the .Rmd files is prohibited. You should only be changing the .irnb files"
+            echo "The .Rmd files will be automatically generated and updated when the PR is merged in the main branch"
+            echo "It seems that you changed directly the following files:"
+            grep -E '^${{ matrix.directory }}/.*\.Rmd$' changed_files.txt
+            exit 1
+          fi
+          grep -E '^${{ matrix.directory }}/.*\.irnb$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Find changed notebooks in Push
         if: github.event_name == 'push'
         id: find_notebooks_push
         run: |
           git diff --name-only ${{ github.event.before }} ${{ github.event.after }} > changed_files.txt
-          grep  -E '\.irnb$|\.Rmd$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+          grep  -E '^${{ matrix.directory }}/.*\.irnb$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Check if any notebooks changed in PR or Push
         if: (github.event_name == 'push') || (github.event_name == 'pull_request')
         id: check_notebooks
         run: |
           cat changed_notebooks.txt
-          if grep -q -E '^${{ matrix.directory }}/.*\.irnb$|^${{ matrix.directory }}/.*\.Rmd$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_notebooks.txt; then
+          if grep -q -E '^${{ matrix.directory }}/.*\.irnb$|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_notebooks.txt; then
             echo "notebooks_changed=true" >> $GITHUB_ENV
           else
             echo "notebooks_changed=false" >> $GITHUB_ENV
