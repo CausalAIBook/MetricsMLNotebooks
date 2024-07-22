@@ -1,0 +1,377 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+This notebook contains an example for teaching.
+
+
+# A Case Study: The Effect of Gun Ownership on Gun-Homicide Rates
+
+
+We consider the problem of estimating the effect of gun
+ownership on the homicide rate. For this purpose, we estimate the following partially
+linear model
+
+$$
+ Y_{j,t} = \beta D_{j,(t-1)} + g(Z_{j,t}) + \epsilon_{j,t}.
+$$
+
+
+## Data
+
+
+$Y_{j,t}$ is the log homicide rate in county $j$ at time $t$, $D_{j, t-1}$ is the log fraction of suicides committed with a firearm in county $j$ at time $t-1$, which we use as a proxy for gun ownership,  and  $Z_{j,t}$ is a set of demographic and economic characteristics of county $j$ at time $t$. The parameter $\beta$ is the effect of gun ownership on homicide rates, controlling for county-level demographic and economic characteristics. 
+
+The sample covers 195 large United States counties between the years 1980 through 1999, giving us 3900 observations.
+
+```{r}
+data <- read.csv("../input/gun-example/gun_clean.csv") 
+dim(data)[1]
+```
+
+### Preprocessing
+
+
+To account for heterogeneity across counties and time trends in  all variables, we remove from them county-specific and time-specific effects in the following preprocessing.
+
+```{r}
+##################### Find Variable Names from Dataset ######################
+
+varlist <- function (df=NULL,type=c("numeric","factor","character"), pattern="", exclude=NULL) {
+  vars <- character(0)
+  if (any(type %in% "numeric")) {
+    vars <- c(vars,names(df)[sapply(df,is.numeric)])
+  }
+  if (any(type %in% "factor")) {
+    vars <- c(vars,names(df)[sapply(df,is.factor)])
+  }  
+  if (any(type %in% "character")) {
+    vars <- c(vars,names(df)[sapply(df,is.character)])
+  }  
+  vars[(!vars %in% exclude) & grepl(vars,pattern=pattern)]
+}
+
+############################# Create Variables ##############################
+
+# dummy variables for year and county fixed effects
+fixed  <- grep("X_Jfips", names(data), value=TRUE, fixed=TRUE)
+year   <- varlist(data, pattern="X_Tyear")
+
+# census control variables
+census     <- NULL
+census_var <- c("^AGE", "^BN", "^BP", "^BZ", "^ED", "^EL","^HI", "^HS", "^INC", "^LF", "^LN", "^PI", "^PO", "^PP", "^PV", "^SPR", "^VS")
+
+for(i in 1:length(census_var)){
+    census  <- append(census, varlist(data, pattern=census_var[i])) 
+}
+
+################################ Variables ##################################
+# treatment variable
+d     <- "logfssl"
+
+# outcome variable
+y     <- "logghomr"
+
+# other control variables
+X1    <- c("logrobr", "logburg", "burg_missing", "robrate_missing")
+X2    <- c("newblack", "newfhh", "newmove", "newdens", "newmal")
+
+######################## Partial out Fixed Effects ##########################
+
+# new dataset for partialled-out variables
+rdata    <- as.data.frame(data$CountyCode) 
+colnames(rdata) <- "CountyCode"
+
+# variables to partial out
+varlist <- c(y, d,X1, X2, census)
+
+# partial out year and county fixed effect from variables in varlist
+for(i in 1:length(varlist)){
+  form <- as.formula(paste(varlist[i], "~", paste(paste(year,collapse="+"),  paste(fixed,collapse="+"), sep="+")))
+  rdata[, varlist[i]] <- lm(form, data)$residuals
+}
+```
+
+Now, we can construct the treatment variable, the outcome variable and the matrix $Z$ that includes the control variables.
+
+```{r}
+# treatment variable
+D     <- rdata[which(colnames(rdata) == d)]
+
+# outcome variable
+Y     <- rdata[which(colnames(rdata) == y)]
+
+# construct matrix Z
+Z <- rdata[which(colnames(rdata) %in% c(X1,X2,census))]
+dim(Z)
+```
+
+We have 195 control variables in total. The control variables $Z_{j,t}$ are from the U.S. Census Bureau and  contain demographic and economic characteristics of the counties such as  the age distribution, the income distribution, crime rates, federal spending, home ownership rates, house prices, educational attainment, voting paterns, employment statistics, and migration rates. 
+
+```{r}
+clu <- rdata[which(colnames(rdata) == "CountyCode")] # for clustering the standard errors
+data <- data.frame(cbind(Y, D, Z,as.matrix(clu)))
+```
+
+```{r}
+library(lfe) # linear group fixed effects package
+```
+
+## The effect of gun ownership
+
+
+### OLS
+
+
+After preprocessing the data, as a baseline model, we first look at simple regression of $Y_{j,t}$ on $D_{j,t-1}$ without controls.
+
+```{r}
+# baseline_formula <- as.formula(paste(y, "~", d ))
+# baseline.ols <- lm(baseline_formula,data=rdata)
+
+baseline.ols <- felm(logghomr ~ logfssl |0|0| CountyCode,data=data) # ols with clustered standard errors
+est_baseline <- summary(baseline.ols)$coef[2,]
+confint(baseline.ols)[2,]
+est_baseline
+```
+
+The point estimate is $0.282$ with the confidence interval ranging from 0.155 to 0.41. This
+suggests that increases in gun ownership rates are related to gun homicide rates - if gun ownership increases by 1% relative
+to a trend then the predicted gun homicide rate goes up by 0.28%, without controlling for counties' characteristics.
+
+Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we next include the controls. First, we estimate the model by ols and then by an array of the modern regression methods using the double machine learning approach.
+
+```{r}
+control_formula <- as.formula(paste("logghomr", "~", paste("logfssl",paste(colnames(Z),collapse="+"),
+                                                           sep="+"),"|0|0| CountyCode"))
+control.ols <- felm(control_formula,data=data) # fixed effects lm function
+est_ols <- summary(control.ols)$coef[2,]
+confint(control.ols)[2,]
+est_ols
+```
+
+After controlling for a rich set of characteristics, the point estimate of gun ownership reduces to $0.19$.
+
+
+# DML algorithm
+
+Here we perform inference on the predictive coefficient $\beta$ in our partially linear statistical model, 
+
+$$
+Y = D\beta + g(Z) + \epsilon, \quad E (\epsilon | D, Z) = 0,
+$$
+
+using the **double machine learning** approach. 
+
+For $\tilde Y = Y- E(Y|Z)$ and $\tilde D= D- E(D|Z)$, we can write
+$$
+\tilde Y = \alpha \tilde D + \epsilon, \quad E (\epsilon |\tilde D) =0.
+$$
+
+Using cross-fitting, we employ modern regression methods
+to build estimators $\hat \ell(Z)$ and $\hat m(Z)$ of $\ell(Z):=E(Y|Z)$ and $m(Z):=E(D|Z)$ to obtain the estimates of the residualized quantities:
+
+$$
+\tilde Y_i = Y_i  - \hat \ell (Z_i),   \quad \tilde D_i = D_i - \hat m(Z_i), \quad \text{ for each } i = 1,\dots,n.
+$$
+
+Finally, using ordinary least squares of $\tilde Y_i$ on $\tilde D_i$, we obtain the 
+estimate of $\beta$.
+
+
+The following algorithm comsumes $Y, D, Z$, and a machine learning method for learning the residuals $\tilde Y$ and $\tilde D$, where the residuals are obtained by cross-validation (cross-fitting). Then, it prints the estimated coefficient $\beta$ and the corresponding standard error from the final OLS regression.
+
+```{r}
+DML2.for.PLM <- function(z, d, y, dreg, yreg, nfold=2, clu) {
+  nobs <- nrow(z) # number of observations
+  foldid <- rep.int(1:nfold,times = ceiling(nobs/nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid)  # split observation indices into folds  
+  ytil <- dtil <- rep(NA, nobs)
+  cat("fold: ")
+  for(b in 1:length(I)){
+    dfit <- dreg(z[-I[[b]],], d[-I[[b]]]) # take a fold out
+    yfit <- yreg(z[-I[[b]],], y[-I[[b]]]) # take a fold out
+    dhat <- predict(dfit, z[I[[b]],], type="response") # predict the left-out fold 
+    yhat <- predict(yfit, z[I[[b]],], type="response") # predict the left-out fold  
+    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
+    cat(b," ")
+        }
+  #rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other
+  data <- data.frame(cbind(ytil, dtil, as.matrix(clu)))
+  rfit <- felm(ytil ~ dtil|0|0|CountyCode,data=data) 
+  coef.est <- coef(rfit)[2] # extract coefficient
+  #HC <- vcovHC(rfit)
+  se    <- summary(rfit,robust=T)$coefficients[2,2] # record robust standard error by county
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef.est , se)) # print output
+  return( list(coef.est =coef.est , se=se, dtil=dtil, ytil=ytil, rfit=rfit) ) # save output and residuals 
+}
+```
+
+Now, we apply the Double Machine Learning (DML) approach with different machine learning methods. First, we load the relevant libraries.
+
+```{r}
+library(hdm)
+library(glmnet)
+library(sandwich)
+library(randomForest)
+```
+
+Let us, construct the input matrices.
+
+```{r}
+y <- as.matrix(Y)
+d <- as.matrix(D)
+z <- as.matrix(Z)
+clu <- rdata[which(colnames(rdata) == "CountyCode")]
+head(data.frame(cbind(y,d,as.matrix(clu))))
+```
+
+In the following, we apply the DML approach with the different versions of lasso.
+
+
+
+## Lasso
+
+```{r}
+# DML with Lasso:
+set.seed(123)
+dreg <- function(z,d){ rlasso(z,d, post=FALSE) } # ML method= lasso from hdm 
+yreg <- function(z,y){ rlasso(z,y, post=FALSE) } # ML method = lasso from hdm
+DML2.lasso = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10,clu)
+```
+
+```{r}
+# DML with Post-Lasso:
+dreg <- function(z,d){ rlasso(z,d, post=T) } # ML method= lasso from hdm 
+yreg <- function(z,y){ rlasso(z,y, post=T) } # ML method = lasso from hdm
+DML2.post = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+```
+
+```{r}
+# DML with cross-validated Lasso:
+dreg <- function(z,d){ cv.glmnet(z,d,family="gaussian", alpha=1) } # ML method = lasso from glmnet 
+yreg <- function(z,y){ cv.glmnet(z,y,family="gaussian", alpha=1) } # ML method = lasso from glmnet 
+DML2.lasso.cv = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+
+dreg <- function(z,d){ cv.glmnet(z,d,family="gaussian", alpha=0.5) } # ML method = elastic net from glmnet 
+yreg <- function(z,y){ cv.glmnet(z,y,family="gaussian", alpha=0.5) } # ML method = elastic net from glmnet 
+DML2.elnet = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+
+dreg <- function(z,d){ cv.glmnet(z,d,family="gaussian", alpha=0) } # ML method = ridge from glmnet 
+yreg <- function(z,y){ cv.glmnet(z,y,family="gaussian", alpha=0) } # ML method = ridge from glmnet 
+DML2.ridge = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+```
+
+Here we also compute DML with OLS used as the ML method
+
+```{r}
+dreg <- function(z,d){  glmnet(z,d,family="gaussian", lambda=0) } # ML method = ols from glmnet 
+yreg <- function(z,y){  glmnet(z,y,family="gaussian", lambda=0) }  # ML method = ols from glmnet 
+DML2.ols = DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+```
+
+Next, we also apply Random Forest for comparison purposes.
+
+
+### Random Forest
+
+
+```{r}
+# DML with Random Forest:
+dreg <- function(z,d){ randomForest(z, d) } # ML method = random forest 
+yreg <- function(z,y){ randomForest(z, y) } # ML method = random forest
+set.seed(1)
+DML2.RF = DML2.for.PLM(z, d, y, dreg, yreg, nfold=2, clu) # set folds to 2 to limit computation time
+```
+
+We conclude that the gun ownership rates are related to gun homicide rates - if gun ownership increases by 1% relative
+to a trend then the predicted gun homicide rate goes up by about 0.20% controlling for counties' characteristics.
+
+
+Finally, let's see which method is best. We compute RMSE for predicting D and Y, and see which
+of the methods works better.
+
+
+```{r}
+mods<- list(DML2.ols, DML2.lasso, DML2.post, DML2.lasso.cv, DML2.ridge, DML2.elnet, DML2.RF)
+
+RMSE.mdl<- function(mdl) {
+RMSEY <- sqrt(mean(mdl$ytil)^2) 
+RMSED <- sqrt(mean(mdl$dtil)^2) 
+return( list(RMSEY=RMSEY, RMSED=RMSED))
+}
+
+#RMSE.mdl(DML2.lasso)
+#DML2.lasso$ytil
+
+Res<- lapply(mods, RMSE.mdl)
+
+prRes.Y<- c( Res[[1]]$RMSEY,Res[[2]]$RMSEY, Res[[3]]$RMSEY, Res[[4]]$RMSEY, Res[[5]]$RMSEY,  Res[[6]]$RMSEY, Res[[7]]$RMSEY)
+prRes.D<- c( Res[[1]]$RMSED,Res[[2]]$RMSED, Res[[3]]$RMSED, Res[[4]]$RMSED, Res[[5]]$RMSED, Res[[6]]$RMSED, Res[[7]]$RMSED)
+
+prRes<- rbind(prRes.Y, prRes.D); 
+rownames(prRes)<- c("RMSE D", "RMSE Y");
+colnames(prRes)<- c("OLS", "Lasso", "Post-Lasso", "CV Lasso", "CV Ridge", "CV Elnet", "RF")
+print(prRes,digit=6)
+```
+
+It looks like the best method for predicting D is Lasso, and the best method for predicting Y is CV Ridge.
+
+
+```{r}
+dreg <- function(z,d){ rlasso(z,d, post=T) } # ML method = lasso from hdm 
+yreg <- function(z,y){ cv.glmnet(z,y,family="gaussian", alpha=0) }  # ML method = ridge from glmnet 
+DML2.best= DML2.for.PLM(z, d, y, dreg, yreg, nfold=10, clu)
+```
+
+Let's organize the results in a table.
+
+```{r}
+library(xtable)
+
+table <- matrix(0,9,2)
+table[1,1] <- as.numeric(est_baseline[1])
+table[2,1] <- as.numeric(est_ols[1])
+table[3,1]   <- as.numeric(DML2.lasso$coef.est)
+table[4,1]   <- as.numeric(DML2.post$coef.est)
+table[5,1]  <-as.numeric(DML2.lasso.cv$coef.est)
+table[6,1] <-as.numeric(DML2.elnet$coef.est)
+table[7,1] <-as.numeric(DML2.ridge$coef.est)
+table[8,1] <-as.numeric(DML2.RF$coef.est)
+table[9,1] <-as.numeric(DML2.best$coef.est)
+table[1,2] <- as.numeric(est_baseline[2])
+table[2,2] <- as.numeric(est_ols[2])
+table[3,2]   <- as.numeric(DML2.lasso$se)
+table[4,2]   <- as.numeric(DML2.post$se)
+table[5,2]  <-as.numeric(DML2.lasso.cv$se)
+table[6,2] <-as.numeric(DML2.elnet$se)
+table[7,2] <-as.numeric(DML2.ridge$se)
+table[8,2] <-as.numeric(DML2.RF$se)
+table[9,2] <-as.numeric(DML2.best$se)
+
+# print results
+colnames(table) <- c("Estimate","Standard Error")
+rownames(table) <- c("Baseline OLS", "Least Squares with controls", "Lasso", "Post-Lasso", "CV Lasso","CV Elnet", "CV Ridge", "Random Forest", 
+                     "Best")
+table
+```
+
+```{r}
+print(table, digit=3)
+```
+
+```{r}
+tab<- xtable(table, digits=3)
+print(tab, type="latex")
+```
