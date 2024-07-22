@@ -27,7 +27,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install jupyter nbstripout
       shell: bash
-    
+
+    - name: Set up R
+      if: env.notebooks_changed == 'true'
+      uses: r-lib/actions/setup-r@v2
+
+    - name: Install rmarkdown, knitr, and lintr packages
+      if: env.notebooks_changed == 'true'
+      run: |
+        R -e 'install.packages(c("rmarkdown"), repos="https://cloud.r-project.org")'
+
     - name: Strip outputs from .ipynb files
       run: |
         dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
@@ -53,6 +62,13 @@ jobs:
                     mv "$ipynb_notebook" "$notebook"
                 fi
             done
+            echo "Converting .irnb to .Rmd to update the .Rmd version"
+            R -e '
+              files <- list.files(path = "${{ dir }}", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
+              lapply(files, function(input) {
+                rmarkdown::convert_ipynb(input)
+              })
+            '
         else
             echo "Directory $dir does not exist."
         fi
@@ -67,7 +83,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Processing directory: $dir"
-                if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb; then
+                if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
                     echo "Found changes in directory: $dir"
                     echo "changed=true" >> $GITHUB_OUTPUT
                     break 1
@@ -88,7 +104,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Adding changed files from directory: $dir"
-                git add "$dir"/*.ipynb "$dir"/*.irnb
+                git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
             else
                 echo "Directory $dir does not exist."
             fi
