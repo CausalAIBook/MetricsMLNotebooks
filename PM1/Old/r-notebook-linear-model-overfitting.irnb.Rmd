@@ -1,0 +1,79 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+<!-- #region _uuid="051d70d956493feee0c6d64651c6a088724dca2a" _execution_state="idle" -->
+# Simple Exercise on Overfitting
+
+<!-- #endregion -->
+
+First set p=n
+
+```{r}
+
+set.seed(123)
+n = 1000
+
+p = n
+X<- matrix(rnorm(n*p), n, p)
+Y<- rnorm(n)
+
+print("p/n is")
+print(p/n)
+print("R2 is")
+print(summary(lm(Y~X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(Y~X))$adj.r.squared)
+
+```
+
+Second, set p=n/2.
+
+```{r}
+
+set.seed(123)
+n = 1000
+
+p = n/2
+X<- matrix(rnorm(n*p), n, p)
+Y<- rnorm(n)
+
+print("p/n is")
+print(p/n)
+print("R2 is")
+print(summary(lm(Y~X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(Y~X))$adj.r.squared)
+
+```
+
+Third, set p/n =.05
+
+```{r}
+
+set.seed(123)
+n = 1000
+
+p = .05*n
+X<- matrix(rnorm(n*p), n, p)
+Y<- rnorm(n)
+
+print("p/n is")
+print(p/n)
+print("R2 is")
+print(summary(lm(Y~X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(Y~X))$adj.r.squared)
+
+
+```

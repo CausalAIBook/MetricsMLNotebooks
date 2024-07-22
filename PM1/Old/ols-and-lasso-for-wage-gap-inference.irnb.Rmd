@@ -1,0 +1,419 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+This notebook contains an example for teaching.
+
+
+# An inferential problem: The Wage Gap
+
+
+In the previous lab, we analyzed data from the March Supplement of the U.S. Current Population Survey (2015) and answered the question of how to use job-relevant characteristics, such as education and experience, to best predict wages. Now, we focus on the following inference question:
+
+What is the difference in predicted wages between men and women with the same job-relevant characteristics?
+
+Thus, we analyze if the differences in the wages of groups defined by the "sex" variable in the data. This wage gap may partly reflect *discrimination* against women, both in the labor market and in settings that affect future labor marketability such as in education, and may partly reflect a *selection effect*, namely that women are relatively more likely to take on occupations that pay somewhat less (for example, school teaching).
+
+
+To investigate the wage gap, we consider the following log-linear regression model
+
+\begin{align}
+\log(Y) &= \beta'X + \epsilon\\
+&= \beta_1 D  + \beta_2' W + \epsilon,
+\end{align}
+
+where $Y$ is hourly wage, $D$ is the indicator of being female ($1$ if female and $0$ otherwise) and the
+$W$'s are a vector of worker characteristics explaining variation in wages. Considering transformed wages by the logarithm, we are analyzing the relative difference in the payment of men and women.
+
+
+## Data analysis
+
+
+We consider the same subsample of the U.S. Current Population Survey (2015) as in the previous lab. Let us load the data set.
+
+```{r}
+load("../data/wage2015_subsample_inference.Rdata")
+attach(data)
+dim(data)
+```
+
+To start our (causal) analysis, we compare the sample means given the "sex" variable:
+
+```{r}
+library(xtable)
+
+Z <- data[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+
+data_female <- data[data$sex==1,]
+Z_female <- data_female[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+
+data_male <- data[data$sex==0,]
+Z_male <- data_male[which(colnames(data) %in% c("lwage","sex","shs","hsg","scl","clg","ad","ne","mw","so","we","exp1"))]
+
+table <- matrix(0, 12, 3)
+table[1:12,1]   <- as.numeric(lapply(Z,mean))
+table[1:12,2]   <- as.numeric(lapply(Z_male,mean))
+table[1:12,3]   <- as.numeric(lapply(Z_female,mean))
+rownames(table) <- c("Log Wage","Sex","Less then High School","High School Graduate","Some College","College Graduate","Advanced Degree", "Northeast","Midwest","South","West","Experience")
+colnames(table) <- c("All","Men","Women")
+tab<- xtable(table, digits = 4)
+tab
+```
+
+```{r, results = FALSE}
+print(tab,type="html") # set type="latex" for printing table in LaTeX
+```
+
+<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
+<!-- Mon Jan 18 10:41:44 2021 -->
+<table border=1>
+<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>
+  <tr> <td align="right"> Log Wage </td> <td align="right"> 2.9708 </td> <td align="right"> 2.9878 </td> <td align="right"> 2.9495 </td> </tr>
+  <tr> <td align="right"> Sex </td> <td align="right"> 0.4445 </td> <td align="right"> 0.0000 </td> <td align="right"> 1.0000 </td> </tr>
+  <tr> <td align="right"> Less then High School </td> <td align="right"> 0.0233 </td> <td align="right"> 0.0318 </td> <td align="right"> 0.0127 </td> </tr>
+  <tr> <td align="right"> High School Graduate </td> <td align="right"> 0.2439 </td> <td align="right"> 0.2943 </td> <td align="right"> 0.1809 </td> </tr>
+  <tr> <td align="right"> Some College </td> <td align="right"> 0.2781 </td> <td align="right"> 0.2733 </td> <td align="right"> 0.2840 </td> </tr>
+  <tr> <td align="right"> Gollage Graduate </td> <td align="right"> 0.3177 </td> <td align="right"> 0.2940 </td> <td align="right"> 0.3473 </td> </tr>
+  <tr> <td align="right"> Advanced Degree </td> <td align="right"> 0.1371 </td> <td align="right"> 0.1066 </td> <td align="right"> 0.1752 </td> </tr>
+  <tr> <td align="right"> Northeast </td> <td align="right"> 0.2596 </td> <td align="right"> 0.2590 </td> <td align="right"> 0.2604 </td> </tr>
+  <tr> <td align="right"> Midwest </td> <td align="right"> 0.2965 </td> <td align="right"> 0.2981 </td> <td align="right"> 0.2945 </td> </tr>
+  <tr> <td align="right"> South </td> <td align="right"> 0.2161 </td> <td align="right"> 0.2209 </td> <td align="right"> 0.2101 </td> </tr>
+  <tr> <td align="right"> West </td> <td align="right"> 0.2278 </td> <td align="right"> 0.2220 </td> <td align="right"> 0.2350 </td> </tr>
+  <tr> <td align="right"> Experience </td> <td align="right"> 13.7606 </td> <td align="right"> 13.7840 </td> <td align="right"> 13.7313 </td> </tr>
+   </table>
+
+
+In particular, the table above shows that the difference in average *logwage* between men and women is equal to $0.038$
+
+```{r}
+mean(data_female$lwage)-mean(data_male$lwage)
+```
+
+Thus, the unconditional wage gap is about $3.8$\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience.
+
+
+This unconditional (predictive) effect of the variable "sex" equals the coefficient $\beta$ in the univariate ols regression of $Y$ on $D$:
+
+\begin{align}
+\log(Y) &=\beta D + \epsilon.
+\end{align}
+
+
+We verify this by running an ols regression in R.
+
+```{r}
+library(sandwich) # a package used to compute robust standard errors
+nocontrol.fit <- lm(lwage ~ sex)
+nocontrol.est <- summary(nocontrol.fit)$coef["sex",1]
+HCV.coefs <- vcovHC(nocontrol.fit, type = 'HC'); # HC HEW - "heteroskedasticity consistent"
+nocontrol.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+
+# print unconditional effect of sex and the corresponding standard error
+cat ("The estimated coefficient on the dummy for \"sex\" is",nocontrol.est," and the corresponding robust standard error is",nocontrol.se) 
+
+```
+
+Note that the standard error is computed with the *R* package *sandwich* to be robust to heteroskedasticity. 
+
+
+
+Next, we run an ols regression of $Y$ on $(D,W)$ to control for the effect of covariates summarized in $W$:
+
+\begin{align}
+\log(Y) &=\beta_1 D  + \beta_2' W + \epsilon.
+\end{align}
+
+Here, we are considering the flexible model from the previous lab. Hence, $W$ controls for experience, education, region, and occupation and industry indicators plus transformations and two-way interactions.
+
+
+Let us run the ols regression with controls.
+
+```{r}
+# ols regression with controls
+
+flex <- lwage ~ sex + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)
+
+#   Note that ()*() operation in formula objects in R creates a formula of the sort:
+#  (exp1+exp2+exp3+exp4)+ (shs+hsg+scl+clg+occ2+ind2+mw+so+we) + (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we)
+#  This is not intuitive at all, but that's what it does.
+
+control.fit <- lm(flex, data=data)
+control.est <- summary(control.fit)$coef[2,1]
+
+summary(control.fit)
+
+cat("Coefficient for OLS with controls", control.est)
+
+HCV.coefs <- vcovHC(control.fit, type = 'HC');
+control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+JCV.coefs <- vcovHC(control.fit, type = 'HC3');  # Jackknife estimate is more appropriate in moderate dimensional settings
+control.Jse <- sqrt(diag(JCV.coefs))[2] # Estimated std errors
+```
+
+We now show how the conditional gap and the remainder decompose the marginal wage gap into the parts explained and unexplained by the additional controls. (Note that this does *not* explain why there is a difference in the controls to begin with in the two groups.)
+
+```{r}
+cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage))
+
+cat("The unexplained difference: ",control.est)
+
+XX0 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==0,])
+y0  = data[data$sex==0,]$lwage
+XX1 = model.matrix(~(exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we), data = data[data$sex==1,])
+y1  = data[data$sex==1,]$lwage
+mu1 = colMeans(XX1)
+mu0 = colMeans(XX0)
+betarest = summary(control.fit)$coef[3:246,1] # the coefficients excluding intercept and "sex"
+cat("The explained difference:",sum(betarest*(mu1[2:245]-mu0[2:245])))
+
+cat("The sum of these differences:",control.est + sum(betarest*(mu1[2:245]-mu0[2:245])))
+```
+
+We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term.
+
+```{r}
+library(MASS)
+beta0 = ginv(t(XX0) %*% XX0) %*% t(XX0) %*% y0
+beta1 = ginv(t(XX1) %*% XX1) %*% t(XX1) %*% y1
+
+cat("The marginal gap:",mean(data_female$lwage)-mean(data_male$lwage))
+cat("The unexplained difference:",beta1[1]-beta0[1])
+cat("The difference explained by endowment:",sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])))
+cat("The difference explained by coefficient:",sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))
+cat("The sum of these differences:",beta1[1]-beta0[1] + sum(beta0[2:245]*(mu1[2:245]-mu0[2:245])) + sum((beta1[2:245]-beta0[2:245])*mu1[2:245]))
+```
+
+Let's compare Huber-Eicker-White (HEW) standard errors to jackknife standard errors (which are more appropriate in moderate dimensional settings.) We can see that they're pretty close in this case.
+
+```{r}
+cat("HEW s.e. : ", control.se)
+cat("Jackknife s.e. : ", control.Jse)
+
+```
+
+The estimated regression coefficient $\beta_1\approx-0.0696$ measures how our linear prediction of wage changes if we set the "sex" variable $D$ from 0 to 1, holding the controls $W$ fixed.
+We can call this the *predictive effect* (PE), as it measures the impact of a variable on the prediction we make. Overall, we see that the unconditional wage gap of size $4$\% for women increases to about $7$\% after controlling for worker characteristics.  
+
+
+
+Next, we use the Frisch-Waugh-Lovell (FWL) theorem from lecture, partialling-out the linear effect of the controls via ols.
+
+```{r}
+# Partialling-out using ols
+
+# models
+flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y
+flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D
+
+# partialling-out the linear effect of W from Y
+t.Y <- lm(flex.y, data=data)$res
+# partialling-out the linear effect of W from D
+t.D <- lm(flex.d, data=data)$res
+
+# regression of Y on D after partialling-out the effect of W
+partial.fit <- lm(t.Y~t.D-1)
+partial.est <- summary(partial.fit)$coef[1]
+
+cat("Coefficient for D via partialling-out", partial.est)
+
+# standard error
+HCV.coefs <- vcovHC(partial.fit, type = 'HC')
+partial.se <- sqrt(diag(HCV.coefs))
+# Note that jackknife standard errors depend on all the variables in the model and so are not appropriate for the partialed out regression (without adjustment)
+
+
+# confidence interval
+confint(partial.fit)
+```
+
+Again, the estimated coefficient measures the linear predictive effect (PE) of $D$ on $Y$ after taking out the linear effect of $W$ on both of these variables. This coefficient is numerically equivalent to the estimated coefficient from the ols regression with controls, confirming the FWL theorem.
+
+
+We know that the partialling-out approach works well when the dimension of $W$ is low
+in relation to the sample size $n$. When the dimension of $W$ is relatively high, we need to use variable selection
+or penalization for regularization purposes. 
+
+In the following, we illustrate the partialling-out approach using lasso instead of ols. 
+
+```{r}
+# Partialling-out using lasso
+
+library(hdm)
+
+# models
+flex.y <- lwage ~  (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for Y
+flex.d <- sex ~ (exp1+exp2+exp3+exp4)*(shs+hsg+scl+clg+occ2+ind2+mw+so+we) # model for D
+
+# partialling-out the linear effect of W from Y
+t.Y <- rlasso(flex.y, data=data)$res
+# partialling-out the linear effect of W from D
+t.D <- rlasso(flex.d, data=data)$res
+
+# regression of Y on D after partialling-out the effect of W
+partial.lasso.fit <- lm(t.Y~t.D-1)
+partial.lasso.est <- summary(partial.lasso.fit)$coef[1]
+
+cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
+
+# standard error
+HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC')
+partial.lasso.se <- sqrt(diag(HCV.coefs))
+```
+
+Using lasso for partialling-out here provides similar results as using ols.
+
+
+Next, we summarize the results.
+
+```{r}
+table<- matrix(0, 4, 2)
+table[1,1]<- nocontrol.est  
+table[1,2]<- nocontrol.se   
+table[2,1]<- control.est
+table[2,2]<- control.se    
+table[3,1]<- partial.est  
+table[3,2]<- partial.se  
+table[4,1]<-  partial.lasso.est
+table[4,2]<- partial.lasso.se 
+colnames(table)<- c("Estimate","Std. Error")
+rownames(table)<- c("Without controls", "full reg", "partial reg", "partial reg via lasso")	
+tab<- xtable(table, digits=c(3, 3, 4))
+tab
+```
+
+```{r, results = FALSE}
+print(tab, type="html")
+```
+
+<!-- html table generated in R 3.6.3 by xtable 1.8-4 package -->
+<!-- Mon Jan 18 11:56:24 2021 -->
+<table border=1>
+<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>
+  <tr> <td align="right"> Without controls </td> <td align="right"> -0.038 </td> <td align="right"> 0.0159 </td> </tr>
+  <tr> <td align="right"> full reg </td> <td align="right"> -0.070 </td> <td align="right"> 0.0150 </td> </tr>
+  <tr> <td align="right"> partial reg </td> <td align="right"> -0.070 </td> <td align="right"> 0.0150 </td> </tr>
+  <tr> <td align="right"> partial reg via lasso </td> <td align="right"> -0.072 </td> <td align="right"> 0.0154 </td> </tr>
+   </table>
+
+
+
+It it worth noticing that controlling for worker characteristics increases the wage gap from less than 4\% to 7\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.
+
+Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect
+selection effects of unobserved differences in covariates between men and women in our sample.
+
+
+
+Next we try an "extra" flexible model, where we take interactions of all controls, giving us about 800 non-redundant controls.
+
+```{r}
+# extra flexible model
+
+extraflex <- lwage ~ sex + (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2
+
+control.fit <- lm(extraflex, data=data)
+#summary(control.fit)
+control.est <- summary(control.fit)$coef[2,1]
+
+cat("Number of Extra-Flex Controls", summary(control.fit)$df[1]-1, "\n")
+
+cat("Coefficient for OLS with extra flex controls", control.est)
+
+HCV.coefs <- vcovHC(control.fit, type = 'HC');
+control.se <- sqrt(diag(HCV.coefs))[2] # Estimated std errors
+
+JCV.coefs <- vcovHC(control.fit, type = 'HC3');  # Jackknife 
+control.Jse <- sqrt(diag(JCV.coefs))[2] # Estimated std errors
+
+cat("HEW s.e. : ", control.se)
+cat("Jackknife s.e. : ", control.Jse)
+
+# From Cattaneo, Jannson, and Newey (2018), we expect jackknife s.e.'s to be  
+# conservative. 
+```
+
+Interestingly, jackknife standard errors are undefined in this case. Due to the high dimensional control vector, we know that conventional heteroskedasticity robust standard errors will also be severely biased. That is, the approximation obtained under $p/n$ being small is clearly breaking down here. We might then like to implement Cattaneo, Jannson, and Newey (2018) (CJN) which is supposed to work in the $p/n \rightarrow c < 1$ regime. However, computing CJN requires inversion of a matrix which is computationally singular in this example (which is related to why the jackknife s.e. are undefined.)
+
+```{r, eval = FALSE, echo = TRUE}
+# Try to make a brute force implementation of Cattaneo, Jannson, Newey (2018).
+# This is slow and doesn't actually add anything as the matrix needed to 
+# construct CJN is (at least) numerically singular. Don't run this block.
+
+# models
+extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for Y
+extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for D
+
+# CJN requires that M.*M is invertible where M = I-W(W'W)^{-1}W' and .* is the Hadamard product
+
+regexflex.y = lm(extraflex.y, data = data, x = TRUE) # Regression of outcome on controls
+W = tmp$x # Design matrix
+Wli = W[,!is.na(regexflex.y$coefficients)] # Linearly independent columns of W
+np = dim(Wli)
+M = diag(np[1])-Wli%*%solve(t(Wli)%*%Wli)%*%t(Wli) # Matrix M (after removing redundant columns)
+scM = 1 - min(diag(M)) # This number needs to be smaller than 1/2 for CJN theoretical results
+scM # Just stop here
+
+#MM = M^2 # Hadamard product M.*M
+
+#library(Matrix)
+#rankMatrix(MM) # find the (numeric) rank of MM which ends up being less than its dimension. Tried to actually move forward and use other methods to invert/assess invertibility, but none worked. Not going to use a generalized inverse as this goes against the idea of the theory.
+
+# Not going to be able to compute CJN
+```
+
+We can also try to use Lasso to partial out the control variables. We'll justify this later.
+
+```{r}
+library(hdm)
+
+# models
+extraflex.y <- lwage ~  (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for Y
+extraflex.d <- sex ~ (exp1+exp2+exp3+exp4+shs+hsg+scl+clg+occ2+ind2+mw+so+we)^2 # model for D
+
+# partialling-out the linear effect of W from Y
+t.Y <- rlasso(extraflex.y, data=data)$res
+# partialling-out the linear effect of W from D
+t.D <- rlasso(extraflex.d, data=data)$res
+
+# regression of Y on D after partialling-out the effect of W
+partial.lasso.fit <- lm(t.Y~t.D-1)
+partial.lasso.est <- summary(partial.lasso.fit)$coef[1]
+
+cat("Coefficient for D via partialling-out using lasso", partial.lasso.est)
+
+# standard error
+HCV.coefs <- vcovHC(partial.lasso.fit, type = 'HC3')
+partial.lasso.se <- sqrt(diag(HCV.coefs))
+```
+
+```{r}
+table<- matrix(0, 2, 2)
+table[1,1]<- control.est
+table[1,2]<- control.se    
+table[2,1]<-  partial.lasso.est
+table[2,2]<- partial.lasso.se 
+colnames(table)<- c("Estimate","Std. Error")
+rownames(table)<- c("full reg","partial reg via lasso")	
+tab<- xtable(table, digits=c(3, 3, 4))
+tab
+
+print(tab, type="latex")
+```
+
+In this case $p/n$ = 20%, that is $p/n$ is no longer small and we start seeing the differences between unregularized partialling out and regularized partialling out with lasso (double lasso). The results based on double lasso have rigorous guarantees in this non-small $p/n$ regime under approximate sparsity. The results based on OLS still
+have guarantees in $p/n< 1$ regime under assumptions laid out in Cattaneo, Newey, and Jansson (2018), without approximate sparsity, although other regularity conditions are needed. These additional regularity conditions appear to potentially be violated in our "very flexible" specification.
+
+
+
+
+
