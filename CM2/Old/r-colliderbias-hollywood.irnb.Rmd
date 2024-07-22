@@ -1,0 +1,66 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+# Collider Bias
+
+
+Here is a simple mnemonic example to illustate the collider or M-bias. 
+
+Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that "talent and beaty are negatively correlated" for celebrities.  
+
+```{r}
+install.packages("dagitty")
+library(dagitty)
+```
+
+```{r}
+g <- dagitty( "dag{ T -> C <- B }" )
+plot(g)
+```
+
+```{r _uuid="8f2839f25d086af736a60e9eeb907d3b93b6e0e5", _cell_guid="b1076dfc-b9ad-4769-8c92-a6c4dae69d19"}
+#collider bias
+n=1000000
+T = rnorm(n)   #talent
+B = rnorm(n)   #beaty
+C = T+B + rnorm(n) #congeniality
+T.H= subset(T, C>0) # condition on C>0
+B.H= subset(B, C>0) # condition on C>0
+
+summary(lm(T~ B))  #regression of T on B
+summary(lm(T~ B +C)) #regression of T on B and C
+summary(lm(T.H~ B.H)) #regression of T on B, conditional on C>0.
+
+
+
+```
+
+We can also use package Dagitty to illustrate collider bias, also known as M-bias.
+
+```{r _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a", _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0"}
+## If we want to infer causal effec of B on T,
+## we can apply the command to figure out 
+## variables we should condition on:
+
+adjustmentSets( g, "T", "B" ) 
+
+## empty set -- we should not condition on the additional
+## variable C.
+
+## Generate data where C = .5T + .5B
+set.seed( 123); d <- simulateSEM( g, .5 )
+confint( lm( T ~ B, d ) )["B",] # includes 0
+confint( lm( T ~ B + C, d ) )["B",] # does not include 0
+
+```
