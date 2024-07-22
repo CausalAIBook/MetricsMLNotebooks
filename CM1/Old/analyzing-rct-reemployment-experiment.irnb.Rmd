@@ -1,0 +1,198 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+# Analyzing RCT data with Precision Adjustment
+
+
+## Data
+
+In this lab, we analyze the Pennsylvania re-employment bonus experiment, which was previously studied in "Sequential testing of duration data: the case of the Pennsylvania ‘reemployment bonus’ experiment" (Bilias, 2000), among others. These experiments were conducted in the 1980s by the U.S. Department of Labor to test the incentive effects of alternative compensation schemes for unemployment insurance (UI). In these experiments, UI claimants were randomly assigned either to a control group or one of five treatment groups. Actually, there are six treatment groups in the experiments. Here we focus on treatment group 4, but feel free to explore other treatment groups. In the control group the current rules of the UI applied. Individuals in the treatment groups were offered a cash bonus if they found a job within some pre-specified period of time (qualification period), provided that the job was retained for a specified duration. The treatments differed in the level of the bonus, the length of the qualification period, and whether the bonus was declining over time in the qualification period; see http://qed.econ.queensu.ca/jae/2000-v15.6/bilias/readme.b.txt for further details on data. 
+  
+
+```{r}
+## loading the data
+Penn <- as.data.frame(read.table("../input/reemployment-experiment/penn_jae.dat", header=T ))
+n <- dim(Penn)[1]
+p_1 <- dim(Penn)[2]
+Penn<- subset(Penn, tg==4 | tg==0)
+attach(Penn)
+```
+
+```{r}
+T4<- (tg==4)
+summary(T4)
+```
+
+```{r}
+head(Penn)
+```
+
+<!-- #region -->
+### Model 
+To evaluate the impact of the treatments on unemployment duration, we consider the linear regression model:
+
+$$
+Y =  D \beta_1 + W'\beta_2 + \varepsilon, \quad E \varepsilon (D,W')' = 0,
+$$
+
+where $Y$ is  the  log of duration of unemployment, $D$ is a treatment  indicators,  and $W$ is a set of controls including age group dummies, gender, race, number of dependents, quarter of the experiment, location within the state, existence of recall expectations, and type of occupation.   Here $\beta_1$ is the ATE, if the RCT assumptions hold rigorously.
+
+
+We also consider interactive regression model:
+
+$$
+Y =  D \alpha_1 + D W' \alpha_2 + W'\beta_2 + \varepsilon, \quad E \varepsilon (D,W', DW')' = 0,
+$$
+where $W$'s are demeaned (apart from the intercept), so that $\alpha_1$ is the ATE, if the RCT assumptions hold rigorously.
+<!-- #endregion -->
+
+Under RCT, the projection coefficient $\beta_1$ has
+the interpretation of the causal effect of the treatment on
+the average outcome. We thus refer to $\beta_1$ as the average
+treatment effect (ATE). Note that the covariates, here are
+independent of the treatment $D$, so we can identify $\beta_1$ by
+just linear regression of $Y$ on $D$, without adding covariates.
+However we do add covariates in an effort to improve the
+precision of our estimates of the average treatment effect.
+
+
+### Analysis
+
+We consider 
+
+*  classical 2-sample approach, no adjustment (CL)
+*  classical linear regression adjustment (CRA)
+*  interactive regression adjusment (IRA)
+
+and carry out robust inference using the *estimatr* R packages. 
+
+
+# Carry out covariate balance check
+
+
+This is done using "lm_robust" command which unlike "lm" in the base command automatically does the correct Eicher-Huber-White standard errors, instead othe classical non-robus formula based on the homoscdedasticity command.
+
+```{r}
+
+m <- lm(T4~(female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2)
+library(lmtest)
+library(sandwich)
+coeftest(m, vcov = vcovHC(m, type="HC1"))
+
+```
+
+We see that that even though this is a randomized experiment, balance conditions are failed.
+
+
+# Model Specification
+
+```{r}
+# model specifications
+
+
+# no adjustment (2-sample approach)
+formula_cl <- log(inuidur1)~T4
+
+# adding controls
+formula_cra <- log(inuidur1)~T4+ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2
+# Omitted dummies: q1, nondurable, muld
+
+
+ols.cl <- lm(formula_cl)
+ols.cra <- lm(formula_cra)
+
+
+ols.cl = coeftest(ols.cl, vcov = vcovHC(ols.cl, type="HC1"))
+ols.cra = coeftest(ols.cra, vcov = vcovHC(ols.cra, type="HC1"))
+
+print(ols.cl)
+print(ols.cra)
+
+
+```
+
+The interactive specificaiton corresponds to the approach introduced in Lin (2013).
+
+```{r}
+
+#interactive regression model;
+
+X = model.matrix (~ (female+black+othrace+factor(dep)+q2+q3+q4+q5+q6+agelt35+agegt54+durable+lusd+husd)^2)[,-1]
+dim(X)
+demean<- function(x){ x - mean(x)}
+X = apply(X, 2, demean)
+
+ols.ira = lm(log(inuidur1) ~ T4*X) 
+ols.ira= coeftest(ols.ira, vcov = vcovHC(ols.ira, type="HC1"))
+print(ols.ira)
+
+
+
+```
+
+Next we try out partialling out with lasso
+
+```{r}
+library(hdm)
+
+T4 = demean(T4)
+
+DX = model.matrix(~T4*X)[,-1]
+
+rlasso.ira = summary(rlassoEffects(DX, log(inuidur1), index = 1))
+
+
+print(rlasso.ira)
+
+
+```
+
+### Results
+
+```{r}
+str(ols.ira)
+ols.ira[2,1]
+```
+
+```{r}
+library(xtable)
+table<- matrix(0, 2, 4)
+table[1,1]<-  ols.cl[2,1]
+table[1,2]<-  ols.cra[2,1]
+table[1,3]<-  ols.ira[2,1]
+table[1,4]<-  rlasso.ira[[1]][1]
+
+table[2,1]<-  ols.cl[2,2]
+table[2,2]<-  ols.cra[2,2]
+table[2,3]<-  ols.ira[2,2]
+table[2,4]<-  rlasso.ira[[1]][2]
+
+
+colnames(table)<- c("CL","CRA","IRA", "IRA w Lasso")
+rownames(table)<- c("estimate", "standard error")
+tab<- xtable(table, digits=5)
+tab
+
+print(tab, type="latex", digits=5)
+```
+
+<!-- #region -->
+Treatment group 4 experiences an average decrease of about $7.8\%$ in the length of unemployment spell.
+
+
+Observe that regression estimators delivers estimates that are slighly more efficient (lower standard errors) than the simple 2 mean estimator, but essentially all methods have very similar standard errors. From IRA results we also see that there is not any statistically detectable heterogeneity.  We also see the regression estimators offer slightly lower estimates -- these difference occur perhaps to due minor imbalance in the treatment allocation, which the regression estimators try to correct.
+
+
+
+<!-- #endregion -->
