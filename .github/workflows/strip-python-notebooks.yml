@@ -10,9 +10,6 @@ concurrency:
 jobs:
   strip-python-notebooks:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        directory: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3, AC1, AC2, T]
 
     steps:
     - name: Checkout repository
