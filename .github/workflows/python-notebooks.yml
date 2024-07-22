@@ -1,4 +1,4 @@
-name: Run and Test Jupyter Notebooks
+name: Check Python Notebooks
 
 on:
   pull_request:
