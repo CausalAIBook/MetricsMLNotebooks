@@ -1,0 +1,126 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+This notebook contains an example for teaching.
+
+
+
+# Automatic Machine Learning with H2O AutoML 
+
+
+We illustrate how to predict an outcome variable Y in a high-dimensional setting, using the AutoML package *H2O* that covers the complete pipeline from the raw dataset to the deployable machine learning model. In last few years, AutoML or automated machine learning has become widely popular among data science community. Again, re-analyse the wage prediction problem using data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.
+
+
+We can use AutoML as a benchmark and compare it to the methods that we used in the previous notebook where we applied one machine learning method after the other.
+
+```{r}
+# load the H2O package
+library(h2o)
+```
+
+```{r}
+# load the data set
+load("../input/wage2015-inference/wage2015_subsample_inference.Rdata")
+
+# split the data
+set.seed(1234)
+training <- sample(nrow(data), nrow(data)*(3/4), replace=FALSE)
+
+train <- data[training,]
+test <- data[-training,]
+```
+
+```{r}
+# start h2o cluster
+h2o.init()
+```
+
+```{r}
+# convert data as h2o type
+train_h = as.h2o(train)
+test_h = as.h2o(test)
+
+# have a look at the data
+h2o.describe(train_h)
+```
+
+```{r}
+# define the variables
+y = 'lwage'
+x = setdiff(names(data), c('wage','occ2', 'ind2'))
+            
+# run AutoML for 10 base models and a maximal runtime of 100 seconds
+aml = h2o.automl(x=x,y = y,
+                  training_frame = train_h,
+                  leaderboard_frame = test_h,
+                  max_models = 10,
+                  seed = 1,
+                  max_runtime_secs = 100
+                 )
+# AutoML Leaderboard
+lb = aml@leaderboard
+print(lb, n = nrow(lb))
+```
+
+We see that two Stacked Ensembles are at the top of the leaderboard. Stacked Ensembles often outperform a single model. The out-of-sample (test) MSE of the leading model is given by
+
+```{r}
+aml@leaderboard$mse[1]
+```
+
+The in-sample performance can be evaluated by
+
+```{r}
+aml@leader
+```
+
+This is in line with our previous results. To understand how the ensemble works, let's take a peek inside the Stacked Ensemble "All Models" model.  The "All Models" ensemble is an ensemble of all of the individual models in the AutoML run.  This is often the top performing model on the leaderboard.
+
+```{r}
+model_ids <- as.data.frame(aml@leaderboard$model_id)[,1]
+# Get the "All Models" Stacked Ensemble model
+se <- h2o.getModel(grep("StackedEnsemble_AllModels", model_ids, value = TRUE)[1])
+# Get the Stacked Ensemble metalearner model
+metalearner <- se@model$metalearner_model
+h2o.varimp(metalearner)
+```
+
+The table above gives us the variable importance of the metalearner in the ensemble. The AutoML Stacked Ensembles use the default metalearner algorithm (GLM with non-negative weights), so the variable importance of the metalearner is actually the standardized coefficient magnitudes of the GLM. 
+
+
+```{r}
+h2o.varimp_plot(metalearner)
+```
+
+## Generating Predictions Using Leader Model
+
+We can also generate predictions on a test sample using the leader model object.
+
+```{r}
+pred <- as.matrix(h2o.predict(aml@leader,test_h)) # make prediction using x data from the test sample
+head(pred)
+```
+
+This allows us to estimate the out-of-sample (test) MSE and the standard error as well.
+
+```{r}
+y_test <- as.matrix(test_h$lwage)
+summary(lm((y_test-pred)^2~1))$coef[1:2]
+```
+
+We observe both a lower MSE and a lower standard error compared to our previous results (see [here](https://www.kaggle.com/janniskueck/pm3-notebook-newdata)).
+
+```{r}
+h2o.shutdown(prompt = F)
+```
