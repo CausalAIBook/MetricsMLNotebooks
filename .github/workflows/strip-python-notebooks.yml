@@ -81,6 +81,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Processing directory: $dir"
+                git diff "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
                 if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
                     echo "Found changes in directory: $dir"
                     echo "changed=true" >> $GITHUB_OUTPUT
