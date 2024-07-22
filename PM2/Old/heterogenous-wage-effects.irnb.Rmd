@@ -1,0 +1,76 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+<!-- #region -->
+# Application: Heterogeneous Effect of Gender on Wage Using Double Lasso
+
+ We use US census data from the year 2012 to analyse the effect of gender and interaction effects of other variables with gender on wage jointly. The dependent variable is the logarithm of the wage, the target variable is *female* (in combination with other variables). All other variables denote some other socio-economic characteristics, e.g. marital status, education, and experience.  For a detailed description of the variables we refer to the help page.
+
+
+
+This analysis allows a closer look how discrimination according to gender is related to other socio-economic variables.
+
+
+<!-- #endregion -->
+
+```{r}
+library(hdm)
+data(cps2012)
+str(cps2012)
+```
+
+```{r}
+# create the model matrix for the covariates
+X <- model.matrix(~-1 + female + female:(widowed + divorced + separated + nevermarried +
+hsd08 + hsd911 + hsg + cg + ad + mw + so + we + exp1 + exp2 + exp3) + +(widowed +
+divorced + separated + nevermarried + hsd08 + hsd911 + hsg + cg + ad + mw + so +
+we + exp1 + exp2 + exp3)^2, data = cps2012)
+X <- X[, which(apply(X, 2, var) != 0)] # exclude all constant variables
+dim(X)
+
+# target variables, index.gender specifices coefficients we are interested in
+index.gender <- grep("female", colnames(X))
+y <- cps2012$lnw
+```
+
+The parameter estimates for the target parameters, i.e. all coefficients related to gender (i.e. by interaction with other variables) are calculated and summarized by the following commands:
+
+
+
+```{r _uuid="051d70d956493feee0c6d64651c6a088724dca2a", _execution_state="idle"}
+effects.female <- rlassoEffects(x = X, y = y, index = index.gender)
+summary(effects.female)
+library(stargazer)
+stargazer(summary(effects.female)[1])
+```
+
+Now, we estimate and plot confident intervals, first "pointwise" and then the joint confidence intervals.
+
+```{r}
+joint.CI <- confint(effects.female, level = 0.95)
+joint.CI
+plot(effects.female, level=0.95) # plot of the effects
+stargazer(joint.CI)
+```
+
+Finally, we compare the pointwise confidence intervals to joint confidence intervals.
+
+```{r}
+joint.CI <- confint(effects.female, level = 0.95, joint = TRUE)
+joint.CI
+plot(effects.female, joint=TRUE, level=0.95) # plot of the effects
+stargazer(joint.CI)
+
+# the plot output does not look great
+```
