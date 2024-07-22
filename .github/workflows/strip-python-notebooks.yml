@@ -64,7 +64,7 @@ jobs:
             done
             echo "Converting .irnb to .Rmd to update the .Rmd version"
             R -e "
-              files <- list.files(path = '$dir', pattern = '\\.irnb$', full.names = TRUE, recursive = FALSE)
+              files <- list.files(path = '$dir', pattern = '\\\\.irnb$', full.names = TRUE, recursive = FALSE)
               lapply(files, function(input) {
                 rmarkdown::convert_ipynb(input)
               })
