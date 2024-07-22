@@ -48,7 +48,7 @@ jobs:
       id: check_notebooks
       run: |
         cat changed_notebooks.txt
-        if grep -q -E '^${{ matrix.directory }}/.*\.ipynb$|^${{ matrix.directory }}/.*\.py$|\.github/workflows/python-notebooks.yml$' changed_notebooks.txt; then
+        if grep -q -E '^${{ matrix.directory }}/[^/]+\.ipynb$|^${{ matrix.directory }}/.*\.py$|\.github/workflows/python-notebooks.yml$' changed_notebooks.txt; then
           echo "notebooks_changed=true" >> $GITHUB_ENV
         else
           echo "notebooks_changed=false" >> $GITHUB_ENV
