@@ -2,6 +2,8 @@ name: Strip Python and R Notebooks from Outputs and Transform .irnb to .Rmd
 
 on:
   push:
+    branches:
+      - main
 
 concurrency:
   group: strip-transform-notebooks-${{ github.ref }}
