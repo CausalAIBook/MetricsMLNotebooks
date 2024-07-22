@@ -47,7 +47,7 @@ jobs:
                 # Check if there are any .irnb files
                 if [ -e "$notebook" ]; then                    
                     echo "Stripping output from notebook: $notebook"
-                    ipynb_notebook="${notebook%.irnb}.ipynb"
+                    ipynb_notebook=$(mktemp --suffix=.ipynb)
                     mv "$notebook" "$ipynb_notebook"
                     nbstripout "$ipynb_notebook"
                     mv "$ipynb_notebook" "$notebook"
