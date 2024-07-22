@@ -1,0 +1,89 @@
+name: Strip Python Jupyter Notebooks from Outputs
+
+on:
+  push:
+
+concurrency:
+  group: strip-python-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  strip-python-notebooks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [PM1, PM2, PM3, PM4, PM5, CM1, CM2, CM3, AC1, AC2, T]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'  # Use Python 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install jupyter nbstripout
+      shell: bash
+    
+    - name: Strip outputs from .ipynb files
+      run: |
+        dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
+        for dir in "${dirs[@]}"; do
+        # Check if directory exists
+        if [ -d "$dir" ]; then
+            echo "Processing directory: $dir"
+            # Loop over all .ipynb files in the directory (non-recursively)
+            for notebook in "$dir"/*.ipynb; do
+                # Check if there are any .ipynb files
+                if [ -e "$notebook" ]; then
+                    echo "Stripping output from notebook: $notebook"
+                    nbstripout "$notebook"
+                fi
+            done
+        else
+            echo "Directory $dir does not exist."
+        fi
+        done
+
+    - name: Check if there are any changes (e.g. stripped outputs)
+      id: verify_diff
+      run: |
+        git pull
+        for dir in "${dirs[@]}"; do
+            # Check if directory exists
+            if [ -d "$dir" ]; then
+                echo "Processing directory: $dir"
+                if git diff --quiet "$dir"/*.ipynb; then
+                    echo "changed=true" >> $GITHUB_OUTPUT
+                    break 1
+                fi
+            else
+                echo "Directory $dir does not exist."
+            fi
+        done
+
+    - name: Commit and push stripped .ipynb files
+      if: steps.verify_diff.outputs.changed == 'true'
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git pull
+        for dir in "${dirs[@]}"; do
+            # Check if directory exists
+            if [ -d "$dir" ]; then
+                echo "Adding changed files from directory: $dir"
+                git add "$dir"/*.ipynb
+            else
+                echo "Directory $dir does not exist."
+            fi
+        done
+        git commit -m 'Strip outputs from .ipynb files [skip ci]'
+        git push --force-with-lease
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
