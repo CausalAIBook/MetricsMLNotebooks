@@ -1,14 +1,14 @@
-name: Strip Python and R Notebooks from Outputs
+name: Strip Python and R Notebooks from Outputs and Transform .irnb to .Rmd
 
 on:
   push:
 
 concurrency:
-  group: strip-notebooks-${{ github.ref }}
+  group: strip-transform-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  strip-notebooks:
+  strip-transform-notebooks:
     runs-on: ubuntu-latest
 
     steps:
@@ -63,12 +63,12 @@ jobs:
                 fi
             done
             echo "Converting .irnb to .Rmd to update the .Rmd version"
-            R -e '
-              files <- list.files(path = "${{ dir }}", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
+            R -e "
+              files <- list.files(path = '$dir', pattern = '\\.irnb$', full.names = TRUE, recursive = FALSE)
               lapply(files, function(input) {
                 rmarkdown::convert_ipynb(input)
               })
-            '
+            "
         else
             echo "Directory $dir does not exist."
         fi

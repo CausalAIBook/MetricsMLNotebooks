@@ -1,9 +1,6 @@
-name: Check and Transform R Notebooks
+name: Check R Notebooks
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -203,27 +200,27 @@ jobs:
           rm -rf r_scripts
           rm ${{ matrix.directory }}_r_scripts.zip
 
-      - name: Check out the branch for pull request
-        if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true')"
-        run: |
-          git fetch --all
-          git checkout ${{ github.event.pull_request.head.ref }}
+      # - name: Check out the branch for pull request
+      #   if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true')"
+      #   run: |
+      #     git fetch --all
+      #     git checkout ${{ github.event.pull_request.head.ref }}
 
-      - name: Check if there are any changes
-        if: env.notebooks_changed == 'true'
-        id: verify_diff
-        run: |
-          git pull
-          git diff --quiet ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd || echo "changed=true" >> $GITHUB_OUTPUT
+      # - name: Check if there are any changes
+      #   if: env.notebooks_changed == 'true'
+      #   id: verify_diff
+      #   run: |
+      #     git pull
+      #     git diff --quiet ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd || echo "changed=true" >> $GITHUB_OUTPUT
 
-      - name: Commit and push stripped .irnb and .Rmd files
-        if: "(env.notebooks_changed == 'true') && (steps.verify_diff.outputs.changed == 'true')"
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git pull
-          git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
-          git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }} [skip ci]'
-          git push --force-with-lease
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Commit and push stripped .irnb and .Rmd files
+      #   if: "(env.notebooks_changed == 'true') && (steps.verify_diff.outputs.changed == 'true')"
+      #   run: |
+      #     git config --global user.name 'github-actions[bot]'
+      #     git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      #     git pull
+      #     git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
+      #     git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }} [skip ci]'
+      #     git push --force-with-lease
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
