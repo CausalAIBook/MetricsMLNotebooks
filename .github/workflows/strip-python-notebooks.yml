@@ -1,14 +1,14 @@
-name: Strip Python Jupyter Notebooks from Outputs
+name: Strip Python and R Notebooks from Outputs
 
 on:
   push:
 
 concurrency:
-  group: strip-python-notebooks-${{ github.ref }}
+  group: strip-notebooks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  strip-python-notebooks:
+  strip-notebooks:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +43,16 @@ jobs:
                     nbstripout "$notebook"
                 fi
             done
+            for notebook in "$dir"/*.irnb; do
+                # Check if there are any .irnb files
+                if [ -e "$notebook" ]; then                    
+                    echo "Stripping output from notebook: $notebook"
+                    ipynb_notebook="${notebook%.irnb}.ipynb"
+                    mv "$notebook" "$ipynb_notebook"
+                    nbstripout "$ipynb_notebook"
+                    mv "$ipynb_notebook" "$notebook"
+                fi
+            done
         else
             echo "Directory $dir does not exist."
         fi
@@ -56,7 +66,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Processing directory: $dir"
-                if git diff --quiet "$dir"/*.ipynb; then
+                if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb; then
                     echo "changed=true" >> $GITHUB_OUTPUT
                     break 1
                 fi
@@ -75,7 +85,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Adding changed files from directory: $dir"
-                git add "$dir"/*.ipynb
+                git add "$dir"/*.ipynb "$dir"/*.irnb
             else
                 echo "Directory $dir does not exist."
             fi

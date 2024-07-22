@@ -65,7 +65,9 @@
      "languageId": "r"
     }
    },
-   "outputs": [],
+   "outputs": [
+     "text": ["asdfas\n"]
+   ],
    "source": [
     "\n",
     "set.seed(123)\n",
