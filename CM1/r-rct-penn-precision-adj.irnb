@@ -69,7 +69,7 @@
     "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat\"\n",
     "Penn <- as.data.frame(read.table(file, header = TRUE))\n",
     "\n",
-    "n <- dim(Penn)[1]\n",
+    "n <- dim(Penn)[1] adsfasdf\n",
     "p_1 <- dim(Penn)[2]\n",
     "Penn <- subset(Penn, tg == 4 | tg == 0)\n",
     "attach(Penn)"
