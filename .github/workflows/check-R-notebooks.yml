@@ -231,7 +231,7 @@ jobs:
           # Optional (recommended) mail server password:
           password: ${{secrets.MAIL_PASSWORD}}
           # Required mail subject:
-          subject: FAILURE Github Actions R job for directory ${{matrix.directory}} failed!
+          subject: FAILURE R (${{matrix.directory}}) test Github Action job failed!
           # Required recipients' addresses:
           to: bsyrganis@gmail.com,vsyrgk@stanford.edu
           # Required sender full name (address can be skipped):
@@ -259,7 +259,7 @@ jobs:
           # Optional (recommended) mail server password:
           password: ${{secrets.MAIL_PASSWORD}}
           # Required mail subject:
-          subject: SUCCESS Github Actions R job for directory ${{matrix.directory}} succeeded!
+          subject: SUCCESS R (${{matrix.directory}}) test Github Action job succeeded!
           # Required recipients' addresses:
           to: bsyrganis@gmail.com,vsyrgk@stanford.edu
           # Required sender full name (address can be skipped):
