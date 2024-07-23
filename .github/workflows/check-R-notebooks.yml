@@ -151,7 +151,7 @@ jobs:
           rm linting_errors_check.txt
 
       - name: Execute R scripts and log output
-        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
         id: execute
         run: |
           log_file="${{ matrix.directory }}_r_script_execution.log"
@@ -197,7 +197,7 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload execution log
-        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.directory }}-r-script-execution-log
@@ -224,7 +224,7 @@ jobs:
           rm ${{ matrix.directory }}_r_scripts.zip
       
       - name: Publish result of error check
-        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
         run: |
           cat errors_check.txt >> $GITHUB_ENV
           rm errors_check.txt
