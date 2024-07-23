@@ -137,7 +137,7 @@ jobs:
                 linting_error <- TRUE
               }
             }
-            if linting_error {
+            if (linting_error) {
               writeLines("linting_errors_found=true", "linting_errors_check.txt")
             } else {
               writeLines("linting_errors_found=false", "linting_errors_check.txt")
