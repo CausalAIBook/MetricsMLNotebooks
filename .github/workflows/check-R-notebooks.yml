@@ -132,13 +132,20 @@ jobs:
               if (length(lints) > 0) {
                 cat("Warnings found during linting:\n")
                 print(lints)
-                stop("Linting failed with warnings")
+                # stop("Linting failed with warnings")
+                writeLines("linting_errors_found=false", "linting_errors_check.txt")
               }
             })
           '
+      
+      - name: Publish result of linting error check
+        if: env.notebooks_changed == 'true'
+        run: |
+          cat linting_errors_check.txt >> $GITHUB_ENV
+          rm linting_errors_check.txt
 
       - name: Execute R scripts and log output
-        if: env.notebooks_changed == 'true'
+        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
         id: execute
         run: |
           log_file="${{ matrix.directory }}_r_script_execution.log"
@@ -184,7 +191,7 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload execution log
-        if: env.notebooks_changed == 'true'
+        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.directory }}-r-script-execution-log
@@ -211,13 +218,13 @@ jobs:
           rm ${{ matrix.directory }}_r_scripts.zip
       
       - name: Publish result of error check
-        if: env.notebooks_changed == 'true'
+        if: "((env.notebooks_changed == 'true') && (linting_errors_found == 'false'))"
         run: |
           cat errors_check.txt >> $GITHUB_ENV
           rm errors_check.txt
       
-      - name: Send success mail
-        if: "(env.notebooks_changed == 'true') && (env.errors_found == 'true')"
+      - name: Send failure mail
+        if: "(env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true'))"
         uses: dawidd6/action-send-mail@v3
         with:
           # Required mail server address if not connection_url:
@@ -233,7 +240,7 @@ jobs:
           # Required mail subject:
           subject: FAILURE R (${{matrix.directory}}) test Github Action job failed!
           # Required recipients' addresses:
-          to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+          to: bsyrganis@gmail.com
           # Required sender full name (address can be skipped):
           from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
           # Optional plain body:
@@ -241,7 +248,7 @@ jobs:
           ignore_cert: true
       
       - name: fail if errors
-        if: "(env.notebooks_changed == 'true') && (env.errors_found == 'true')"
+        if: "(env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true'))"
         run: exit 1
           
       - name: Send success mail
