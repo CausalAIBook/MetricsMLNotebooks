@@ -188,7 +188,7 @@ jobs:
         # Required mail subject:
         subject: FAILURE Python (${{matrix.directory}}) test Github Action job failed!
         # Required recipients' addresses:
-        to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+        to: bsyrganis@gmail.com
         # Required sender full name (address can be skipped):
         from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
         # Optional plain body:
@@ -216,7 +216,7 @@ jobs:
         # Required mail subject:
         subject: SUCCESS Python (${{matrix.directory}}) test Github Action job succeeded!
         # Required recipients' addresses:
-        to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+        to: bsyrganis@gmail.com
         # Required sender full name (address can be skipped):
         from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
         # Optional plain body:

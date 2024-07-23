@@ -230,7 +230,7 @@ jobs:
           rm errors_check.txt
       
       - name: Send failure mail
-        if: "(env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true'))"
+        if: "((env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
         uses: dawidd6/action-send-mail@v3
         with:
           # Required mail server address if not connection_url:
@@ -254,7 +254,7 @@ jobs:
           ignore_cert: true
 
       - name: fail if errors
-        if: "(env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true'))"
+        if: "((env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
         run: exit 1
           
       - name: Send success mail
@@ -274,7 +274,7 @@ jobs:
           # Required mail subject:
           subject: SUCCESS R (${{matrix.directory}}) test Github Action job succeeded!
           # Required recipients' addresses:
-          to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+          to: bsyrganis@gmail.com
           # Required sender full name (address can be skipped):
           from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
           # Optional plain body:
