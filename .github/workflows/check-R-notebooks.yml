@@ -127,15 +127,21 @@ jobs:
                                      object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")),
                                      object_usage_linter = NULL)
             rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
-            results <- lapply(rmd_files, function(file) {
-              lints <- lint(file, linters)
+            linting_error <- FALSE
+            for (rfile in rmd_files) {
+              lints <- lint(rfile, linters)
               if (length(lints) > 0) {
                 cat("Warnings found during linting:\n")
                 print(lints)
                 # stop("Linting failed with warnings")
-                writeLines("linting_errors_found=false", "linting_errors_check.txt")
+                linting_error <- TRUE
               }
-            })
+            }
+            if linting_error {
+              writeLines("linting_errors_found=true", "linting_errors_check.txt")
+            } else {
+              writeLines("linting_errors_found=false", "linting_errors_check.txt")
+            }
           '
       
       - name: Publish result of linting error check
@@ -246,7 +252,7 @@ jobs:
           # Optional plain body:
           body: R notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed.
           ignore_cert: true
-      
+
       - name: fail if errors
         if: "(env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true'))"
         run: exit 1
