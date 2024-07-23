@@ -143,7 +143,7 @@ jobs:
               writeLines("linting_errors_found=false", "linting_errors_check.txt")
             }
           '
-      
+
       - name: Publish result of linting error check
         if: env.notebooks_changed == 'true'
         run: |
@@ -228,7 +228,7 @@ jobs:
         run: |
           cat errors_check.txt >> $GITHUB_ENV
           rm errors_check.txt
-      
+
       - name: Send failure mail
         if: "((env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
         uses: dawidd6/action-send-mail@v3
