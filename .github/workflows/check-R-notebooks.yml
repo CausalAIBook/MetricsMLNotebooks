@@ -166,6 +166,7 @@ jobs:
             sink(type = "message")
             close(log_con)
             if (length(errors) > 0) {
+              writeLines("errors_found=true", "errors_check.txt")
               for (error in errors) {
                 cat("Error found in file:", error$gitrfile, "\n")
                 cat("at line::", error$location, "\n")
@@ -174,7 +175,9 @@ jobs:
                 cat(paste(error$traceback, collapse = "\n"))
                 print("\n")
               }
-              quit(status = 1, save = "no")  # Exit with an error status if errors are found
+              # quit(status = 1, save = "no")  # Exit with an error status if errors are found
+            } else {
+              writeLines("errors_found=false", "errors_check.txt")
             }
           ' 2>/dev/null
         env:
@@ -206,6 +209,64 @@ jobs:
         run: |
           rm -rf r_scripts
           rm ${{ matrix.directory }}_r_scripts.zip
+      
+      - name: Publish result of error check
+        if: env.notebooks_changed == 'true'
+        run: |
+          cat errors_check.txt >> $GITHUB_ENV
+          rm errors_check.txt
+      
+      - name: Send success mail
+        if: "(env.notebooks_changed == 'true') && (env.errors_found == 'true')"
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Required mail server address if not connection_url:
+          server_address: smtp.gmail.com
+          # Server port, default 25:
+          server_port: 465
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional (recommended) mail server username:
+          username: ${{secrets.MAIL_USERNAME}}
+          # Optional (recommended) mail server password:
+          password: ${{secrets.MAIL_PASSWORD}}
+          # Required mail subject:
+          subject: FAILURE Github Actions R job for directory ${{matrix.directory}} failed!
+          # Required recipients' addresses:
+          to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+          # Required sender full name (address can be skipped):
+          from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+          # Optional plain body:
+          body: R notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed.
+          ignore_cert: true
+      
+      - name: fail if errors
+        if: "(env.notebooks_changed == 'true') && (env.errors_found == 'true')"
+        run: exit 1
+          
+      - name: Send success mail
+        if: env.notebooks_changed == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Required mail server address if not connection_url:
+          server_address: smtp.gmail.com
+          # Server port, default 25:
+          server_port: 465
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional (recommended) mail server username:
+          username: ${{secrets.MAIL_USERNAME}}
+          # Optional (recommended) mail server password:
+          password: ${{secrets.MAIL_PASSWORD}}
+          # Required mail subject:
+          subject: SUCCESS Github Actions R job for directory ${{matrix.directory}} succeeded!
+          # Required recipients' addresses:
+          to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+          # Required sender full name (address can be skipped):
+          from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+          # Optional plain body:
+          body: R notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} succedded.
+          ignore_cert: true
 
       # - name: Check out the branch for pull request
       #   if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true')"

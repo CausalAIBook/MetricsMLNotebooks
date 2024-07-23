@@ -186,7 +186,7 @@ jobs:
         # Optional (recommended) mail server password:
         password: ${{secrets.MAIL_PASSWORD}}
         # Required mail subject:
-        subject: URGENT Github Actions Python job for directory ${{matrix.directory}} failed!
+        subject: FAILURE Github Actions Python job for directory ${{matrix.directory}} failed!
         # Required recipients' addresses:
         to: bsyrganis@gmail.com,vsyrgk@stanford.edu
         # Required sender full name (address can be skipped):
@@ -214,13 +214,13 @@ jobs:
         # Optional (recommended) mail server password:
         password: ${{secrets.MAIL_PASSWORD}}
         # Required mail subject:
-        subject: URGENT Github Actions Python job for directory ${{matrix.directory}} failed!
+        subject: SUCCESS Github Actions Python job for directory ${{matrix.directory}} succeeded!
         # Required recipients' addresses:
         to: bsyrganis@gmail.com,vsyrgk@stanford.edu
         # Required sender full name (address can be skipped):
         from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
         # Optional plain body:
-        body: Python notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed!!
+        body: Python notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} succedded.
         ignore_cert: true
     
     # - name: Check out the branch for pull request
