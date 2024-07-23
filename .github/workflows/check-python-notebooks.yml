@@ -172,7 +172,7 @@ jobs:
         path: logs
     
     - name: Send failure mail
-      if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
+      if: "((github.event_name == 'schedule') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0')))"
       uses: dawidd6/action-send-mail@v3
       with:
         # Required mail server address if not connection_url:
@@ -200,7 +200,7 @@ jobs:
       run: exit 1
     
     - name: Send success mail
-      if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+      if: "((github.event_name == 'schedule') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest'))))"
       uses: dawidd6/action-send-mail@v3
       with:
         # Required mail server address if not connection_url:

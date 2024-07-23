@@ -230,7 +230,7 @@ jobs:
           rm errors_check.txt
 
       - name: Send failure mail
-        if: "((env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
+        if: "((github.event_name == 'schedule') && (env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
         uses: dawidd6/action-send-mail@v3
         with:
           # Required mail server address if not connection_url:
@@ -258,7 +258,7 @@ jobs:
         run: exit 1
           
       - name: Send success mail
-        if: env.notebooks_changed == 'true'
+        if: ((github.event_name == 'schedule') && (env.notebooks_changed == 'true'))"
         uses: dawidd6/action-send-mail@v3
         with:
           # Required mail server address if not connection_url:
