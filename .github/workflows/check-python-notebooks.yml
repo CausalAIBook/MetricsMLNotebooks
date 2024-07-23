@@ -170,10 +170,58 @@ jobs:
       with:
         name: execution-logs-${{ matrix.directory }}-${{ matrix.os }}
         path: logs
+    
+    - name: Send failure mail
+      if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
+      uses: dawidd6/action-send-mail@v3
+      with:
+        # Required mail server address if not connection_url:
+        server_address: smtp.gmail.com
+        # Server port, default 25:
+        server_port: 465
+        # Optional whether this connection use TLS (default is true if server_port is 465)
+        secure: true
+        # Optional (recommended) mail server username:
+        username: ${{secrets.MAIL_USERNAME}}
+        # Optional (recommended) mail server password:
+        password: ${{secrets.MAIL_PASSWORD}}
+        # Required mail subject:
+        subject: URGENT Github Actions Python job for directory ${{matrix.directory}} failed!
+        # Required recipients' addresses:
+        to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+        # Required sender full name (address can be skipped):
+        from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+        # Optional plain body:
+        body: Python notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed!!
+        ignore_cert: true
 
     - name: Check for errors
       if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')) && (env.flake8_errors != '0' || env.script_errors != '0'))"
       run: exit 1
+    
+    - name: Send success mail
+      if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
+      uses: dawidd6/action-send-mail@v3
+      with:
+        # Required mail server address if not connection_url:
+        server_address: smtp.gmail.com
+        # Server port, default 25:
+        server_port: 465
+        # Optional whether this connection use TLS (default is true if server_port is 465)
+        secure: true
+        # Optional (recommended) mail server username:
+        username: ${{secrets.MAIL_USERNAME}}
+        # Optional (recommended) mail server password:
+        password: ${{secrets.MAIL_PASSWORD}}
+        # Required mail subject:
+        subject: URGENT Github Actions Python job for directory ${{matrix.directory}} failed!
+        # Required recipients' addresses:
+        to: bsyrganis@gmail.com,vsyrgk@stanford.edu
+        # Required sender full name (address can be skipped):
+        from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+        # Optional plain body:
+        body: Python notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed!!
+        ignore_cert: true
     
     # - name: Check out the branch for pull request
     #   if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
