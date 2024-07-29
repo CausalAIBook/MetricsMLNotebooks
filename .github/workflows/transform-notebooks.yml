@@ -84,7 +84,7 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Processing directory: $dir"
-                
+                git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
                 if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
                     echo "No changes were found"
                 else
