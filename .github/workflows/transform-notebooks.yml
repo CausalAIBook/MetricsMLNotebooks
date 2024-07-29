@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - gen-Rmd
 
 concurrency:
   group: strip-transform-notebooks-${{ github.ref }}
@@ -83,8 +84,12 @@ jobs:
             # Check if directory exists
             if [ -d "$dir" ]; then
                 echo "Processing directory: $dir"
+                git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
+                git diff "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
+                CHANGES=$(git status --porcelain)
                 
-                if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
+                if [ -z "$CHANGES" ]; then
+                # if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
                     echo "No changes were found"
                 else
                     echo "Found changes in directory: $dir"
