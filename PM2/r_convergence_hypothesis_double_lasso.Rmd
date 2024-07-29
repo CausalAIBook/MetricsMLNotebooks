@@ -1,0 +1,268 @@
+---
+title: An R Markdown document converted from "PM2/r_convergence_hypothesis_double_lasso.irnb"
+output: html_document
+---
+
+# Testing the Convergence Hypothesis
+
+```{r}
+install.packages("hdm")
+install.packages("xtable")
+install.packages("lmtest")
+install.packages("sandwich")
+install.packages("glmnet")
+install.packages("ggplot2")
+```
+
+```{r}
+library(hdm)
+library(xtable)
+library(lmtest)
+library(sandwich)
+library(glmnet) # For LassoCV
+library(ggplot2)
+```
+
+## Introduction
+
+We provide an additional empirical example of partialling-out with Lasso to estimate the regression coefficient $\beta_1$ in the high-dimensional linear regression model:
+  $$
+  Y = \beta_1 D +  \beta_2'W + \epsilon.
+  $$
+  
+Specifically, we are interested in how the rates  at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).
+  
+The relationship is captured by $\beta_1$, the *speed of convergence/divergence*, which measures the speed at which poor countries catch up $(\beta_1< 0)$ or fall behind $(\beta_1> 0)$ rich countries, after controlling for $W$. Our inference question here is: do poor countries grow faster than rich countries, controlling for educational and other characteristics? In other words, is the speed of convergence negative: $ \beta_1 <0?$ This is the Convergence Hypothesis predicted by the Solow Growth Model. This is a structural economic model. Under some strong assumptions, that we won't state here, the predictive exercise we are doing here can be given causal interpretation.
+
+## Data Analysis
+
+We consider the data set GrowthData which is included in the package *hdm*. First, let us load the data set to get familiar with the data.
+
+```{r}
+getdata <- function(...) {
+  e <- new.env()
+  name <- data(..., envir = e)[1]
+  e[[name]]
+}
+
+# now load your data calling getdata()
+growth <- getdata(GrowthData)
+```
+
+The sample contains $90$ countries and $63$ controls.
+
+```{r}
+growth
+```
+
+Thus $p \approx 60$, $n=90$ and $p/n$ is not small. We expect the least squares method to provide a poor estimate of $\beta_1$.  We expect the method based on partialling-out with Lasso to provide a high quality estimate of $\beta_1$.
+To check this hypothesis, we analyze the relation between the output variable $Y$ and the other country's characteristics by running a linear regression in the first step.
+
+```{r}
+## Create the outcome variable y and covariates x
+y <- growth$Outcome
+X <- growth[-which(colnames(growth) %in% c("intercept"))]
+```
+
+```{r}
+fit <- lm(Outcome ~ ., data = X)
+est <- summary(fit)$coef["gdpsh465", 1]
+
+hcv_coefs <- vcovHC(fit, type = "HC1") # HC - "heteroskedasticity cosistent"
+se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors
+
+# print unconditional effect of gdpsh465 and the corresponding standard error
+cat("The estimated coefficient on gdpsh465 is", est,
+    " and the corresponding robust standard error is", se)
+
+# Calculate the 95% confidence interval for 'gdpsh465'
+lower_ci <- est - 1.96 * se
+upper_ci <- est + 1.96 * se
+
+cat("95% Confidence Interval: [", lower_ci, ",", upper_ci, "]")
+```
+
+## Summarize OLS results
+
+```{r}
+# Create an empty data frame with column names
+table <- data.frame(
+  Method = character(0),
+  Estimate = character(0),
+  `Std. Error` = numeric(0),
+  `Lower Bound CI` = numeric(0),
+  `Upper Bound CI` = numeric(0)
+)
+
+# Add OLS results to the table
+table <- rbind(table, c("OLS", est, se, lower_ci, upper_ci))
+
+# Rename the columns to match the Python table
+colnames(table) <- c("Method", "Estimate", "Std. Error", "lower bound CI", "upper bound CI")
+
+# Print the table
+print(table)
+```
+
+Least squares provides a rather noisy estimate (high standard error) of the
+speed of convergence, and does not allow us to answer the question
+about the convergence hypothesis since the confidence interval includes zero.
+
+In contrast, we can use the partialling-out approach based on lasso regression ("Double Lasso").
+
+```{r}
+y <- growth$Outcome
+W <- growth[-which(colnames(growth) %in% c("Outcome", "intercept", "gdpsh465"))]
+D <- growth$gdpsh465
+```
+
+## Method 1: Lasso with Theoretical Penalty using HDM
+
+While cross validation is commonly employed for choosing penalty parameters in Lasso, it can be very noisy and tends to choose relatively small penalty leading to some overfitting. For this reason, one should not use cross validation to choose tuning parameters unless sample splitting is employed. We illustrate the use of sample combined with cross validation in later chapters in the book. Since we are using the full sample here, it is much better (and theoretically valid) to use penalties that provably control overfitting, which is what we do here.
+
+We report the results using cross validation at the end of this notebook for comparison. There, we observe overfitting for the prediction of the outcome.
+
+```{r}
+double_lasso <- function(y, D, W) {
+
+  # residualize outcome with Lasso
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
+  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
+  yres <- y - as.numeric(yhat_rlasso)
+
+
+  # residualize treatment with Lasso
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
+  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
+  dres <- D - as.numeric(dhat_rlasso)
+
+  # rest is the same as in the OLS case
+  hat <- mean(yres * dres) / mean(dres^2)
+  epsilon <- yres - hat * dres
+  V <- mean(epsilon^2 * dres^2) / mean(dres^2)^2
+  stderr <- sqrt(V / length(y))
+
+  return(list(hat = hat, stderr = stderr))
+}
+```
+
+```{r}
+results <- double_lasso(y, D, W)
+hat <- results$hat
+stderr <- results$stderr
+# Calculate the 95% confidence interval
+ci_lower <- hat - 1.96 * stderr
+ci_upper <- hat + 1.96 * stderr
+```
+
+The least square method provides a rather noisy estimate of the speed of convergence. We can not answer the question if poor countries grow faster than rich countries. The least square method does not work when the ratio $p/n$ is large.
+
+In sharp contrast, partialling-out via Lasso provides a more precise estimate. The Lasso based point estimate is $-5\%$ and the $95\%$ confidence interval for the (annual) rate of convergence $[-7.8\%,-2.2\%]$ only includes negative numbers. This empirical evidence does support the convergence hypothesis.
+
+```{r}
+# Add Double Lasso results to the table
+table <- rbind(table, c("Double Lasso", hat, stderr, ci_lower, ci_upper))
+
+# Print the table
+print(table)
+```
+
+## Method 2: Lasso with Cross-Validation
+
+This section is for illustration purposes only. Given that we are using the full sample, cross validation *should not* be used for choosing tuning parameters here. Cross validation tends to (mildly) overfit, and this overfitting can lead to substantial problems when inference about parameters is the goal.
+
+```{r}
+# Choose penalty based on KFold cross validation
+set.seed(123)
+# Given small sample size, we use an aggressive number of 20 folds
+n_folds <- 20
+
+
+# Define LassoCV models for y and D
+model_y <- cv.glmnet(
+  x = as.matrix(W),
+  y = y,
+  alpha = 1, # Lasso penalty
+  nfolds = n_folds,
+  family = "gaussian"
+)
+
+model_d <- cv.glmnet(
+  x = as.matrix(W),
+  y = D,
+  alpha = 1, # Lasso penalty
+  nfolds = n_folds,
+  family = "gaussian"
+)
+
+# Get the best lambda values for y and D
+best_lambda_y <- model_y$lambda.min
+best_lambda_d <- model_d$lambda.min
+
+# Fit Lasso models with the best lambda values
+lasso_model_y <- glmnet(as.matrix(W), y, alpha = 1, lambda = best_lambda_y)
+lasso_model_d <- glmnet(as.matrix(W), D, alpha = 1, lambda = best_lambda_d)
+
+# Calculate the residuals
+res_y <- y - predict(lasso_model_y, s = best_lambda_y, newx = as.matrix(W))
+res_d <- D - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(W))
+```
+
+```{r}
+tmp_df <- as.data.frame(cbind(res_y, res_d))
+colnames(tmp_df) <- c("res_y", "res_d")
+```
+
+```{r}
+fit_cv <- lm(res_y ~ res_d, data = tmp_df)
+est_cv <- summary(fit_cv)$coef["res_d", 1]
+
+hcv_cv_coefs <- vcovHC(fit_cv, type = "HC1") # HC - "heteroskedasticity cosistent"
+se_cv <- sqrt(diag(hcv_cv_coefs))[2] # Estimated std errors
+
+# Calculate the 95% confidence interval for 'gdpsh465'
+lower_ci_cv <- est_cv - 1.96 * se_cv
+upper_ci_cv <- est_cv + 1.96 * se_cv
+```
+
+```{r}
+# Add LassoCV results to the table
+table <- rbind(table, c("Double Lasso CV", est_cv, se_cv, lower_ci_cv, upper_ci_cv))
+
+# Print the table
+print(table)
+```
+
+We find that the outcome model chooses too small of a penalty based on cross-validation, leading to overfitting of the outcome and tiny outcome residuals. This leads to artificially small standard errors and a zero treatment effect. Theoretically driven penalty should be preferred for such small sample sizes.
+
+```{r}
+# Create a data frame to store the results
+results_y <- data.frame(
+  Alphas = model_y$lambda,
+  OutOfSampleR2 = 1 - model_y$cvm / var(y)
+)
+
+results_d <- data.frame(
+  Alphas = model_d$lambda,
+  OutOfSampleR2 = 1 - model_d$cvm / var(D)
+)
+
+# Plot Outcome Lasso-CV Model
+ggplot(data = results_y, aes(x = Alphas, y = OutOfSampleR2)) +
+  geom_line() +
+  labs(
+    title = "Outcome Lasso-CV Model: Out-of-sample R-squared as function of penalty level",
+    x = "Penalty Level",
+    y = "Out-of-sample R-squared"
+  )
+
+# Plot Treatment Lasso-CV Model
+ggplot(data = results_d, aes(x = (Alphas), y = OutOfSampleR2)) +
+  geom_line() +
+  labs(
+    title = "Treatment Lasso-CV Model: Out-of-sample R-squared as function of penalty level",
+    x = "Penalty Level",
+    y = "Out-of-sample R-squared"
+  )
+```
+

@@ -1,0 +1,601 @@
+---
+title: An R Markdown document converted from "T/T_4_Regression_Discontinuity_on_Progresa_Data.irnb"
+output: html_document
+---
+
+# Regression Discontinuity
+This notebook illustrates the use of Regression Discontinuity in an empirical study. We analyze the effect of the antipoverty program *Progresa/Oportunidades* on the consumption behavior of families in Mexico in the early 2000s.
+
+The program was intended for families in extreme poverty and included financial incentives for participation in measures that improved the family's health, nutrition and children's education. The effect of this program is a widely studied problem in social and economic sciences and, according to the WHO, was a very successful measure in terms of reducing extreme poverty in Mexico.
+
+Eligibility for the program was determined based on a pre-intervention household poverty-index. Individuals above a certain threshold received the treatment (participation in the program) while individuals below the threshold were excluded and recorded as a control group. All observations above the threshold participated in the program, which makes the analysis fall into the standard (sharp) regression discontinuity design.
+
+First, we need to install and load some packages. This can take up to 15 minutes.
+
+```{r}
+dependencies <- c("rdrobust", "fastDummies", "randomForest", "hdm", "gbm", "rdd")
+install.packages(dependencies)
+```
+
+```{r}
+lapply(dependencies, library, character.only = TRUE)
+```
+
+We use a dataset assembled by [Calonico et al. (2014)](https://rdpackages.github.io/references/Calonico-Cattaneo-Titiunik_2014_ECMA--Supplemental.pdf) and follow the analysis in [Noack et al. (2023)](https://arxiv.org/pdf/2107.07942.pdf).
+
+First, we open the data and remove any observations that have NaN values.
+
+```{r}
+df <- read.csv("https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/progresa.csv",
+               row.names = 1)
+comp <- complete.cases(df)
+df <- df[comp, ]
+print("Shape of Data:")
+print(dim(df))
+print("Variable Names:")
+print(colnames(df))
+head(df)
+```
+
+The data set contains 1,944 observations for which full covariate information of 27 variables is available.
+
+We want to measure the local average treatment effect of program participation on four outcome variables. The outcome variables are food and non-food consumption of the recorded families at two points in time, one year and two years after the implementation of the program.
+
+The baseline covariates, recorded prior to program implementation, include the household's size; household head's age, sex, years of education and employment status; spouse's age and years of education; number of children not older than five years and their sex, and physical characteristics of the house: whether the house has cement floors, water connection, water connection inside the house, a bathroom, electricity, number of rooms, pre-intervention consumption, and an identifier of the urban locality in which the house is located.
+
+The data fits to the pattern of a sharp RD design, namely, all individuals that were below the cut-off index received no intervention, and all individuals above the cut-off were eligible to join the *progresa* program and thus participated.
+
+## Estimation without Covariates
+
+First, we will perform a very simple RD estimation with a weighted linear regression. We use a triangular kernel, which assigns weights to observations based on their distance from the cutoff point. The weights decrease linearly as the distance from the cutoff point increases.
+
+```{r}
+triangular_kernel <- function(index, h) {
+  weights <- 1 - abs(index) / h
+  weights[weights < 0] <- 0
+  return(weights)
+}
+```
+
+The parameter `h` is the bandwidth that controls the range of observations that receive non-zero weights. We use the `IKbandwidth` function from the `rdd` package that implements the *Imbens-Kalyanaraman* method. Another standard approach would be to use the standard deviation of `index`.
+
+```{r}
+h <- IKbandwidth(X = df$index, Y = df$conspcfood_t1, cutpoint = 0)
+```
+
+We use the triangular kernel function to calculate weights for each observation. After that, we can fit two seperate linear regressions for both treatment and control groups.
+
+```{r}
+weights <- triangular_kernel(df$index, h)
+model_treated <- lm(conspcfood_t1 ~ index, data = df[df$index > 0, ], weights = weights[df$index > 0])
+model_control <- lm(conspcfood_t1 ~ index, data = df[df$index < 0, ], weights = weights[df$index < 0])
+```
+
+The treatment effect at the cutoff point is estimated as the difference between the predictions of the two models at the cutoff point.
+
+```{r}
+cutoff <- 0
+treatment_effect <- predict(model_treated, newdata = data.frame(index = cutoff)) -
+  predict(model_control, newdata = data.frame(index = cutoff))
+treatment_effect
+```
+
+We estimate that the participation in the program reduced food consumption by $22.1$ units in the first year after the intervention. We can repeat the estimation using the `rdd` package, which yields us an estimate as well as a confidence band calculated according to the formulas presented in the book. We look at all four targets.
+
+```{r}
+result <- c()
+for (outcome in c("conspcfood_t1", "conspcnonfood_t1", "conspcfood_t2", "conspcnonfood_t2")) {
+  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho = 1)
+  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+}
+resframe <- as.data.frame(result)
+colnames(resframe) <- c("LATE", "s.e.")
+rownames(resframe) <- c("Food T_1", "Non-Food T_1", "Food T_2", "Non-Food T_2")
+print(resframe)
+```
+
+While the effects in the first year after the intervention are negative, we observe significant positive effects in the second year after an individual or household was accepted in the *Progresa* program. This is in accordance to the previous analysis of this dataset. One possible explanation for this is that the program households have more money and can thus afford more. This was the desired effect of the program to combat hunger and extreme poverty.
+
+The following plot visualizes the two weighted regressions at the cut-off for the last outcome variable (non-food consumption in `t2`). We can clearly see the "jump" at the cut-off, which is our LATE.
+
+```{r}
+rdplot(df$conspcfood_t1, df$index, c = 0, x.lim = c(-1, 1), y.lim = c(250, 400))
+```
+
+## Estimation with Covariates
+
+For identification and estimation of the average treatment effect at the cutoff value no covariate information is required except the running variable, but nevertheless in many applications additional covariates are collected which might be exploited for the analysis.
+
+
+The standard approach is simply to take up the regressors in the weighted least squares regression.
+
+```{r}
+model_treated <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc,
+                    data = df[df$index > 0, ], weights = weights[df$index > 0])
+model_control <- lm(conspcfood_t1 ~ index + hhownhouse + headage + heademp + headeduc,
+                    data = df[df$index < 0, ], weights = weights[df$index < 0])
+prediction_treated <- predict(model_treated, newdata = data.frame(
+  index = cutoff,
+  hhownhouse = weighted.mean(df[df$index > 0, ]$hhownhouse, w = weights[df$index > 0]),
+  headage = weighted.mean(df[df$index > 0, ]$headage, w = weights[df$index > 0]),
+  heademp = weighted.mean(df[df$index > 0, ]$heademp, w = weights[df$index > 0]),
+  headeduc = weighted.mean(df[df$index > 0, ]$headeduc, w = weights[df$index > 0])
+))
+prediction_control <- predict(model_control, newdata = data.frame(
+  index = cutoff,
+  hhownhouse = weighted.mean(df[df$index < 0, ]$hhownhouse, w = weights[df$index < 0]),
+  headage = weighted.mean(df[df$index < 0, ]$headage, w = weights[df$index < 0]),
+  heademp = weighted.mean(df[df$index < 0, ]$heademp, w = weights[df$index < 0]),
+  headeduc = weighted.mean(df[df$index < 0, ]$headeduc, w = weights[df$index < 0])
+))
+treatment_effect <- prediction_treated - prediction_control
+treatment_effect
+```
+
+Including these selected covariates does not have a significant impact on the LATE estimation.
+
+Again, we can also use `rdrobust` to repeat the estimation with all other outcomes.
+
+```{r}
+result <- c()
+for (outcome in c("conspcfood_t1", "conspcnonfood_t1", "conspcfood_t2", "conspcnonfood_t2")) {
+  rdd_result <- rdrobust(df[[outcome]], df$index, c = cutoff, rho = 1, covs = df[, c(1:8, 10:17, 19, 22)])
+  result <- rbind(result, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+}
+resframe_adj <- as.data.frame(result)
+colnames(resframe_adj) <- c("LATE", "s.e.")
+rownames(resframe_adj) <- c("Food T_1", "Non-Food T_1", "Food T_2", "Non-Food T_2")
+resframe_adj["% reduction"] <- (resframe_adj["s.e."] - resframe[, 2]) * 100 / resframe[, 2]
+print(resframe_adj)
+```
+
+Overall, the adjustment by only a few covariates has not changed the estimated coefficient much from the result without covariates. However, including covariates does reduce the standard errors.
+
+## Estimation using ML
+
+As discussed in the book, including many covariates in RDD estimation can be beneficial for multiple reasons:
+1. **Efficiency and power improvements**: As in randomized control trials, using covariates can increase efficiency and improve power.
+2. **Auxiliary information**: In RDD the score determines the treatment assignment and measurement errors in the running variable can distort the results. Additional covariates can be exploited to overcome these issues or to deal with missing data problems.
+3. **Treatment effect heterogeneity**: Covariates can be used to define subgroups in which the treatment effects differ.
+4. **Other parameters of interest and extrapolation**: As the identified treatment effect in RDD is local at the cutoff, additional covariates might help for extrapolation of the treatment effects or identify other causal parameters.
+
+However, including a high number of covariates also comes with additional challenges, such as variables selection, non-linearities or interactions between covariates. The best way to overcome these is the use of modern ML methods.
+
+There are multiple ways to implement the estimators presented in the book, we will closely follow the analysis of [Noack et al. (2023)](https://arxiv.org/pdf/2107.07942.pdf). We set up running variable and outcome as above. The baseline covariates will be all the other variables in the data.
+
+```{r}
+# Running Variable and Outcome
+df_ml <- df
+investigated_outcome <- "conspcfood_t1"
+names(df_ml)[names(df_ml) == "index"] <- "X"
+names(df_ml)[names(df_ml) == investigated_outcome] <- "Y"
+
+# Baseline covariates including consumption
+b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])
+
+# Fixed effects for localities
+i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))
+
+# Flexible covariates including localities indicators
+f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]
+Zlasso <- as.matrix(cbind(i_fe, f_covs))
+```
+
+We will use the package `rdrobust` for the RD estimation. Before starting the DML procedure, we have to estimate a bandwidth to restrict the samples in the first stage estimation.
+
+```{r}
+h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]
+```
+
+The next chunk sets up the crossfitting and estimates the function $\eta(Z)$, which we will use to adjust $Y$ for the second stage. We use Random Forest, a Boosting implementation, Linear Regression and Lasso with both a baseline and flexible covariate structure.
+
+```{r}
+first_stage <- function() {
+  # Set up the cross-fitting
+  n <- nrow(df_ml)
+  Kf <- 5 # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cfgroup <- sample(sampleframe, size = n, replace = FALSE)
+
+  # Matrix to store eta predictions
+  eta_fit <- matrix(NA, n, 5)
+
+  # Create vector of observations to be considered in the first stage model
+  weights <- (abs(df_ml$X) < h_fs)
+
+  for (k in 1:Kf) {
+    fold <- (cfgroup == k)
+
+    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]
+    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]
+
+    data_fold <- df_ml[fold, ]
+
+    model <- as.formula(paste("Y~", paste(b_covs, collapse = "+")))
+
+    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)
+    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)
+    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2
+
+    gbm1 <- gbm(model,
+      data = data_treated, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    gbm0 <- gbm(model,
+      data = data_control, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2
+
+    lm1 <- lm(model, data = data_treated)
+    lm0 <- lm(model, data = data_control)
+    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2
+
+    las_base1 <- rlasso(model, data = data_treated)
+    las_base0 <- rlasso(model, data = data_control)
+    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2
+
+    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)
+    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)
+    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)
+    model_flex <- as.formula(paste("Y~", paste(c(b_covs, colnames(Zlasso)), collapse = "+")))
+
+    las_flex1 <- rlasso(model_flex, data = data_treated_extended)
+    las_flex0 <- rlasso(model_flex, data = data_control_extended)
+    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2
+  }
+  return(eta_fit)
+}
+
+eta_fit <- first_stage()
+```
+
+With the estimated $\hat{\eta}(Z)$ we can correct for confounding in $Y$ and now run the RDD estimation as second stage again.
+
+```{r}
+methods <- c("Random Forest", "Gradient Boosting", "Linear Regression", "Lasso Baseline", "Lasso Flexible")
+
+second_stage <- function(eta_fit) {
+  adj_results <- NULL
+
+  for (i in seq_along(methods)) {
+    m_y <- df_ml$Y - eta_fit[, i]
+    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)
+    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+  }
+  return(adj_results)
+}
+
+adj_frame <- as.data.frame(second_stage(eta_fit))
+rownames(adj_frame) <- methods
+colnames(adj_frame) <- c("LATE", "s.e.")
+print(adj_frame)
+```
+
+Finally, we create a small simulation study with only $R=20$ repetitions to show the variance reducing effect of the inclusion of ML-based estimators for the covariates. The next block runs up to ten minutes.
+
+```{r}
+estimates <- adj_frame[, 1]
+std_err <- adj_frame[, 2]
+R <- 19
+
+for (i in 1:R) {
+  eta_fit <- first_stage()
+  adj_results <- second_stage(eta_fit)
+  estimates <- cbind(estimates, adj_results[, 1])
+  std_err <- cbind(std_err, adj_results[, 2])
+}
+```
+
+We aggregate the median of the estimates, the mean of the standard errors and also calculate the mean reduction of standard error compared to the "no covariates" estimation. We see, that including covariates can reduce the standard error of estimation around 15-20%.
+
+```{r}
+med_est <- apply(estimates, 1, median)
+mean_se <- apply(std_err, 1, mean)
+adj_frame <- as.data.frame(cbind(med_est, mean_se))
+rownames(adj_frame) <- methods
+colnames(adj_frame) <- c("LATE", "s.e.")
+adj_frame["% reduction"] <- (adj_frame["s.e."] - resframe[1, 2]) * 100 / resframe[1, 2]
+adj_frame["Linear Adjusted (no cross-fit)", ] <- resframe_adj[1, ]
+print(adj_frame)
+```
+
+## We now repeat the exercise for the other outcomes (excluding the simulation).
+
+Non-Food Consumption (Year 1)
+
+```{r}
+# Running Variable and Outcome
+df_ml <- df
+investigated_outcome <- "conspcnonfood_t1"
+names(df_ml)[names(df_ml) == "index"] <- "X"
+names(df_ml)[names(df_ml) == investigated_outcome] <- "Y"
+
+# Baseline covariates including consumption
+b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])
+
+# Fixed effects for localities
+i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))
+
+# Flexible covariates including localities indicators
+f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]
+Zlasso <- as.matrix(cbind(i_fe, f_covs))
+
+h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]
+
+first_stage <- function() {
+  # Set up the cross-fitting
+  n <- nrow(df_ml)
+  Kf <- 5 # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cfgroup <- sample(sampleframe, size = n, replace = FALSE)
+
+  # Matrix to store eta predictions
+  eta_fit <- matrix(NA, n, 5)
+
+  # Create vector of observations to be considered in the first stage model
+  weights <- (abs(df_ml$X) < h_fs)
+
+  for (k in 1:Kf) {
+    fold <- (cfgroup == k)
+
+    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]
+    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]
+
+    data_fold <- df_ml[fold, ]
+
+    model <- as.formula(paste("Y~", paste(b_covs, collapse = "+")))
+
+    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)
+    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)
+    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2
+
+    gbm1 <- gbm(model,
+      data = data_treated, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    gbm0 <- gbm(model,
+      data = data_control, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2
+
+    lm1 <- lm(model, data = data_treated)
+    lm0 <- lm(model, data = data_control)
+    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2
+
+    las_base1 <- rlasso(model, data = data_treated)
+    las_base0 <- rlasso(model, data = data_control)
+    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2
+
+    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)
+    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)
+    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)
+    model_flex <- as.formula(paste("Y~", paste(c(b_covs, colnames(Zlasso)), collapse = "+")))
+
+    las_flex1 <- rlasso(model_flex, data = data_treated_extended)
+    las_flex0 <- rlasso(model_flex, data = data_control_extended)
+    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2
+  }
+  return(eta_fit)
+}
+
+eta_fit <- first_stage()
+
+methods <- c("Random Forest", "Gradient Boosting", "Linear Regression", "Lasso Baseline", "Lasso Flexible")
+
+second_stage <- function(eta_fit) {
+  adj_results <- NULL
+
+  for (i in seq_along(methods)) {
+    m_y <- df_ml$Y - eta_fit[, i]
+    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)
+    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+  }
+  return(adj_results)
+}
+
+adj_frame <- as.data.frame(second_stage(eta_fit))
+rownames(adj_frame) <- methods
+colnames(adj_frame) <- c("LATE", "s.e.")
+print(adj_frame)
+```
+
+Food Consumption (Year 2)
+
+```{r}
+# Running Variable and Outcome
+df_ml <- df
+investigated_outcome <- "conspcfood_t2"
+names(df_ml)[names(df_ml) == "index"] <- "X"
+names(df_ml)[names(df_ml) == investigated_outcome] <- "Y"
+
+# Baseline covariates including consumption
+b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])
+
+# Fixed effects for localities
+i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))
+
+# Flexible covariates including localities indicators
+f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]
+Zlasso <- as.matrix(cbind(i_fe, f_covs))
+
+h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]
+
+first_stage <- function() {
+  # Set up the cross-fitting
+  n <- nrow(df_ml)
+  Kf <- 5 # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cfgroup <- sample(sampleframe, size = n, replace = FALSE)
+
+  # Matrix to store eta predictions
+  eta_fit <- matrix(NA, n, 5)
+
+  # Create vector of observations to be considered in the first stage model
+  weights <- (abs(df_ml$X) < h_fs)
+
+  for (k in 1:Kf) {
+    fold <- (cfgroup == k)
+
+    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]
+    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]
+
+    data_fold <- df_ml[fold, ]
+
+    model <- as.formula(paste("Y~", paste(b_covs, collapse = "+")))
+
+    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)
+    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)
+    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2
+
+    gbm1 <- gbm(model,
+      data = data_treated, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    gbm0 <- gbm(model,
+      data = data_control, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2
+
+    lm1 <- lm(model, data = data_treated)
+    lm0 <- lm(model, data = data_control)
+    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2
+
+    las_base1 <- rlasso(model, data = data_treated)
+    las_base0 <- rlasso(model, data = data_control)
+    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2
+
+    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)
+    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)
+    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)
+    model_flex <- as.formula(paste("Y~", paste(c(b_covs, colnames(Zlasso)), collapse = "+")))
+
+    las_flex1 <- rlasso(model_flex, data = data_treated_extended)
+    las_flex0 <- rlasso(model_flex, data = data_control_extended)
+    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2
+  }
+  return(eta_fit)
+}
+
+eta_fit <- first_stage()
+
+methods <- c("Random Forest", "Gradient Boosting", "Linear Regression", "Lasso Baseline", "Lasso Flexible")
+
+second_stage <- function(eta_fit) {
+  adj_results <- NULL
+
+  for (i in seq_along(methods)) {
+    m_y <- df_ml$Y - eta_fit[, i]
+    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)
+    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+  }
+  return(adj_results)
+}
+
+adj_frame <- as.data.frame(second_stage(eta_fit))
+rownames(adj_frame) <- methods
+colnames(adj_frame) <- c("LATE", "s.e.")
+print(adj_frame)
+```
+
+Non-Food Consumption (Year 2)
+
+```{r}
+# Running Variable and Outcome
+df_ml <- df
+investigated_outcome <- "conspcnonfood_t2"
+names(df_ml)[names(df_ml) == "index"] <- "X"
+names(df_ml)[names(df_ml) == investigated_outcome] <- "Y"
+
+# Baseline covariates including consumption
+b_covs <- names(df_ml[, c(1:8, 10:17, 19, 22)])
+
+# Fixed effects for localities
+i_fe <- as.matrix(dummy_cols(df_ml$clus, remove_first_dummy = TRUE))
+
+# Flexible covariates including localities indicators
+f_covs <- as.matrix(model.matrix(~ .^2, data = df_ml[b_covs]))[, -1]
+Zlasso <- as.matrix(cbind(i_fe, f_covs))
+
+h_fs <- 2 * rdrobust(df_ml$Y, df_ml$X, rho = 1)$bws[[1]]
+
+first_stage <- function() {
+  # Set up the cross-fitting
+  n <- nrow(df_ml)
+  Kf <- 5 # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cfgroup <- sample(sampleframe, size = n, replace = FALSE)
+
+  # Matrix to store eta predictions
+  eta_fit <- matrix(NA, n, 5)
+
+  # Create vector of observations to be considered in the first stage model
+  weights <- (abs(df_ml$X) < h_fs)
+
+  for (k in 1:Kf) {
+    fold <- (cfgroup == k)
+
+    data_treated <- df_ml[df_ml$X > 0 & !fold & weights > 0, ]
+    data_control <- df_ml[df_ml$X < 0 & !fold & weights > 0, ]
+
+    data_fold <- df_ml[fold, ]
+
+    model <- as.formula(paste("Y~", paste(b_covs, collapse = "+")))
+
+    rf1 <- randomForest(model, data = data_treated, mtry = 4, ntree = 1000)
+    rf0 <- randomForest(model, data = data_control, mtry = 4, ntree = 1000)
+    eta_fit[fold, 1] <- (predict(rf1, data_fold) + predict(rf0, data_fold)) / 2
+
+    gbm1 <- gbm(model,
+      data = data_treated, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    gbm0 <- gbm(model,
+      data = data_control, n.trees = 100, interaction.depth = 1,
+      shrinkage = .1, distribution = "gaussian"
+    )
+    eta_fit[fold, 2] <- (predict(gbm1, data_fold, n.trees = 100) + predict(gbm0, data_fold, n.trees = 100)) / 2
+
+    lm1 <- lm(model, data = data_treated)
+    lm0 <- lm(model, data = data_control)
+    eta_fit[fold, 3] <- (predict(lm1, data_fold) + predict(lm0, data_fold)) / 2
+
+    las_base1 <- rlasso(model, data = data_treated)
+    las_base0 <- rlasso(model, data = data_control)
+    eta_fit[fold, 4] <- (predict(las_base1, data_fold) + predict(las_base0, data_fold)) / 2
+
+    data_treated_extended <- cbind(Zlasso[rownames(data_treated), ], data_treated)
+    data_control_extended <- cbind(Zlasso[rownames(data_control), ], data_control)
+    data_fold_extended <- cbind(Zlasso[rownames(data_fold), ], data_fold)
+    model_flex <- as.formula(paste("Y~", paste(c(b_covs, colnames(Zlasso)), collapse = "+")))
+
+    las_flex1 <- rlasso(model_flex, data = data_treated_extended)
+    las_flex0 <- rlasso(model_flex, data = data_control_extended)
+    eta_fit[fold, 5] <- (predict(las_flex1, data_fold_extended) + predict(las_flex0, data_fold_extended)) / 2
+  }
+  return(eta_fit)
+}
+
+eta_fit <- first_stage()
+
+methods <- c("Random Forest", "Gradient Boosting", "Linear Regression", "Lasso Baseline", "Lasso Flexible")
+
+second_stage <- function(eta_fit) {
+  adj_results <- NULL
+
+  for (i in seq_along(methods)) {
+    m_y <- df_ml$Y - eta_fit[, i]
+    rdd_result <- rdrobust(m_y, df$index, c = cutoff, rho = 1)
+    adj_results <- rbind(adj_results, c(rdd_result$coef[1], rdd_result$se["Robust", ]))
+  }
+  return(adj_results)
+}
+
+adj_frame <- as.data.frame(second_stage(eta_fit))
+rownames(adj_frame) <- methods
+colnames(adj_frame) <- c("LATE", "s.e.")
+print(adj_frame)
+```
+

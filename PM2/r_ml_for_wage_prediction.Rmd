@@ -1,0 +1,447 @@
+---
+title: An R Markdown document converted from "PM2/r_ml_for_wage_prediction.irnb"
+output: html_document
+---
+
+# A Simple Case Study using Wage Data from 2015
+
+We illustrate how to predict an outcome variable $Y$ in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. We use linear prediction rules for estimation, including OLS and the penalized linear methods we've studied. Later, we will also consider nonlinear prediction rules including tree-based methods and neural nets.
+
+```{r}
+install.packages("xtable")
+install.packages("hdm")
+install.packages("glmnet")
+install.packages("MLmetrics")
+```
+
+```{r}
+library(hdm)
+library(xtable)
+library(glmnet)
+library(MLmetrics)
+```
+
+## Data
+
+Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.
+The preproccessed sample consists of $5150$ never-married individuals.
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+data <- read.csv(file)
+dim(data)
+```
+
+The outcomes $Y_i$'s are hourly (log) wages of never-married workers living in the U.S. The raw regressors $Z_i$'s consist of a variety of characteristics, including experience, education and industry and occupation indicators.
+
+```{r}
+Z <- subset(data, select = -c(lwage, wage)) # regressors
+colnames(Z)
+```
+
+The following figure shows the weekly wage distribution from the US survey data.
+
+```{r}
+hist(data$wage, xlab = "hourly wage", main = "Empirical wage distribution from the US survey data", breaks = 35)
+```
+
+Wages show a high degree of skewness. Hence, wages are transformed in almost all studies by
+the logarithm.
+
+## Analysis
+
+Due to the skewness of the data, we are considering log wages which leads to the following regression model
+
+$$log(wage) = g(Z) + \epsilon.$$
+
+In this notebook, we will evaluate *linear* prediction rules. In later notebooks, we will also utilize nonlinear prediction methods. In linear models, we estimate the prediction rule of the form
+
+$$\hat g(Z) = \hat \beta'X.$$
+
+Again, we generate $X$ in three ways:
+
+1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, regional indicators).
+
+
+2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., $\operatorname{exp}^2$ and $\operatorname{exp}^3$) and additional two-way interactions.
+
+3. Extra Flexible Model: $X$ takes the flexible model and takes all pairwise interactions.
+
+To evaluate the out-of-sample performance, we split the data first.
+
+```{r}
+set.seed(1234)
+training <- sample(nrow(data), nrow(data) * (3 / 4), replace = FALSE)
+
+data_train <- data[training, ]
+data_test <- data[-training, ]
+```
+
+```{r}
+y_train <- data_train$lwage
+y_test <- data_test$lwage
+```
+
+We are starting by running a simple OLS regression. We fit the basic and flexible model to our training data by running an ols regression and compute the R-squared on the test sample
+
+As known from our first lab, the basic model consists of $51$ regressors and the flexible model of $246$ regressors. Let us fit our models to the training sample using the two different model specifications. We are starting by running a simple ols regression and computing the mean squared error and $R^2$ on the test sample.
+
+### Low dimensional specification (basic)
+
+```{r}
+x_basic <- "sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)"
+formula_basic <- as.formula(paste("lwage", "~", x_basic))
+model_x_basic_train <- model.matrix(formula_basic, data_train)
+model_x_basic_test <- model.matrix(formula_basic, data_test)
+p_basic <- dim(model_x_basic_train)[2]
+p_basic
+```
+
+```{r}
+# ols (basic model)
+fit_lm_basic <- lm(formula_basic, data_train)
+# Compute the Out-Of-Sample Performance
+yhat_lm_basic <- predict(fit_lm_basic, newdata = data_test)
+cat("Basic model MSE (OLS): ", mean((y_test - yhat_lm_basic)^2)) # MSE OLS (basic model)
+```
+
+To determine the out-of-sample $MSE$ and the standard error in one step, we can use the function *lm*:
+
+```{r}
+mse_lm_basic <- summary(lm((y_test - yhat_lm_basic)^2 ~ 1))$coef[1:2]
+mse_lm_basic
+```
+
+We also compute the out-of-sample $R^2$:
+
+```{r}
+r2_lm_basic <- 1 - mse_lm_basic[1] / var(y_test)
+cat("Basic model R^2 (OLS): ", r2_lm_basic) # MSE OLS (basic model)
+```
+
+### High-dimensional specification (flexible)
+
+```{r}
+x_flex <- paste("sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we ",
+                "+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)")
+formula_flex <- as.formula(paste("lwage", "~", x_flex))
+model_x_flex_train <- model.matrix(formula_flex, data_train)
+model_x_flex_test <- model.matrix(formula_flex, data_test)
+p_flex <- dim(model_x_flex_train)[2]
+p_flex
+```
+
+We repeat the same procedure for the flexible model.
+
+```{r}
+# ols (flexible model)
+fit_lm_flex <- lm(formula_flex, data_train)
+# Compute the Out-Of-Sample Performance
+options(warn = -1)
+yhat_lm_flex <- predict(fit_lm_flex, newdata = data_test)
+mse_lm_flex <- summary(lm((y_test - yhat_lm_flex)^2 ~ 1))$coef[1:2]
+r2_lm_flex <- 1 - mse_lm_flex[1] / var(y_test)
+cat("Flexible model R^2 (OLS): ", r2_lm_flex) # MSE OLS (flexible model)
+```
+
+### Penalized regressions (flexible model)
+
+
+
+
+We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We proceed by running penalized regressions first for the flexible model, tuned via cross-validation.
+
+```{r}
+fit_lasso_cv_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = .5)
+
+yhat_lasso_cv_flex <- predict(fit_lasso_cv_flex, newx = model_x_flex_test)
+yhat_ridge_flex <- predict(fit_ridge_flex, newx = model_x_flex_test)
+yhat_elnet_flex <- predict(fit_elnet_flex, newx = model_x_flex_test)
+
+mse_lasso_cv_flex <- summary(lm((y_test - yhat_lasso_cv_flex)^2 ~ 1))$coef[1:2]
+mse_ridge_flex <- summary(lm((y_test - yhat_ridge_flex)^2 ~ 1))$coef[1:2]
+mse_elnet_flex <- summary(lm((y_test - yhat_elnet_flex)^2 ~ 1))$coef[1:2]
+
+r2_lasso_cv_flex <- 1 - mse_lasso_cv_flex[1] / var(y_test)
+r2_ridge_flex <- 1 - mse_ridge_flex[1] / var(y_test)
+r2_elnet_flex <- 1 - mse_elnet_flex[1] / var(y_test)
+
+# R^2 using cross-validation (flexible model)
+cat("Flexible model R^2 (Lasso): ", r2_lasso_cv_flex)
+cat("\nFlexible model R^2 (Ridge): ", r2_ridge_flex)
+cat("\nFlexible model R^2 (Elastic Net): ", r2_elnet_flex)
+```
+
+We can also try a variant of the `l1` penalty, where the weight is chosen based on theoretical derivations. We use package *hdm* and the function *rlasso*, relying on a theoretical based choice of the penalty level $\lambda$ in the lasso regression.
+
+Specifically, we use "plug-in" tuning with a theoretically valid choice of penalty $\lambda = 2 \cdot c \hat{\sigma} \sqrt{n} \Phi^{-1}(1-\alpha/2p)$, where $c>1$ and $1-\alpha$ is a confidence level, $\Phi^{-1}$ denotes the quantile function, and $\hat{\sigma}$ is estimated in an iterative manner (see corresponding notes in book). Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\epsilon$ and $X$ in the regression equation decay quickly at the tails.
+
+In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks.
+
+Now, we repeat the same procedure for the flexible model.
+
+```{r}
+fit_rlasso_flex <- hdm::rlasso(formula_flex, data_train, post = FALSE)
+fit_rlasso_post_flex <- hdm::rlasso(formula_flex, data_train, post = TRUE)
+yhat_rlasso_flex <- predict(fit_rlasso_flex, newdata = data_test)
+yhat_rlasso_post_flex <- predict(fit_rlasso_post_flex, newdata = data_test)
+
+mse_lasso_flex <- summary(lm((y_test - yhat_rlasso_flex)^2 ~ 1))$coef[1:2]
+mse_lasso_post_flex <- summary(lm((y_test - yhat_rlasso_post_flex)^2 ~ 1))$coef[1:2]
+
+r2_lasso_flex <- 1 - mse_lasso_flex[1] / var(y_test)
+r2_lasso_post_flex <- 1 - mse_lasso_post_flex[1] / var(y_test)
+# R^2 theoretically chosen penalty (flexible model)
+cat("Flexible model R^2 (RLasso): ", r2_lasso_flex)
+cat("\nFlexible model R^2 (RLasso post): ", r2_lasso_post_flex)
+```
+
+Finally, we try the combination of a sparse and a dense coefficient using the LAVA method
+
+```{r}
+# Define function to compute lava estimator. Doing an iterative scheme with fixed
+# number of iteration. Could iterate until a convergence criterion is met.
+lava_predict <- function(X, Y, newX, lambda1, lambda2, iter = 5) {
+
+  # Need to demean internally
+  dy <- Y - mean(Y)
+  dx <- scale(X, scale = FALSE)
+
+  sp1 <- glmnet::glmnet(dx, dy, lambda = lambda1) # lasso step fits "sparse part"
+  de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx), alpha = 0, lambda = lambda2)
+
+  i <- 1
+  while (i <= iter) {
+    sp1 <- glmnet::glmnet(dx, dy - predict(de1, newx = dx, s = "lambda.min"), lambda = lambda1)
+    de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx, s = "lambda.min"), alpha = 0, lambda = lambda2)
+    i <- i + 1
+  }
+
+  bhat <- sp1$beta + de1$beta
+  a0 <- mean(Y) - sum(colMeans(X) * bhat)
+
+  # Need to add intercept to output
+
+  yhat <- newX %*% bhat + a0
+
+  return(yhat)
+}
+```
+
+```{r}
+# define function to get predictions and r2 scores for lava estimator
+lava_yhat_r2 <- function(xtr_mod, xte_mod, ytr, yte, num_folds = 5) {
+  # 5-fold CV. glmnet does cross-validation internally and
+  # relatively efficiently. We're going to write out all the steps to make sure
+  # we're using the same CV folds across all procedures in a transparent way and
+  # to keep the overall structure clear as well.
+
+  # Setup for brute force K-Fold CV
+  n <- length(ytr)
+  Kf <- num_folds # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cvgroup <- sample(sampleframe, size = n, replace = FALSE) # CV groups
+
+
+  ## ------------------------------------------------------------
+  # We're going to take a shortcut and use the range of lambda values that come out
+  # of the default implementation in glmnet for everything. Could do better here - maybe
+
+  ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.
+  ridge_mod <- glmnet::glmnet(xtr_mod, ytr, alpha = 0) # alpha = 0 gives ridge
+  ridge_lambda <- ridge_mod$lambda # values of penalty parameter
+
+  ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.
+  lasso_mod <- glmnet::glmnet(xtr_mod, ytr) # default is lasso (equivalent to alpha = 1)
+  lasso_lambda <- lasso_mod$lambda # values of penalty parameter
+
+  ## ------------------------------------------------------------
+
+
+  # Lava - Using a double loop over candidate penalty parameter values.
+
+  lambda1_lava_mod <- lasso_mod$lambda[seq(5, length(lasso_lambda), 10)]
+  lambda2_lava_mod <- ridge_mod$lambda[seq(5, length(ridge_lambda), 10)]
+
+  cv_mod_lava <- matrix(0, length(lambda1_lava_mod), length(lambda2_lava_mod))
+
+  for (k in 1:Kf) {
+    indk <- cvgroup == k
+
+    k_xtr_mod <- xtr_mod[!indk, ]
+    k_ytr <- ytr[!indk]
+    k_xte_mod <- xtr_mod[indk, ]
+    k_yte <- ytr[indk]
+
+    for (ii in seq_along(lambda1_lava_mod)) {
+      for (jj in seq_along(lambda2_lava_mod)) {
+        cv_mod_lava[ii, jj] <- cv_mod_lava[ii, jj] +
+          sum((k_yte - lava_predict(k_xtr_mod, k_ytr,
+                                    newX = k_xte_mod,
+                                    lambda1 = lambda1_lava_mod[ii],
+                                    lambda2 = lambda2_lava_mod[jj]))^2)
+      }
+    }
+  }
+
+  # Get CV min values of tuning parameters
+  cvmin_lava_mod <- which(cv_mod_lava == min(cv_mod_lava), arr.ind = TRUE)
+  cvlambda1_lava_mod <- lambda1_lava_mod[cvmin_lava_mod[1]]
+  cvlambda2_lava_mod <- lambda2_lava_mod[cvmin_lava_mod[2]]
+
+  #### Look at performance on test sample
+
+  # Calculate R^2 in training data and in validation data as measures
+  # Refit on entire training sample
+
+  #### CV-min model
+
+  # In sample fit
+  cvmin_yhat_lava_tr <- lava_predict(xtr_mod, ytr,
+    newX = xtr_mod,
+    lambda1 = cvlambda1_lava_mod,
+    lambda2 = cvlambda2_lava_mod
+  )
+  r2_lava_mod <- 1 - sum((ytr - cvmin_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)
+
+  # Out of sample fit
+  cvmin_yhat_lava_test <- lava_predict(xtr_mod, ytr,
+    newX = xte_mod,
+    lambda1 = cvlambda1_lava_mod,
+    lambda2 = cvlambda2_lava_mod
+  )
+  r2v_lava_mod <- 1 - sum((yte - cvmin_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)
+
+  #### Use average model across cv-folds and refit model using all training data
+  ###### we won't report these results.
+  ###### Averaging is theoretically more solid, but cv-min is more practical.
+  n_tr <- length(ytr)
+  n_te <- length(yte)
+  yhat_tr_lava_mod <- matrix(0, n_tr, Kf)
+  yhat_te_lava_mod <- matrix(0, n_te, Kf)
+
+
+  for (k in 1:Kf) {
+    indk <- cvgroup == k
+
+    k_xtr_mod <- xtr_mod[!indk, ]
+    k_ytr <- ytr[!indk]
+
+    # Lava
+    yhat_tr_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,
+      newX = xtr_mod,
+      lambda1 = cvlambda1_lava_mod,
+      lambda2 = cvlambda2_lava_mod
+    ))
+    yhat_te_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,
+      newX = xte_mod,
+      lambda1 = cvlambda1_lava_mod,
+      lambda2 = cvlambda2_lava_mod
+    ))
+  }
+
+  avg_yhat_lava_tr <- rowMeans(yhat_tr_lava_mod)
+  avg_yhat_lava_test <- rowMeans(yhat_te_lava_mod)
+
+  r2_cv_ave_lava_mod <- 1 - sum((ytr - avg_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)
+  r2v_cv_ave_lava_mod <- 1 - sum((yte - avg_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)
+
+  return(c(
+    cvlambda1_lava_mod,
+    cvlambda2_lava_mod,
+    cvmin_yhat_lava_tr, # CV_min
+    cvmin_yhat_lava_test, # CV_min
+    r2_lava_mod, # CV_min
+    r2v_lava_mod, # CV_min
+    avg_yhat_lava_tr, # Average across Folds
+    avg_yhat_lava_test, # Average across Folds
+    r2_cv_ave_lava_mod, # Average across Folds
+    r2v_cv_ave_lava_mod # Average across Folds
+  ))
+}
+```
+
+```{r}
+fit_lava_flex <- lava_yhat_r2(model_x_flex_train, model_x_flex_test, y_train, y_test)
+cat("Flexible model R^2 (LAVA): ", fit_lava_flex[[6]]) # using CV_min
+```
+
+<!-- We find that for this dataset the low dimensional OLS was the best among all specifications. The high-dimensional approaches did not manage to increase predictive power. -->
+
+We find that for this dataset the low dimensional OLS is sufficient. The high-dimensional approaches did not manage to substantively increase predictive power.
+
+### Extra high-dimensional specification (extra flexible)
+
+We repeat the same procedure for the extra flexible model.
+
+<!-- Given the results above, it is not immediately clear why one would choose to use Lasso as results are fairly similar. To motivate, we consider an extra flexible model to show how OLS can overfit significantly to the in-sample train data and perform poorly on the out-of-sample testing data. -->
+
+
+
+
+```{r}
+x_extra <- " sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2"
+formula_extra <- as.formula(paste("lwage", "~", x_extra))
+model_x_extra_train <- model.matrix(formula_extra, data_train)
+model_x_extra_test <- model.matrix(formula_extra, data_test)
+p_extra <- dim(model_x_extra_train)[2]
+p_extra
+```
+
+```{r}
+# ols (extra flexible model)
+fit_lm_extra <- lm(formula_extra, data_train)
+options(warn = -1)
+yhat_lm_extra <- predict(fit_lm_extra, newdata = data_test)
+mse_lm_extra <- summary(lm((y_test - yhat_lm_extra)^2 ~ 1))$coef[1:2]
+r2_lm_extra <- 1 - mse_lm_extra[1] / var(y_test)
+cat("Extra flexible model R^2 (OLS): ", r2_lm_extra)
+```
+
+#### Penalized regressions (extra flexible model)
+
+Now let's repeat our penalized regression analysis for the extra flexible model. Note this block takes a while ~ 1 hour 15 minutes. To reduce time substantially, reduce the number of folds in LAVA.
+
+```{r}
+# penalized regressions
+fit_lasso_cv_extra <- cv.glmnet(model_x_extra_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge_extra <- cv.glmnet(model_x_extra_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet_extra <- cv.glmnet(model_x_extra_train, y_train, family = "gaussian", alpha = .5)
+fit_rlasso_extra <- hdm::rlasso(formula_extra, data_train, post = FALSE)
+fit_rlasso_post_extra <- hdm::rlasso(formula_extra, data_train, post = TRUE)
+fit_lava_extra <- lava_yhat_r2(model_x_extra_train, model_x_extra_test, y_train, y_test)
+
+yhat_lasso_cv_extra <- predict(fit_lasso_cv_extra, newx = model_x_extra_test)
+yhat_ridge_extra <- predict(fit_ridge_extra, newx = model_x_extra_test)
+yhat_elnet_extra <- predict(fit_elnet_extra, newx = model_x_extra_test)
+yhat_rlasso_extra <- predict(fit_rlasso_extra, newdata = data_test)
+yhat_rlasso_post_extra <- predict(fit_rlasso_post_extra, newdata = data_test)
+yhat_lava_extra <- fit_lava_extra[[4]]
+
+mse_lasso_cv_extra <- summary(lm((y_test - yhat_lasso_cv_extra)^2 ~ 1))$coef[1:2]
+mse_ridge_extra <- summary(lm((y_test - yhat_ridge_extra)^2 ~ 1))$coef[1:2]
+mse_elnet_extra <- summary(lm((y_test - yhat_elnet_extra)^2 ~ 1))$coef[1:2]
+mse_lasso_extra <- summary(lm((y_test - yhat_rlasso_extra)^2 ~ 1))$coef[1:2]
+mse_lasso_post_extra <- summary(lm((y_test - yhat_rlasso_post_extra)^2 ~ 1))$coef[1:2]
+mse_lava_extra <- summary(lm(as.vector(y_test - yhat_lava_extra)^2 ~ 1))$coef[1:2]
+
+r2_lasso_cv_extra <- 1 - mse_lasso_cv_extra[1] / var(y_test)
+r2_ridge_extra <- 1 - mse_ridge_extra[1] / var(y_test)
+r2_elnet_extra <- 1 - mse_elnet_extra[1] / var(y_test)
+r2_lasso_extra <- 1 - mse_lasso_extra[1] / var(y_test)
+r2_lasso_post_extra <- 1 - mse_lasso_post_extra[1] / var(y_test)
+r2_lava_extra <- 1 - mse_lava_extra[1] / var(y_test)
+
+# R^2 (extra flexible)
+cat("\nExtra flexible model R^2 (Lasso): ", r2_lasso_cv_extra)
+cat("\nExtra flexible model R^2 (Ridge): ", r2_ridge_extra)
+cat("\nExtra flexible model R^2 (Elastic Net): ", r2_elnet_extra)
+cat("\nExtra flexible model R^2 (RLasso): ", r2_lasso_extra)
+cat("\nExtra flexible model R^2 (RLasso post): ", r2_lasso_post_extra)
+cat("\nExtra flexible model R^2 (LAVA): ", r2_lava_extra) # using CV_min
+```
+
+<!-- As shown above, the overfitting effect is mitigated with the penalized regression model. -->
+

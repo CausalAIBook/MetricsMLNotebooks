@@ -1,0 +1,238 @@
+---
+title: An R Markdown document converted from "CM1/r-rct-penn-precision-adj.irnb"
+output: html_document
+---
+
+# Analyzing RCT data with Precision Adjustment
+
+```{r}
+install.packages("sandwich")
+install.packages("lmtest")
+install.packages("xtable")
+install.packages("hdm")
+```
+
+```{r}
+library(sandwich)
+library(lmtest)
+library(xtable)
+library(hdm)
+```
+
+## Data
+
+In this lab, we analyze the Pennsylvania re-employment bonus experiment, which was previously studied in "Sequential testing of duration data: the case of the Pennsylvania ‘reemployment bonus’ experiment" (Bilias, 2000), among others. These experiments were conducted in the 1980s by the U.S. Department of Labor to test the incentive effects of alternative compensation schemes for unemployment insurance (UI). In these experiments, UI claimants were randomly assigned either to a control group or one of five treatment groups. Actually, there are six treatment groups in the experiments. Here we focus on treatment group 4, but feel free to explore other treatment groups. In the control group the current rules of the UI applied. Individuals in the treatment groups were offered a cash bonus if they found a job within some pre-specified period of time (qualification period), provided that the job was retained for a specified duration. The treatments differed in the level of the bonus, the length of the qualification period, and whether the bonus was declining over time in the qualification period; see http://qed.econ.queensu.ca/jae/2000-v15.6/bilias/readme.b.txt for further details on data.
+  
+
+```{r}
+## loading the data
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/penn_jae.dat"
+Penn <- as.data.frame(read.table(file, header = TRUE))
+
+n <- dim(Penn)[1]
+p_1 <- dim(Penn)[2]
+Penn <- subset(Penn, tg == 4 | tg == 0)
+attach(Penn)
+```
+
+```{r}
+T4 <- (tg == 4)
+summary(T4)
+```
+
+```{r}
+head(Penn)
+```
+
+### Model
+To evaluate the impact of the treatments on unemployment duration, we consider the linear regression model:
+
+$$
+Y =  D \beta_1 + W'\beta_2 + \varepsilon, \quad E \varepsilon (D,W')' = 0,
+$$
+
+where $Y$ is  the  log of duration of unemployment, $D$ is a treatment  indicators,  and $W$ is a set of controls including age group dummies, gender, race, number of dependents, quarter of the experiment, location within the state, existence of recall expectations, and type of occupation.   Here $\beta_1$ is the ATE, if the RCT assumptions hold rigorously.
+
+
+We also consider interactive regression model:
+
+$$
+Y =  D \alpha_1 + D W' \alpha_2 + W'\beta_2 + \varepsilon, \quad E \varepsilon (D,W', DW')' = 0,
+$$
+where $W$'s are demeaned (apart from the intercept), so that $\alpha_1$ is the ATE, if the RCT assumptions hold rigorously.
+
+Under RCT, the projection coefficient $\beta_1$ has
+the interpretation of the causal effect of the treatment on
+the average outcome. We thus refer to $\beta_1$ as the average
+treatment effect (ATE). Note that the covariates, here are
+independent of the treatment $D$, so we can identify $\beta_1$ by
+just linear regression of $Y$ on $D$, without adding covariates.
+However we do add covariates in an effort to improve the
+precision of our estimates of the average treatment effect.
+
+### Analysis
+
+We consider
+
+*  classical 2-sample approach, no adjustment (CL)
+*  classical linear regression adjustment (CRA)
+*  interactive regression adjusment (IRA)
+
+and carry out robust inference using the *estimatr* R packages.
+
+# Carry out covariate balance check
+
+
+We first look at the coefficients individually with a $t$-test, and then we adjust the $p$-values to control for family-wise error.
+
+The regression below is done using "type='HC1'" which computes the correct Eicker-Huber-White standard errors, instead of the classical non-robust formula based on homoscedasticity.
+
+```{r}
+data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                             agelt35 + agegt54 + durable + lusd + husd)^2)
+
+# individual t-tests
+m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                agelt35 + agegt54 + durable + lusd + husd)^2, data = as.data.frame(data))
+coeftest(m, vcov = vcovHC(m, type = "HC1"))
+```
+
+<!-- We could conduct a Wald test to jointly test the hypothesis that all coefficients are zero. If the resulting p-value from such a test is small, we would reject the the null hypothesis that $\beta_i=0 \ \forall i$, i.e. the balance conditions fail.
+
+However, calculating such a statistic requires computing the inverse of the covariance matrix, which in the presence of multicollinearity is singular. Python side-steps this issue in its computation of the pseudo-inverse, but it is trickier in R.  -->
+
+To test balance conditions, we employ the Holm-Bonferroni step-down method. With 100+ hypotheses, the family-wise type I error, or the probability of making at least one type I error treating all hypotheses independently, is close to 1. To control for this, we adjust p-values with the following procedure.
+
+First, set $\alpha=0.05$ and denote the list of $n$ p-values from the regression with the vector $p$.
+
+1. Sort $p$ from smallest to largest, so $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(n)}$. Denote the corresponding hypothesis for $p_{(i)}$ as $H_{(i)}$.
+2. For $i=1,\ldots, n$,
+- If $$p_{(i)} > \frac{\alpha}{n-i+1} $$ Break the loop and do not reject any $H_{(j)}$ for $j \geq i$.
+- Else reject $H_{(i)}$ if $$p_{(i)} \leq \frac{\alpha}{n-i+1} $$ Increment $i := i+1$.
+
+
+
+
+```{r}
+holm_bonferroni <- function(p, alpha = 0.05) {
+  n <- length(p)
+  sig_beta <- c()
+
+  for (i in 1:n) {
+    if (sort(p)[i] > alpha / (n - i + 1)) {
+      break
+    } else {
+      sig_beta <- c(sig_beta, order(p)[i])
+    }
+  }
+
+  return(sig_beta)
+}
+
+p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = "HC1"))[, 4])
+significant_indices <- holm_bonferroni(p_values, alpha = 0.05)
+print(paste("Significant Coefficients (Indices): ", significant_indices))
+```
+
+There is also a built in R function to do this.
+
+```{r}
+p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = "HC1"))[, 4])
+holm_reject <- p.adjust(sort(p_values), "holm") <= 0.05
+holm_reject
+```
+
+We see that that even though this is a randomized experiment, balance conditions are failed.
+<!--
+The holm method fails to reject any hypothesis. That is, we fail to reject the hypothesis that any coefficient is zero. Thus, in this randomized experiment, balance conditions are met. -->
+
+# Model Specification
+
+```{r}
+# model specifications
+
+# no adjustment (2-sample approach)
+formula_cl <- log(inuidur1) ~ T4
+
+# adding controls
+formula_cra <- log(inuidur1) ~ T4 + (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                                       agelt35 + agegt54 + durable + lusd + husd)^2
+# Omitted dummies: q1, nondurable, muld
+
+ols_cl <- lm(formula_cl)
+ols_cra <- lm(formula_cra)
+
+ols_cl <- coeftest(ols_cl, vcov = vcovHC(ols_cl, type = "HC1"))
+ols_cra <- coeftest(ols_cra, vcov = vcovHC(ols_cra, type = "HC1"))
+
+print(ols_cl)
+print(ols_cra)
+```
+
+The interactive specificaiton corresponds to the approach introduced in Lin (2013).
+
+```{r}
+# interactive regression model;
+
+X <- model.matrix(~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
+                       agelt35 + agegt54 + durable + lusd + husd)^2)[, -1]
+dim(X)
+
+demean <- function(x) {
+  x - mean(x)
+}
+
+X <- apply(X, 2, demean)
+
+ols_ira <- lm(log(inuidur1) ~ T4 * X)
+ols_ira <- coeftest(ols_ira, vcov = vcovHC(ols_ira, type = "HC1"))
+print(ols_ira)
+```
+
+Next we try out partialling out with lasso
+
+```{r}
+T4 <- demean(T4)
+
+DX <- model.matrix(~ T4 * X)[, -1]
+
+rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1))
+
+print(rlasso_ira)
+```
+
+### Results
+
+```{r}
+str(ols_ira)
+ols_ira[2, 1]
+```
+
+```{r}
+table <- matrix(0, 2, 4)
+table[1, 1] <- ols_cl[2, 1]
+table[1, 2] <- ols_cra[2, 1]
+table[1, 3] <- ols_ira[2, 1]
+table[1, 4] <- rlasso_ira[[1]][1]
+
+table[2, 1] <- ols_cl[2, 2]
+table[2, 2] <- ols_cra[2, 2]
+table[2, 3] <- ols_ira[2, 2]
+table[2, 4] <- rlasso_ira[[1]][2]
+
+
+colnames(table) <- c("CL", "CRA", "IRA", "IRA w Lasso")
+rownames(table) <- c("estimate", "standard error")
+tab <- xtable(table, digits = 5)
+tab
+
+print(tab, type = "latex", digits = 5)
+```
+
+Treatment group 4 experiences an average decrease of about $7.8\%$ in the length of unemployment spell.
+
+
+Observe that regression estimators delivers estimates that are slighly more efficient (lower standard errors) than the simple 2 mean estimator, but essentially all methods have very similar standard errors. From IRA results we also see that there is not any statistically detectable heterogeneity.  We also see the regression estimators offer slightly lower estimates -- these difference occur perhaps to due minor imbalance in the treatment allocation, which the regression estimators try to correct.
+
+
+

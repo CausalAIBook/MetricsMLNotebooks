@@ -1,0 +1,1309 @@
+---
+title: An R Markdown document converted from "AC2/r-dml-401k-IV.irnb"
+output: html_document
+---
+
+# Inference on Predictive and Causal Effects in High-Dimensional Nonlinear Models
+
+## Impact of 401(k) on  Financial Wealth
+
+We consider estimation of the effect of 401(k) participation
+on accumulated assets. 401(k) plans are pension accounts sponsored by employers. The key problem in determining the effect of participation in 401(k) plans on accumulated assets is saver heterogeneity coupled with the fact that the decision to enroll in a 401(k) is non-random. It is generally recognized that some people have a higher preference for saving than others. It also seems likely that those individuals with high unobserved preference for saving would be most likely to choose to participate in tax-advantaged retirement savings plans and would tend to have otherwise high amounts of accumulated assets. The presence of unobserved savings preferences with these properties then implies that conventional estimates that do not account for saver heterogeneity and endogeneity of participation will be biased upward, tending to overstate the savings effects of 401(k) participation.
+
+One can argue that eligibility for enrolling in a 401(k) plan in this data can be taken as exogenous after conditioning on a few observables of which the most important for their argument is income. The basic idea is that, at least around the time 401(k)’s initially became available, people were unlikely to be basing their employment decisions on whether an employer offered a 401(k) but would instead focus on income and other aspects of the job.
+
+```{r}
+install.packages("xtable")
+install.packages("hdm")
+install.packages("sandwich")
+install.packages("ggplot2")
+install.packages("randomForest")
+install.packages("glmnet")
+install.packages("rpart")
+install.packages("data.table")
+install.packages("gbm")
+```
+
+```{r}
+library(xtable)
+library(hdm)
+library(sandwich)
+library(ggplot2)
+library(randomForest)
+library(data.table)
+library(glmnet)
+library(rpart)
+library(gbm)
+
+set.seed(123)
+```
+
+### Data
+
+The raw dataset can be found [here](https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/401k.csv).
+The data set can be loaded from the `hdm` package for R directly by typing:
+
+
+```{r}
+data(pension)
+data <- pension
+dim(data)
+```
+
+See the "Details" section on the description of the data set, which can be accessed by
+
+```{r}
+help(pension)
+```
+
+The data consist of 9,915 observations at the household level drawn from the 1991 Survey of Income and Program Participation (SIPP).  All the variables are referred to 1990. We use net financial assets (*net\_tfa*) as the outcome variable, $Y$,  in our analysis. The net financial assets are computed as the sum of IRA balances, 401(k) balances, checking accounts, saving bonds, other interest-earning accounts, other interest-earning assets, stocks, and mutual funds less non mortgage debts.
+
+Among the $9915$ individuals, $3682$ are eligible to participate in the program. The variable *e401* indicates eligibility and *p401* indicates participation, respectively.
+
+```{r}
+hist_e401 <- ggplot(data, aes(x = e401, fill = factor(e401))) +
+  geom_bar()
+hist_e401
+```
+
+Eligibility is highly associated with financial wealth:
+
+```{r}
+dens_net_tfa <- ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401))) +
+  geom_density() +
+  xlim(c(-20000, 150000)) +
+  facet_wrap(. ~ e401)
+
+dens_net_tfa
+```
+
+The unconditional APE of e401 is about $19559$:
+
+```{r}
+e1 <- data[data$e401 == 1, ]
+e0 <- data[data$e401 == 0, ]
+round(mean(e1$net_tfa) - mean(e0$net_tfa), 0)
+```
+
+Among the $3682$ individuals that  are eligible, $2594$ decided to participate in the program. The unconditional APE of p401 is about $27372$:
+
+```{r}
+p1 <- data[data$p401 == 1, ]
+p0 <- data[data$p401 == 0, ]
+round(mean(p1$net_tfa) - mean(p0$net_tfa), 0)
+```
+
+As discussed, these estimates are biased since they do not account for saver heterogeneity and endogeneity of participation.
+
+```{r}
+# instrument variable
+Z <- data[, "e401"]
+# treatment variable
+D <- data[, "p401"]
+# outcome variable
+y <- data[, "net_tfa"]
+```
+
+### We construct the engineered features for controls
+
+```{r}
+# Constructing the controls
+x_formula <- paste("~ poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) + ",
+                   "poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown")
+X <- as.data.table(model.frame(x_formula, pension))
+head(X)
+```
+
+# Instrumental Variables: Effect of 401k Participation on Financial Assets
+
+## Double ML IV under Partial Linearity
+
+Now, we consider estimation of average treatment effects of participation in 401k, i.e. `p401`, with the binary instrument being eligibility in 401k, i.e. `e401`. As before, $Y$ denotes the outcome `net_tfa`, and $X$ is the vector of covariates. We consider a partially linear structural equation model:
+\begin{align}
+Y :=~& g_Y(\epsilon_Y) D + f_Y(A, X, \epsilon_Y),  \\
+D :=~& f_D(Z, X, A, \epsilon_D), \\
+Z :=~& f_Z(X, \epsilon_Z),\\
+A :=~& f_A(X, \epsilon_A), \\
+X :=~&  \epsilon_X,
+\end{align}
+where $A$ is a vector of un-observed confounders.
+
+Under this structural equation model, the average treatment effect:
+\begin{align}
+\alpha = E[Y(1) - Y(0)]
+\end{align}
+can be identified by the moment restriction:
+\begin{align}
+E[(\tilde{Y} - \alpha \tilde{D}) \tilde{Z}] = 0
+\end{align}
+where for any variable $V$, we denote with $\tilde{V} = V - E[V|X]$.
+
+```{r}
+set.seed(1)
+# family gaussian means that we'll be using square loss
+yfit_lasso_cv <- cv.glmnet(as.matrix(X), y, family = "gaussian", alpha = 1)
+# family gaussian means that we'll be using square loss
+dfit_lasso_cv <- cv.glmnet(as.matrix(X), D, family = "gaussian", alpha = 1)
+# family gaussian means that we'll be using square loss
+zfit_lasso_cv <- cv.glmnet(as.matrix(X), Z, family = "gaussian", alpha = 1)
+
+
+yhat_lasso_cv <- predict(yfit_lasso_cv, newx = as.matrix(X)) # predictions
+dhat_lasso_cv <- predict(dfit_lasso_cv, newx = as.matrix(X)) # predictions
+zhat_lasso_cv <- predict(zfit_lasso_cv, newx = as.matrix(X)) # predictions
+
+resy <- y - yhat_lasso_cv
+resD <- D - dhat_lasso_cv
+resZ <- Z - zhat_lasso_cv
+
+# Estimate
+mean(resy * resZ) / mean(resZ * resD)
+```
+
+Recall if we want to do inference, we need to either use the theoretically driven penalty paramter for Lasso or perform cross-fitting.
+
+### DML with Non-Linear ML Models and Cross-fitting
+
+```{r}
+# DML for PLIVM with D and Z as classifiers or regressors
+dml2_for_plivm <- function(x, d, z, y, dreg, yreg, zreg, nfold = 5, method = "regression") {
+  nobs <- nrow(x)
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)]
+  I <- split(1:nobs, foldid)
+  # create residualized objects to fill
+  ytil <- dtil <- ztil <- rep(NA, nobs)
+  # obtain cross-fitted residuals
+  cat("fold: ")
+  for (b in seq_along(I)) {
+    if (method == "randomforest") {
+      # take a fold out
+      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]])
+      zfit <- zreg(x[-I[[b]], ], z[-I[[b]]])
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]])
+      # predict the fold out
+      dhat <- predict(dfit, x[I[[b]], ], type = "prob")[, 2] # type = "prob" is like predict_proba in scikitlearn
+      zhat <- predict(zfit, x[I[[b]], ], type = "prob")[, 2]
+      # default type = "response" for regression for RF, type = "vector" for regression for Decision Trees
+      yhat <- predict(yfit, x[I[[b]], ])
+      # record residual
+      # as.numeric will turn d = as.factor(d) from 0,1 to 1,2 so subtract 1!
+      dtil[I[[b]]] <- (as.numeric(d[I[[b]]]) - 1 - dhat)
+      ztil[I[[b]]] <- (as.numeric(z[I[[b]]]) - 1 - zhat)
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat)
+    } else if (method == "regression") { # works for both boosted trees and glmnet
+      # take a fold out
+      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]])
+      zfit <- zreg(x[-I[[b]], ], z[-I[[b]]])
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]])
+      # predict the fold out
+      dhat <- predict(dfit, x[I[[b]], ], type = "response")
+      zhat <- predict(zfit, x[I[[b]], ], type = "response")
+      yhat <- predict(yfit, x[I[[b]], ], type = "response")
+      # record residual
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat)
+      ztil[I[[b]]] <- (z[I[[b]]] - zhat)
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat)
+    } else if (method == "decisiontrees") {
+      # take a fold out
+      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]])
+      zfit <- zreg(x[-I[[b]], ], as.factor(z)[-I[[b]]])
+      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]])
+      # predict the fold out
+      dhat <- predict(dfit, x[I[[b]], ])[, 2]
+      zhat <- predict(zfit, x[I[[b]], ])[, 2]
+      yhat <- predict(yfit, x[I[[b]], ])
+      # record residual
+      dtil[I[[b]]] <- (d[I[[b]]] - dhat)
+      ztil[I[[b]]] <- (z[I[[b]]] - zhat)
+      ytil[I[[b]]] <- (y[I[[b]]] - yhat)
+    }
+
+    cat(b, " ")
+  }
+  ivfit <- tsls(y = ytil, d = dtil, x = NULL, z = ztil, intercept = FALSE)
+  coef_est <- ivfit$coef # extract coefficient
+  se <- ivfit$se # record standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef_est, se))
+
+  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil, ztil = ztil))
+}
+```
+
+```{r}
+summary_for_plivm <- function(point, stderr, resy, resD, resZ, name) {
+  data <- data.frame(
+    estimate = point, # point estimate
+    stderr = stderr, # standard error
+    lower = point - 1.96 * stderr, # lower end of 95% confidence interval
+    upper = point + 1.96 * stderr, # upper end of 95% confidence interval
+    `rmse y` = sqrt(mean(resy^2)), # RMSE of model that predicts outcome y
+    `rmse D` = sqrt(mean(resD^2)), # RMSE of model that predicts treatment D
+    `rmse Z` = sqrt(mean(resZ^2)), # RMSE of model that predicts treatment D
+    `accuracy D` = mean(abs(resD) < 0.5), # binary classification accuracy of model for D
+    `accuracy Z` = mean(abs(resZ) < 0.5) # binary classification accuracy of model for Z
+  )
+  rownames(data) <- name
+  return(data)
+}
+```
+
+#### Double Lasso with Cross-Fitting
+
+```{r}
+# DML with LassoCV
+set.seed(123)
+cat(sprintf("\nDML with Lasso CV \n"))
+
+dreg_lasso_cv <- function(x, d) {
+  cv.glmnet(x, d, family = "gaussian", alpha = 1, nfolds = 5)
+}
+yreg_lasso_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
+zreg_lasso_cv <- function(x, z) {
+  cv.glmnet(x, z, family = "gaussian", alpha = 1, nfolds = 5)
+}
+
+dml2_results <- dml2_for_plivm(as.matrix(X), D, Z, y, dreg_lasso_cv, yreg_lasso_cv, zreg_lasso_cv,
+                               nfold = 5, method = "regression")
+sum_lasso_cv <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                                  dml2_results$ztil, name = "LassoCV")
+tableplr <- data.frame()
+tableplr <- rbind(sum_lasso_cv)
+tableplr
+
+ytil_lasso <- dml2_results$ytil
+dtil_lasso <- dml2_results$dtil
+ztil_lasso <- dml2_results$ztil
+```
+
+#### Using a $\ell_2$ Penalized Logistic Regression for D and Z
+
+```{r}
+# DML with Lasso/Ridge
+set.seed(123)
+cat(sprintf("\nDML with Lasso/Logistic \n"))
+
+dreg_ridge_cv <- function(x, d) {
+  cv.glmnet(x, d, family = "binomial", alpha = 0, nfolds = 5)
+}
+yreg_ridge_cv <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
+zreg_ridge_cv <- function(x, z) {
+  cv.glmnet(x, z, family = "binomial", alpha = 0, nfolds = 5)
+}
+
+dml2_results <- dml2_for_plivm(as.matrix(X), D, Z, y, dreg_ridge_cv, yreg_ridge_cv, zreg_ridge_cv,
+                               nfold = 5, method = "regression")
+sum_lasso_ridge_cv <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                                        dml2_results$ztil, name = "LassoCV/LogisticCV")
+tableplr <- rbind(tableplr, sum_lasso_ridge_cv)
+tableplr
+
+ytil_ridge <- dml2_results$ytil
+dtil_ridge <- dml2_results$dtil
+ztil_ridge <- dml2_results$ztil
+```
+
+### Random Forests
+
+```{r}
+# DML with Random Forest
+set.seed(123)
+cat(sprintf("\nDML with Random Forest \n"))
+
+dreg_rf <- function(x, d) {
+  randomForest(x, d, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg_rf <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+zreg_rf <- function(x, z) {
+  randomForest(x, z, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+
+dml2_results <- dml2_for_plivm(as.matrix(X), as.factor(D), as.factor(Z), y, dreg_rf, yreg_rf, zreg_rf,
+                               nfold = 5, method = "randomforest")
+sum_rf <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                            dml2_results$ztil, name = "RF")
+tableplr <- rbind(tableplr, sum_rf)
+tableplr
+
+ytil_rf <- dml2_results$ytil
+dtil_rf <- dml2_results$dtil
+ztil_rf <- dml2_results$ztil
+```
+
+### Decision Trees
+
+```{r}
+# DML with Decision Trees
+set.seed(123)
+cat(sprintf("\nDML with Decision Trees \n"))
+
+# decision tree takes in X as dataframe, not matrix/array
+dreg_tr <- function(x, d) {
+  rpart(as.formula("D~."), cbind(data.frame(D = d), x), method = "class", minbucket = 10, cp = 0.001)
+}
+yreg_tr <- function(x, y) {
+  rpart(as.formula("y~."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
+zreg_tr <- function(x, z) {
+  rpart(as.formula("Z~."), cbind(data.frame(Z = z), x), method = "class", minbucket = 10, cp = 0.001)
+}
+
+dml2_results <- dml2_for_plivm(X, D, Z, y, dreg_tr, yreg_tr, zreg_tr,
+                               nfold = 5, method = "decisiontrees")
+sum_tr <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                            dml2_results$ztil, name = "Decision Trees")
+tableplr <- rbind(tableplr, sum_tr)
+tableplr
+
+ytil_tr <- dml2_results$ytil
+dtil_tr <- dml2_results$dtil
+ztil_tr <- dml2_results$ztil
+```
+
+### Boosted Trees
+
+```{r}
+# DML with Boosted Trees
+set.seed(123)
+cat(sprintf("\nDML with Boosted Trees \n"))
+
+# NB: early stopping cannot easily be implemented with gbm
+## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)
+dreg_boost <- function(x, d) {
+  gbm(as.formula("D~."), cbind(data.frame(D = d), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg_boost <- function(x, y) {
+  gbm(as.formula("y~."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+zreg_boost <- function(x, z) {
+  gbm(as.formula("Z~."), cbind(data.frame(Z = z), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+
+# passing these through regression as type="response", and D and Z should not be factors!
+dml2_results <- dml2_for_plivm(X, D, Z, y, dreg_boost, yreg_boost, zreg_boost,
+                               nfold = 5, method = "regression")
+sum_boost <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                               dml2_results$ztil, name = "Boosted Trees")
+tableplr <- rbind(tableplr, sum_boost)
+tableplr
+
+ytil_boost <- dml2_results$ytil
+dtil_boost <- dml2_results$dtil
+ztil_boost <- dml2_results$ztil
+```
+
+## Ensembles
+
+Boosted trees give the best RMSE for Y, D, and Z, so the ensemble based on choosing the best performing prediction rule is identical to boosting in this case.
+
+```{r}
+# Best fit is boosted trees for D, Z, Y
+
+sum_best <- summary_for_plivm(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,
+                              dml2_results$ztil, name = "Best")
+tableplr <- rbind(tableplr, sum_best)
+tableplr
+```
+
+We'll form a model average with unconstrained least squares weights.
+
+```{r}
+# Least squares model average
+
+dhat_lasso <- D - dtil_lasso
+dhat_ridge <- D - dtil_ridge
+dhat_rf <- D - dtil_rf
+dhat_tr <- D - dtil_tr
+dhat_boost <- D - dtil_boost
+
+yhat_lasso <- y - ytil_lasso
+yhat_ridge <- y - ytil_ridge
+yhat_rf <- y - ytil_rf
+yhat_tr <- y - ytil_tr
+yhat_boost <- y - ytil_boost
+
+zhat_lasso <- Z - ztil_lasso
+zhat_ridge <- Z - ztil_ridge
+zhat_rf <- Z - ztil_rf
+zhat_tr <- Z - ztil_tr
+zhat_boost <- Z - ztil_boost
+
+ma_dtil <- lm(D ~ dhat_lasso + dhat_ridge + dhat_rf + dhat_tr + dhat_boost)$residuals
+ma_ytil <- lm(y ~ yhat_lasso + yhat_ridge + yhat_rf + yhat_tr + yhat_boost)$residuals
+ma_ztil <- lm(Z ~ zhat_lasso + zhat_ridge + zhat_rf + zhat_tr + zhat_boost)$residuals
+
+ivfit <- tsls(y = ma_ytil, d = ma_dtil, x = NULL, z = ma_ztil, intercept = FALSE)
+coef_est <- ivfit$coef # extract coefficient
+se <- ivfit$se # record standard error
+
+sum_ma <- summary_for_plivm(coef_est, se, ma_ytil, ma_dtil, ma_ztil, name = "Model Average")
+tableplr <- rbind(tableplr, sum_ma)
+tableplr
+```
+
+## Inference Robust to Weak Identification
+
+Now we turn toward robustness when the instrument is weak.
+
+Ideally, we would do (semi) cross-fitting with AutoML in order to find good first-stage models and re-run DML with these models. Unfortunately this is not easy to do in R. In the case of semi cross-fitting, we can use R's H20 AutoML trained on the entire training set $y\sim X$, $D \sim X$, $Z\sim X$ to determine the best model (eg ensemble), but H20 does not allow you to extract the best model so we can re-use that in DML.
+
+Thus, in the below analysis of robust inference, we choose Boosted Trees as they perform well.
+
+```{r}
+robust_inference <- function(point, stderr, resD, resy, resZ, grid, alpha = 0.05) {
+  # Inference in the partially linear IV model that is robust to weak identification.
+  # grid: grid of theta values to search over when trying to identify the confidence region
+  # alpha: confidence level
+
+  n <- dim(X)[1]
+  thr <- qchisq(1 - alpha, df = 1)
+  accept <- c()
+
+  for (theta in grid) {
+    moment <- (resy - theta * resD) * resZ
+    test <- n * mean(moment)^2 / var(moment)
+    if (test <= thr) {
+      accept <- c(accept, theta)
+    }
+  }
+
+  return(accept)
+}
+```
+
+```{r}
+grid <- seq(0, 20000, length.out = 10000)
+region <- robust_inference(dml2_results$coef_est, dml2_results$stderr, dml2_results$dtil, dml2_results$ytil,
+                           dml2_results$ztil, grid = grid)
+```
+
+```{r}
+grid <- seq(0, 20000, length.out = 10000)
+region <- robust_inference(dml2_results$coef_est, dml2_results$stderr, dml2_results$dtil, dml2_results$ytil,
+                           dml2_results$ztil, grid = grid)
+# Calculate min and max
+min_region <- min(region)
+max_region <- max(region)
+
+print(min_region)
+print(max_region)
+```
+
+# Interactive IV Model and LATE
+
+Now, we consider estimation of local average treatment effects (LATE) of participation `p401`, with the binary instrument `e401`. As before, $Y$ denotes the outcome `net_tfa`, and $X$ is the vector of covariates.  Here the structural equation model is:
+\begin{align}
+Y :=~&  f_Y (D, X, A, \epsilon_Y) \\
+D :=~& f_D(Z, X, A, \epsilon_D) \in \{0,1\},  \\
+Z :=~& f_Z(X,\epsilon_Z) \in \{0,1\},  \\
+X :=~&  \epsilon_X, \quad A = \epsilon_A,
+\end{align}
+where $\epsilon$'s are all exogenous and independent,
+and
+$$
+z \mapsto f_D(z , A, X, \epsilon_D) \text{ is weakly increasing (weakly monotone)}.
+$$
+and $A$ is a vector of unobserved confounders. Note that in our setting monotonicity is satisfied, since participation is only feasible when it is eligible. Thus we have that $D=0$ whenever $Z=0$. Thus it can only be that $f_D(1, A, X, \epsilon_D) \geq 0 = f_D(0, A, X, \epsilon_D)$.
+
+In this case, we can estimate the local average treatment effect (LATE):
+$$
+\alpha = E[Y(1) - Y(0) | D(1) > D(0)]
+$$
+This can be identified using the Neyman orthogonal moment equation:
+\begin{align}
+E\left[g(1, X) - g(0, X) + H(Z) (Y - g(Z, X)) - \alpha \cdot  (m(1, X) - m(0, X) + H(Z) (D - m(Z, X))\right] = 0
+\end{align}
+where
+\begin{align}
+g(Z,X) =~& E[Y|Z,X],\\
+m(Z,X) =~& E[D|Z,X],\\
+H(Z) =~& \frac{Z}{Pr(Z=1|X)} - \frac{1 - Z}{1 - Pr(Z=1|X)}
+\end{align}
+
+```{r}
+get_dhat0 <- function(XZ0, DZ0, Xb, dreg0, type = NULL, DZ0factor = NULL) {
+  # train a treatment model on training data that received Z=0 and predict treatment on all data in test set
+  if (mean(DZ0) > 0) { # it could be that D=0, whenever Z=0 deterministically
+    dreg0_ <- dreg0
+    if (is.null(DZ0factor)) {
+      dfit0 <- dreg0_((XZ0), DZ0)
+    } else {
+      dfit0 <- dreg0_((XZ0), DZ0factor)
+    }
+    if (is.null(type)) {
+      return(predict(dfit0, (Xb))[, 2])
+    } else if (type == "prob") {
+      return(predict(dfit0, (Xb), type = "prob")[, 2])
+    } else if (type == "reponse") {
+      return(predict(dfit0, (Xb), type = "response"))
+    } else {
+      stop("Invalid argument `type`.")
+    }
+  } else {
+    return(0)
+  }
+}
+
+get_dhat1 <- function(XZ1, DZ1, Xb, dreg1, type = NULL, DZ1factor = NULL) {
+  # train a treamtent model on training data that received Z=1 and predict treatment on all data in test set
+  if (mean(DZ1) < 1) { # it could be that D=1, whenever Z=1 deterministically
+    dreg1_ <- dreg1
+    if (is.null(DZ1factor)) {
+      dfit1 <- dreg1_((XZ1), DZ1)
+    } else {
+      dfit1 <- dreg1_((XZ1), DZ1factor)
+    }
+    if (is.null(type)) {
+      return(predict(dfit1, (Xb))[, 2])
+    } else if (type == "prob") {
+      return(predict(dfit1, (Xb), type = "prob")[, 2])
+    } else if (type == "response") {
+      return(predict(dfit1, (Xb), type = "response"))
+    } else {
+      stop("Invalid argument `type`.")
+    }
+  } else {
+    return(1)
+  }
+}
+
+# DML for IIVM with D and Z as classifiers or regressors
+dml2_for_iivm <- function(x, d, z, y, dreg0, dreg1, yreg0, yreg1, zreg,
+                          trimming = 0.01, nfold = 5, method = "classification", dt = 0, bt = 0) {
+  # this implements DML2 algorithm, where there moments are estimated via DML, before constructing
+  # the pooled estimate of theta randomly split data into folds
+
+  ## NB This method has many if statements to accommodate the various estimators we will use.
+  ## Unlike Python's sklearn, all methods have idfferent default arguments in their predict functions.
+  ## See official R documentation for details.
+
+  yhat0 <- rep(0, length(y))
+  yhat1 <- rep(0, length(y))
+  dhat0 <- rep(0, length(d))
+  dhat1 <- rep(0, length(d))
+  zhat <- rep(0, length(Z))
+
+  nobs <- nrow(X)
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)]
+  I <- split(1:nobs, foldid)
+  # create residualized objects to fill
+  ytil <- dtil <- ztil <- rep(NA, nobs)
+
+  # obtain cross-fitted residuals
+  cat("fold: ")
+  for (b in seq_along(I)) {
+    # define helpful variables
+    Xb <- X[I[[b]], ]
+    Xnotb <- X[-I[[b]], ]
+    Znotb <- Z[-I[[b]]]
+
+    # training dfs subsetted on the -I[[b]] fold
+    XZ0 <- X[-I[[b]], ][Z[-I[[b]]] == 0]
+    yZ0 <- y[-I[[b]]][Z[-I[[b]]] == 0]
+    XZ1 <- X[-I[[b]], ][Z[-I[[b]]] == 1]
+    yZ1 <- y[-I[[b]]][Z[-I[[b]]] == 1]
+    DZ0 <- d[-I[[b]]][Z[-I[[b]]] == 0]
+    DZ1 <- d[-I[[b]]][Z[-I[[b]]] == 1]
+
+
+    if (method == "regression") {
+      XZ0 <- as.matrix(XZ0)
+      XZ1 <- as.matrix(XZ1)
+      Xb <- as.matrix(Xb)
+      Xnotb <- as.matrix(Xnotb)
+
+      # Train an outcome model on training data that received Z=0 and predict outcome on all data in the test set
+      yfit0 <- yreg0((XZ0), yZ0)
+      yhat0[I[[b]]] <- predict(yfit0, (Xb)) # default type = "response"
+
+      # train an outcome model on training data that received Z=1 and predict outcome on all data in test set
+      yfit1 <- yreg1((XZ1), yZ1)
+      yhat1[I[[b]]] <- predict(yfit1, (Xb))
+
+      # train a treatment model on training data that received Z=0 and predict treatment on all data in test set
+      # default type = "response", but for family binomial it's logg odds
+      dhat0[I[[b]]] <- get_dhat0(XZ0, DZ0, Xb, dreg0, type = "response")
+      dhat1[I[[b]]] <- get_dhat1(XZ1, DZ1, Xb, dreg1, type = "response")
+
+    } else if (method == "randomforest") {
+      DZ0factor <- as.factor(D)[-I[[b]]][Z[-I[[b]]] == 0]
+      DZ1factor <- as.factor(D)[-I[[b]]][Z[-I[[b]]] == 1]
+      Znotb <- as.factor(Znotb)
+
+      yfit0 <- yreg0((XZ0), yZ0)
+      yhat0[I[[b]]] <- predict(yfit0, (Xb), type = "response")
+      yfit1 <- yreg1((XZ1), yZ1)
+      yhat1[I[[b]]] <- predict(yfit1, (Xb), type = "response")
+
+      dhat0[I[[b]]] <- get_dhat0(XZ0, DZ0, Xb, dreg0, type = "prob", DZ0factor = DZ0factor)
+      dhat1[I[[b]]] <- get_dhat1(XZ1, DZ1, Xb, dreg1, type = "prob", DZ1factor = DZ1factor)
+
+    } else if (method == "decisiontrees") {
+      XZ0 <- as.data.frame(XZ0)
+      XZ1 <- as.data.frame(XZ1)
+      Xb <- as.data.frame(Xb)
+      Xnotb <- as.data.frame(Xnotb)
+
+      yfit0 <- yreg0((XZ0), yZ0)
+      # default type = "response" for decision trees for continuous response
+      yhat0[I[[b]]] <- predict(yfit0, (Xb))
+
+      yfit1 <- yreg1((XZ1), yZ1)
+      yhat1[I[[b]]] <- predict(yfit1, (Xb))
+
+      dhat0[I[[b]]] <- get_dhat0(XZ0, DZ0, Xb, dreg0, DZ0factor = as.factor(DZ0))
+      dhat1[I[[b]]] <- get_dhat1(XZ1, DZ1, Xb, dreg1, DZ1factor = as.factor(DZ1))
+
+    } else if (method == "boostedtrees") {
+      XZ0 <- as.data.frame(XZ0)
+      XZ1 <- as.data.frame(XZ1)
+      Xb <- as.data.frame(Xb)
+      Xnotb <- as.data.frame(Xnotb)
+
+      yfit0 <- yreg0((XZ0), yZ0)
+      yhat0[I[[b]]] <- predict(yfit0, (Xb)) # default type = "response" for boosted trees
+      yfit1 <- yreg1((XZ1), yZ1)
+      yhat1[I[[b]]] <- predict(yfit1, (Xb))
+
+      dhat0[I[[b]]] <- get_dhat0(XZ0, DZ0, Xb, dreg0, type = "response")
+      dhat1[I[[b]]] <- get_dhat1(XZ1, DZ1, Xb, dreg1, type = "response")
+
+    }
+
+    # propensity scores:
+    if (method == "regression") {
+      zfit_b <- zreg((Xnotb), Znotb)
+      zhat_b <- predict(zfit_b, (Xb), type = "response")
+    } else if (method == "randomforest") {
+      zfit_b <- zreg((Xnotb), Znotb)
+      zhat_b <- predict(zfit_b, (Xb), type = "prob")[, 2]
+    } else if (method == "decisiontrees") {
+      zfit_b <- zreg((Xnotb), as.factor(Znotb))
+      zhat_b <- predict(zfit_b, (Xb)) # default is prob, so get second column
+      zhat_b <- zhat_b[, 2]
+    } else if (method == "boostedtrees") {
+      zfit_b <- zreg((Xnotb), Znotb)
+      zhat_b <- predict(zfit_b, (Xb), type = "response")
+    }
+    zhat_b <- pmax(pmin(zhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]
+    zhat[I[[b]]] <- zhat_b
+
+    cat(b, " ")
+  }
+
+
+  # Prediction of treatment and outcome for observed instrument
+  yhat <- yhat0 * (1 - Z) + yhat1 * Z
+  dhat <- dhat0 * (1 - Z) + dhat1 * Z
+
+  # residuals
+  ytil <- y - yhat
+  dtil <- D - dhat
+  ztil <- Z - zhat
+
+  # doubly robust quantity for every sample
+  HZ <- Z / zhat - (1 - Z) / (1 - zhat)
+  drZ <- yhat1 - yhat0 + (y - yhat) * HZ
+  drD <- dhat1 - dhat0 + (D - dhat) * HZ
+  coef_est <- mean(drZ) / mean(drD)
+  cat("point", coef_est)
+  psi <- drZ - coef_est * drD
+  Jhat <- mean(drD)
+  variance <- mean(psi^2) / Jhat^2
+  se <- sqrt(variance / nrow(X))
+  cat("se", se)
+
+  return(list(coef_est = coef_est, se = se, yhat = yhat, dhat = dhat, zhat = zhat, ytil = ytil,
+              dtil = dtil, ztil = ztil, drZ = drZ, drD = drD,
+              yhat0 = yhat0, yhat1 = yhat1, dhat0 = dhat0, dhat1 = dhat1))
+}
+```
+
+```{r}
+summary_for_iivm <- function(coef_est, se, yhat, dhat, zhat, ytil, dtil, ztil, drZ, drD, X, Z, D, y, name) {
+  summary_data <- data.frame(
+    estimate = coef_est, # point estimate
+    se = se, # standard error
+    lower = coef_est - 1.96 * se, # lower end of 95% confidence interval
+    upper = coef_est + 1.96 * se, # upper end of 95% confidence interval
+    rmse_y = sqrt(mean(ytil^2)), # res of model that predicts outcome y
+    rmse_D = sqrt(mean(dtil^2)), # res of model that predicts treatment D
+    rmse_Z = sqrt(mean(ztil^2)), # res of model that predicts instrument Z
+    accuracy_D = mean(abs(dtil) < 0.5), # binary classification accuracy of model for D
+    accuracy_Z = mean(abs(ztil) < 0.5) # binary classification accuracy of model for Z
+  )
+  row.names(summary_data) <- name
+  return(summary_data)
+}
+```
+
+```{r}
+# DML with Lasso/Ridge
+set.seed(123)
+cat(sprintf("\nDML with Lasso/Logistic \n"))
+# DML with Lasso/Ridge
+dreg0 <- function(x, d) {
+  cv.glmnet(x, d, family = "binomial", alpha = 0, nfolds = 5)
+}
+dreg1 <- function(x, d) {
+  cv.glmnet(x, d, family = "binomial", alpha = 0, nfolds = 5)
+}
+yreg0 <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
+yreg1 <- function(x, y) {
+  cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds = 5)
+}
+zreg <- function(x, z) {
+  cv.glmnet(x, z, family = "binomial", alpha = 0, nfolds = 5)
+}
+
+dml2_results <- dml2_for_iivm(as.matrix(X), D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg,
+                              trimming = 0.01, nfold = 5, method = "regression")
+sum_lasso_ridge_cv <- summary_for_iivm(dml2_results$coef_est, dml2_results$se, dml2_results$yhat, dml2_results$dhat,
+                                       dml2_results$zhat, dml2_results$ytil, dml2_results$dtil, dml2_results$ztil,
+                                       dml2_results$drZ, dml2_results$drD, name = "LassoCV/LogisticCV")
+table <- data.frame()
+table <- rbind(table, sum_lasso_ridge_cv)
+table
+
+yhat_lasso <- dml2_results$yhat
+dhat_lasso <- dml2_results$dhat
+yhat0_lasso <- dml2_results$yhat0
+yhat1_lasso <- dml2_results$yhat1
+dhat0_lasso <- dml2_results$dhat0
+dhat1_lasso <- dml2_results$dhat1
+zhat_lasso <- dml2_results$zhat
+```
+
+```{r}
+# DML with Random Forest
+set.seed(123)
+cat(sprintf("\nDML with Random Forest \n"))
+
+dreg0 <- function(x, d) {
+  randomForest(x, d, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+dreg1 <- function(x, d) {
+  randomForest(x, d, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg0 <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+yreg1 <- function(x, y) {
+  randomForest(x, y, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+zreg <- function(x, z) {
+  randomForest(x, z, ntree = 1000, nodesize = 10)
+} # ML method=Forest
+
+dml2_results <- dml2_for_iivm(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg,
+                              trimming = 0.01, nfold = 5, method = "randomforest")
+sum_rf <- summary_for_iivm(dml2_results$coef_est, dml2_results$se, dml2_results$yhat, dml2_results$dhat,
+                           dml2_results$zhat, dml2_results$ytil, dml2_results$dtil, dml2_results$ztil,
+                           dml2_results$drZ, dml2_results$drD, name = "RF")
+table <- rbind(table, sum_rf)
+table
+
+yhat_rf <- dml2_results$yhat
+dhat_rf <- dml2_results$dhat
+yhat0_rf <- dml2_results$yhat0
+yhat1_rf <- dml2_results$yhat1
+dhat0_rf <- dml2_results$dhat0
+dhat1_rf <- dml2_results$dhat1
+zhat_rf <- dml2_results$zhat
+```
+
+```{r}
+# DML with Decision Trees
+set.seed(123)
+cat(sprintf("\nDML with Decision Trees \n"))
+
+dreg0 <- function(x, d) {
+  rpart(as.formula("D ~ ."), cbind(data.frame(D = d), x), method = "class", minbucket = 10, cp = 0.001)
+}
+dreg1 <- function(x, d) {
+  rpart(as.formula("D ~ ."), cbind(data.frame(D = d), x), method = "class", minbucket = 10, cp = 0.001)
+}
+yreg0 <- function(x, y) {
+  rpart(as.formula("y ~ ."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
+yreg1 <- function(x, y) {
+  rpart(as.formula("y ~ ."), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)
+}
+zreg <- function(x, z) {
+  rpart(as.formula("Z ~ ."), cbind(data.frame(Z = z), x), method = "class", minbucket = 10, cp = 0.001)
+}
+
+dml2_results <- dml2_for_iivm(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg,
+                              trimming = 0.01, nfold = 5, method = "decisiontrees")
+sum_tr <- summary_for_iivm(dml2_results$coef_est, dml2_results$se, dml2_results$yhat, dml2_results$dhat,
+                           dml2_results$zhat, dml2_results$ytil, dml2_results$dtil, dml2_results$ztil,
+                           dml2_results$drZ, dml2_results$drD, name = "Decision Trees")
+table <- rbind(table, sum_tr)
+table
+
+yhat_tr <- dml2_results$yhat
+dhat_tr <- dml2_results$dhat
+yhat0_tr <- dml2_results$yhat0
+yhat1_tr <- dml2_results$yhat1
+dhat0_tr <- dml2_results$dhat0
+dhat1_tr <- dml2_results$dhat1
+zhat_tr <- dml2_results$zhat
+```
+
+```{r}
+# DML with Boosted Trees
+set.seed(123)
+cat(sprintf("\nDML with Boosted Trees \n"))
+
+# NB: early stopping cannot easily be implemented with gbm
+## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)
+dreg0 <- function(x, d) {
+  gbm(as.formula("D ~ ."), cbind(data.frame(D = d), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+dreg1 <- function(x, d) {
+  gbm(as.formula("D ~ ."), cbind(data.frame(D = d), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg0 <- function(x, y) {
+  gbm(as.formula("y ~ ."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+yreg1 <- function(x, y) {
+  gbm(as.formula("y ~ ."), cbind(data.frame(y = y), x), distribution = "gaussian",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+zreg <- function(x, z) {
+  gbm(as.formula("Z ~ ."), cbind(data.frame(Z = z), x), distribution = "bernoulli",
+      interaction.depth = 2, n.trees = 100, shrinkage = .1)
+}
+
+# passing these through regression as type="response", and D and Z should not be factors!
+dml2_results <- dml2_for_iivm(X, D, Z, y, dreg0, dreg1, yreg0, yreg1, zreg,
+                              trimming = 0.01, nfold = 5, method = "boostedtrees")
+sum_boost <- summary_for_iivm(dml2_results$coef_est, dml2_results$se, dml2_results$yhat, dml2_results$dhat,
+                              dml2_results$zhat, dml2_results$ytil, dml2_results$dtil, dml2_results$ztil,
+                              dml2_results$drZ, dml2_results$drD, name = "Boosted Trees")
+table <- rbind(table, sum_boost)
+table
+
+yhat_boost <- dml2_results$yhat
+dhat_boost <- dml2_results$dhat
+yhat0_boost <- dml2_results$yhat0
+yhat1_boost <- dml2_results$yhat1
+dhat0_boost <- dml2_results$dhat0
+dhat1_boost <- dml2_results$dhat1
+zhat_boost <- dml2_results$zhat
+```
+
+## Ensembles
+
+Boosted trees give the best RMSE for D and Z and random forests give the best RMSE for Y.
+
+```{r}
+# Best fit is boosted trees for D, Z and random forests for Y
+
+best_yhat0 <- yhat0_rf
+best_yhat1 <- yhat1_rf
+best_yhat <- yhat_rf
+
+best_dhat0 <- dhat0_boost
+best_dhat1 <- dhat1_boost
+best_dhat <- dhat_boost
+
+best_zhat <- zhat_boost
+
+ytil_best <- y - best_yhat
+dtil_best <- D - best_dhat
+ztil_best <- Z - best_zhat
+
+# doubly robust quantity for every sample
+HZ <- Z / best_zhat - (1 - Z) / (1 - best_zhat)
+drZ <- best_yhat1 - best_yhat0 + (y - best_yhat) * HZ
+drD <- best_dhat1 - best_dhat0 + (D - best_dhat) * HZ
+coef_est <- mean(drZ) / mean(drD)
+psi <- drZ - coef_est * drD
+Jhat <- mean(drD)
+variance <- mean(psi^2) / Jhat^2
+se <- sqrt(variance / nrow(X))
+
+sum_best <- summary_for_iivm(coef_est, se, best_yhat, best_dhat, best_zhat,
+                             ytil_best, dtil_best, ztil_best, drZ, drD, name = "Best")
+table <- rbind(table, sum_best)
+table
+```
+
+We'll form a model average with unconstrained least squares weights.
+
+```{r}
+# Least squares model average
+ma_dcoef <- lm(D ~ dhat_lasso + dhat_rf + dhat_tr + dhat_boost - 1)$coef
+ma_ycoef <- lm(y ~ yhat_lasso + yhat_rf + yhat_tr + yhat_boost - 1)$coef
+ma_zcoef <- lm(Z ~ zhat_lasso + zhat_rf + zhat_tr + zhat_boost - 1)$coef
+
+ma_yhat0 <- cbind(yhat0_lasso, yhat0_rf, yhat0_tr, yhat0_boost) %*% as.matrix(ma_ycoef)
+ma_yhat1 <- cbind(yhat1_lasso, yhat1_rf, yhat1_tr, yhat1_boost) %*% as.matrix(ma_ycoef)
+ma_dhat0 <- cbind(dhat0_lasso, dhat0_rf, dhat0_tr, dhat0_boost) %*% as.matrix(ma_dcoef)
+ma_dhat1 <- cbind(dhat1_lasso, dhat1_rf, dhat1_tr, dhat1_boost) %*% as.matrix(ma_dcoef)
+ma_zhat <- cbind(zhat_lasso, zhat_rf, zhat_tr, zhat_boost) %*% as.matrix(ma_zcoef)
+
+# Prediction of treatment and outcome for observed instrument
+ma_yhat <- ma_yhat0 * (1 - Z) + ma_yhat1 * Z
+ma_dhat <- ma_dhat0 * (1 - Z) + ma_dhat1 * Z
+
+# residuals
+ma_ytil <- y - ma_yhat
+ma_dtil <- D - ma_dhat
+ma_ztil <- Z - ma_zhat
+
+# doubly robust quantity for every sample
+HZ <- Z / ma_zhat - (1 - Z) / (1 - ma_zhat)
+drZ <- ma_yhat1 - ma_yhat0 + (y - ma_yhat) * HZ
+drD <- ma_dhat1 - ma_dhat0 + (D - ma_dhat) * HZ
+coef_est <- mean(drZ) / mean(drD)
+psi <- drZ - coef_est * drD
+Jhat <- mean(drD)
+variance <- mean(psi^2) / Jhat^2
+se <- sqrt(variance / nrow(X))
+
+sum_ma <- summary_for_iivm(coef_est, se, ma_yhat, ma_dhat, ma_zhat,
+                           ma_ytil, ma_dtil, ma_ztil, drZ, drD, name = "Model Average")
+table <- rbind(table, sum_ma)
+table
+```
+
+Comparing with the PLR model
+
+```{r}
+tableplr
+```
+
+We find that the PLR model overestimates the effect by around 1k; though both sets of results have overlapping confidence intervals.
+
+
+Again as before, ideally we would do (semi) cross-fitting with AutoML in order to find good first-stage models and re-run DML with these models. Unfortunately this is not easy to do in R.
+
+As before, in the below analysis of robust inference, we choose Boosted Trees as they perform well in RMSE and accuracy on first-stage models.
+
+```{r}
+iivm_robust_inference <- function(point, stderr, yhat, Dhat, Zhat, resy, resD, resZ,
+                                  drZ, drD, X, Z, D, y, grid, alpha = 0.05) {
+  # Inference in the partially linear IV model that is robust to weak identification.
+  # grid: grid of theta values to search over when trying to identify the confidence region
+  # alpha: confidence level
+
+  n <- dim(X)[1]
+  thr <- qchisq(1 - alpha, df = 1)
+  accept <- c()
+
+  for (theta in grid) {
+    moment <- drZ - theta * drD
+    test <- n * mean(moment)^2 / var(moment)
+    if (test <= thr) {
+      accept <- c(accept, theta)
+    }
+  }
+
+  return(accept)
+}
+```
+
+```{r}
+grid <- seq(0, 20000, length.out = 10000)
+region <- iivm_robust_inference(point = dml2_results$coef_est, stderr = dml2_results$se,
+                                yhat = dml2_results$yhat, Dhat = dml2_results$dhat, Zhat = dml2_results$zhat,
+                                resy = dml2_results$ytil, resD = dml2_results$dtil, resZ = dml2_results$ztil,
+                                drZ = dml2_results$drZ, drD = dml2_results$drD,
+                                X = X, Z = Z, D = D, y = y, grid = grid)
+
+# Calculate min and max
+min_region <- min(region)
+max_region <- max(region)
+
+print(min_region)
+print(max_region)
+```
+
+We find again that the robust inference confidence region is almost identical to the normal based inference. We are most probably in the strong instrument regime. We can check the t-statistic for the effect of the instrument on the treatment to verify this.
+
+# DoubleML package
+
+There exist nice packages out there that can help us do our estimation with the simple call of a function. Such packages include `EconML` (Python) and `DoubleML` (Python and R).
+
+We run through IIVM using `DoubleML` below to illustrate. The `DoubleML` package internally builds on `mlr3`. We use the meta package `mlr3` to generate predictions with machine learning methods. A comprehensive introduction and description of the `mlr3` package is provided in the [mlr3book](https://mlr3book.mlr-org.com/). A list of all learners that you can use in `mlr3` can be found [here](https://mlr3extralearners.mlr-org.com/articles/learners/list_learners.html). The entry in the columns *mlr3 Package* and *Packages* indicate which packages must be installed/loaded in your R session.
+
+You find additional information about `DoubleML` on the package on the package website https://docs.doubleml.org/ and the R documentation page https://docs.doubleml.org/r/stable/.
+
+```{r}
+install.packages("DoubleML")
+install.packages("mlr3learners")
+install.packages("mlr3")
+install.packages("data.table")
+install.packages("ranger")
+```
+
+```{r}
+library(DoubleML)
+library(mlr3learners)
+library(mlr3)
+library(data.table)
+library(ranger)
+```
+
+## Local Average Treatment Effects of 401(k) Participation on Net Financial Assets
+
+## Interactive IV Model (IIVM)
+
+Now, we consider estimation of local average treatment effects (LATE) of participation with the binary instrument `e401`. As before, $Y$ denotes the outcome `net_tfa`, and $X$ is the vector of covariates.  Here the structural equation model is:
+
+\begin{align}
+Y :=~& g_0(Z,X) + U, &\quad E[U\mid Z,X] = 0,\\
+D :=~& r_0(Z,X) + V, &\quad E[V\mid Z, X] = 0,\\
+Z :=~& m_0(X) + \zeta, &\quad E[\zeta \mid X] = 0.
+\end{align}
+
+```{r}
+# Constructing the data (as DoubleMLData)
+formula_flex2 <- paste("net_tfa ~ p401+ e401 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + ",
+                       "poly(educ, 4, raw=TRUE) + poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown")
+model_flex2 <- as.data.table(model.frame(formula_flex2, data))
+x_cols <- colnames(model_flex2)[-c(1, 2, 3)]
+data_iv <- DoubleMLData$new(model_flex2, y_col = "net_tfa", d_cols = "p401", z_cols = "e401", x_cols = x_cols)
+```
+
+```{r}
+lgr::get_logger("mlr3")$set_threshold("warn")
+lasso <- lrn("regr.cv_glmnet", nfolds = 5, s = "lambda.min")
+lasso_class <- lrn("classif.cv_glmnet", nfolds = 5, s = "lambda.min")
+dml_mliivm <- DoubleMLIIVM$new(data_iv,
+  ml_g = lasso,
+  ml_m = lasso_class, ml_r = lasso_class, n_folds = 5, subgroups = list(
+    always_takers = FALSE,
+    never_takers = TRUE
+  )
+)
+dml_mliivm$fit(store_predictions = TRUE)
+dml_mliivm$summary()
+lasso_mliivm <- dml_mliivm$coef
+lasso_std_mliivm <- dml_mliivm$se
+```
+
+The confidence interval for the local average treatment effect of participation is given by
+
+```{r}
+dml_mliivm$confint(level = 0.95)
+```
+
+Here we can also check the accuracy of the model:
+
+```{r}
+# variables
+y <- as.matrix(pension$net_tfa) # true observations
+d <- as.matrix(pension$p401)
+z <- as.matrix(pension$e401)
+
+# predictions
+dml_mliivm$params_names()
+g0_hat <- as.matrix(dml_mliivm$predictions$ml_g0) # predictions of g_0(z=0, X)
+g1_hat <- as.matrix(dml_mliivm$predictions$ml_g1) # predictions of g_0(z=1, X)
+g_hat <- z * g1_hat + (1 - z) * g0_hat # predictions of g_0
+r0_hat <- as.matrix(dml_mliivm$predictions$ml_r0) # predictions of r_0(z=0, X)
+r1_hat <- as.matrix(dml_mliivm$predictions$ml_r1) # predictions of r_0(z=1, X)
+r_hat <- z * r1_hat + (1 - z) * r0_hat # predictions of r_0
+m_hat <- as.matrix(dml_mliivm$predictions$ml_m) # predictions of m_o
+```
+
+```{r}
+# cross-fitted RMSE: outcome
+lasso_y_mliivm <- sqrt(mean((y - g_hat)^2))
+lasso_y_mliivm
+
+# cross-fitted RMSE: treatment
+lasso_d_mliivm <- sqrt(mean((d - r_hat)^2))
+lasso_d_mliivm
+
+# cross-fitted RMSE: instrument
+lasso_z_mliivm <- sqrt(mean((z - m_hat)^2))
+lasso_z_mliivm
+```
+
+Again, we repeat the procedure for the other machine learning methods:
+
+```{r}
+# needed to run boosting
+remotes::install_github("mlr-org/mlr3extralearners")
+install.packages("mlr3extralearners")
+install.packages("mboost")
+```
+
+```{r}
+library(mlr3extralearners)
+library(mboost)
+```
+
+```{r}
+# Forest
+randomForest <- lrn("regr.ranger")
+random_forest_class <- lrn("classif.ranger")
+
+# Trees
+trees <- lrn("regr.rpart")
+trees_class <- lrn("classif.rpart")
+
+# Boosting
+boost <- lrn("regr.glmboost")
+boost_class <- lrn("classif.glmboost")
+```
+
+```{r}
+### random forest ###
+
+lgr::get_logger("mlr3")$set_threshold("warn")
+dml_mliivm <- DoubleMLIIVM$new(data_iv,
+  ml_g = randomForest,
+  ml_m = random_forest_class, ml_r = random_forest_class, n_folds = 3, subgroups = list(
+    always_takers = FALSE,
+    never_takers = TRUE
+  )
+)
+dml_mliivm$fit(store_predictions = TRUE)
+dml_mliivm$summary()
+forest_mliivm <- dml_mliivm$coef
+forest_std_mliivm <- dml_mliivm$se
+
+# predictions
+g0_hat <- as.matrix(dml_mliivm$predictions$ml_g0) # predictions of g_0(Z=0, X)
+g1_hat <- as.matrix(dml_mliivm$predictions$ml_g1) # predictions of g_0(Z=1, X)
+g_hat <- z * g1_hat + (1 - z) * g0_hat # predictions of g_0
+r0_hat <- as.matrix(dml_mliivm$predictions$ml_r0) # predictions of r_0(Z=0, X)
+r1_hat <- as.matrix(dml_mliivm$predictions$ml_r1) # predictions of r_0(Z=1, X)
+r_hat <- z * r1_hat + (1 - z) * r0_hat # predictions of r_0
+m_hat <- as.matrix(dml_mliivm$predictions$ml_m) # predictions of m_o
+
+# cross-fitted RMSE: outcome
+forest_y_mliivm <- sqrt(mean((y - g_hat)^2))
+forest_y_mliivm
+
+# cross-fitted RMSE: treatment
+forest_d_mliivm <- sqrt(mean((d - r_hat)^2))
+forest_d_mliivm
+
+# cross-fitted RMSE: instrument
+forest_z_mliivm <- sqrt(mean((z - m_hat)^2))
+forest_z_mliivm
+
+### trees ###
+
+dml_mliivm <- DoubleMLIIVM$new(data_iv,
+  ml_g = trees,
+  ml_m = trees_class, ml_r = trees_class, n_folds = 3, subgroups = list(
+    always_takers = FALSE,
+    never_takers = TRUE
+  )
+)
+dml_mliivm$fit(store_predictions = TRUE)
+dml_mliivm$summary()
+tree_mliivm <- dml_mliivm$coef
+tree_std_mliivm <- dml_mliivm$se
+
+# predictions
+g0_hat <- as.matrix(dml_mliivm$predictions$ml_g0) # predictions of g_0(Z=0, X)
+g1_hat <- as.matrix(dml_mliivm$predictions$ml_g1) # predictions of g_0(Z=1, X)
+g_hat <- z * g1_hat + (1 - z) * g0_hat # predictions of g_0
+r0_hat <- as.matrix(dml_mliivm$predictions$ml_r0) # predictions of r_0(Z=0, X)
+r1_hat <- as.matrix(dml_mliivm$predictions$ml_r1) # predictions of r_0(Z=1, X)
+r_hat <- z * r1_hat + (1 - z) * r0_hat # predictions of r_0
+m_hat <- as.matrix(dml_mliivm$predictions$ml_m) # predictions of m_o
+
+# cross-fitted RMSE: outcome
+tree_y_mliivm <- sqrt(mean((y - g_hat)^2))
+tree_y_mliivm
+
+# cross-fitted RMSE: treatment
+tree_d_mliivm <- sqrt(mean((d - r_hat)^2))
+tree_d_mliivm
+
+# cross-fitted RMSE: instrument
+tree_z_mliivm <- sqrt(mean((z - m_hat)^2))
+tree_z_mliivm
+
+
+### boosting ###
+dml_mliivm <- DoubleMLIIVM$new(data_iv,
+  ml_g = boost,
+  ml_m = boost_class, ml_r = boost_class, n_folds = 3, subgroups = list(
+    always_takers = FALSE,
+    never_takers = TRUE
+  )
+)
+dml_mliivm$fit(store_predictions = TRUE)
+dml_mliivm$summary()
+boost_mliivm <- dml_mliivm$coef
+boost_std_mliivm <- dml_mliivm$se
+
+# predictions
+g0_hat <- as.matrix(dml_mliivm$predictions$ml_g0) # predictions of g_0(Z=0, X)
+g1_hat <- as.matrix(dml_mliivm$predictions$ml_g1) # predictions of g_0(Z=1, X)
+g_hat <- z * g1_hat + (1 - z) * g0_hat # predictions of g_0
+r0_hat <- as.matrix(dml_mliivm$predictions$ml_r0) # predictions of r_0(Z=0, X)
+r1_hat <- as.matrix(dml_mliivm$predictions$ml_r1) # predictions of r_0(Z=1, X)
+r_hat <- z * r1_hat + (1 - z) * r0_hat # predictions of r_0
+m_hat <- as.matrix(dml_mliivm$predictions$ml_m) # predictions of m_o
+
+# cross-fitted RMSE: outcome
+boost_y_mliivm <- sqrt(mean((y - g_hat)^2))
+boost_y_mliivm
+
+# cross-fitted RMSE: treatment
+boost_d_mliivm <- sqrt(mean((d - r_hat)^2))
+boost_d_mliivm
+
+# cross-fitted RMSE: instrument
+boost_z_mliivm <- sqrt(mean((z - m_hat)^2))
+boost_z_mliivm
+```
+
+```{r}
+table <- matrix(0, 5, 4)
+table[1, 1:4] <- c(lasso_mliivm, forest_mliivm, tree_mliivm, boost_mliivm)
+table[2, 1:4] <- c(lasso_std_mliivm, forest_std_mliivm, tree_std_mliivm, boost_std_mliivm)
+table[3, 1:4] <- c(lasso_y_mliivm, forest_y_mliivm, tree_y_mliivm, boost_y_mliivm)
+table[4, 1:4] <- c(lasso_d_mliivm, forest_d_mliivm, tree_d_mliivm, boost_d_mliivm)
+table[5, 1:4] <- c(lasso_z_mliivm, forest_z_mliivm, tree_z_mliivm, boost_z_mliivm)
+rownames(table) <- c("Estimate", "Std.Error", "RMSE Y", "RMSE D", "RMSE Z")
+colnames(table) <- c("Lasso", "Random Forest", "Trees", "Boosting")
+tab <- xtable(table, digits = 2)
+tab
+```
+
+We report results based on four ML methods for estimating the nuisance functions used in
+forming the orthogonal estimating equations. We find again that the estimates of the treatment effect are stable across ML methods. The estimates are highly significant, hence we would reject the hypothesis
+that the effect of 401(k) participation has no effect on financial health.
+
+We might rerun the model using the best ML method for each equation to get a final estimate for the treatment effect of participation:
+
+```{r}
+lgr::get_logger("mlr3")$set_threshold("warn")
+dml_mliivm <- DoubleMLIIVM$new(data_iv,
+  ml_g = randomForest,
+  ml_m = lasso_class, ml_r = lasso_class, n_folds = 5, subgroups = list(
+    always_takers = FALSE,
+    never_takers = TRUE
+  )
+)
+dml_mliivm$fit(store_predictions = TRUE)
+dml_mliivm$summary()
+best_mliivm <- dml_mliivm$coef
+best_std_mliivm <- dml_mliivm$se
+```
+

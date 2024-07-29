@@ -1,0 +1,64 @@
+---
+title: An R Markdown document converted from "PM1/r-linear-model-overfitting.irnb"
+output: html_document
+---
+
+# Simple Exercise on Overfitting
+
+First set p=n
+
+```{r}
+
+set.seed(123)
+n <- 1000
+
+p <- n
+X <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
+
+print("p/n is")
+print(p / n)
+print("R2 is")
+print(summary(lm(y ~ X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(y ~ X))$adj.r.squared)
+```
+
+Second, set p=n/2.
+
+```{r}
+
+set.seed(123)
+n <- 1000
+
+p <- n / 2
+X <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
+
+print("p/n is")
+print(p / n)
+print("R2 is")
+print(summary(lm(y ~ X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(y ~ X))$adj.r.squared)
+```
+
+Third, set p/n =.05
+
+```{r}
+
+set.seed(123)
+n <- 1000
+
+p <- .05 * n
+X <- matrix(rnorm(n * p), n, p)
+y <- rnorm(n)
+
+print("p/n is")
+print(p / n)
+print("R2 is")
+print(summary(lm(y ~ X))$r.squared)
+print("Adjusted R2 is")
+print(summary(lm(y ~ X))$adj.r.squared)
+```
+

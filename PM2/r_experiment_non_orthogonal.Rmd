@@ -1,0 +1,516 @@
+---
+title: An R Markdown document converted from "PM2/r_experiment_non_orthogonal.irnb"
+output: html_document
+---
+
+# Simulation Design
+
+```{r}
+install.packages("hdm")
+```
+
+```{r}
+library(hdm)
+```
+
+## Generating RCT data
+
+```{r}
+gen_data <- function(n, d, p, delta, base) {
+  X <- matrix(rnorm(n * d), nrow = n, ncol = d)
+  D <- rbinom(n, 1, p)
+  y0 <- base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
+  y1 <- delta + base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
+  y <- y1 * D + y0 * (1 - D)
+  return(list(y = y, D = D, X = X))
+}
+```
+
+```{r}
+n <- 100 # n samples
+d <- 100 # n features
+delta <- 1.0 # treatment effect
+base <- 0.3 # baseline outcome
+```
+
+## Two Means Estimator
+
+```{r}
+# Simple two means estimate and calculation of variance
+twomeans <- function(y, D) {
+  hat0 <- mean(y[D == 0]) # mean of outcome of un-treated
+  hat1 <- mean(y[D == 1]) # mean of outcome of treated
+  V0 <- var(y[D == 0]) / mean(1 - D) # asymptotic variance of the mean of outcome of untreated
+  V1 <- var(y[D == 1]) / mean(D) # asymptotic variance of the mean of outcome of treated
+  hat <- hat1 - hat0 # estimate of the treatment effect
+  # standard error of the estimate of the treatment effect
+  stderr <- sqrt((V0 + V1) / length(y))
+  return(list(hat = hat, stderr = stderr))
+}
+```
+
+```{r}
+# Set the random seed for reproducibility
+set.seed(125)
+
+# Generate RCT data
+data <- gen_data(n, d, 0.2, delta, base)
+y <- data$y
+D <- data$D
+X <- data$X
+
+# Calculate estimation quantities
+twomeans(y, D)
+```
+
+## Partialling-Out Estimator
+
+```{r}
+# We implement the partialling out version of OLS (for pedagogical purposes)
+partialling_out <- function(y, D, W) {
+  # Residualize outcome with OLS
+  yfit <- lm(y ~ W)
+  yhat <- predict(yfit, as.data.frame(W))
+  yres <- y - as.numeric(yhat)
+
+  # Residualize treatment with OLS
+  Dfit <- lm(D ~ W)
+  Dhat <- predict(Dfit, as.data.frame(W))
+  Dres <- D - as.numeric(Dhat)
+
+  # Calculate final residual ~ residual OLS estimate
+  hat <- mean(yres * Dres) / mean(Dres^2)
+
+  # Calculate residual of final regression (epsilon in the BLP decomposition)
+  epsilon <- yres - hat * Dres
+
+  # Calculate variance of the treatment effect
+  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
+  stderr <- sqrt(V / length(y))
+
+  return(list(hat = hat, stderr = stderr))
+}
+```
+
+```{r}
+partialling_out(y, D, cbind(D * X, X))
+```
+
+## Double Lasso Partialling-Out Estimator
+
+```{r}
+# Now we simply replace OLS with Lasso to implement the Double Lasso process
+
+double_lasso <- function(y, D, W) {
+
+  # residualize outcome with Lasso
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
+  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
+  yres <- y - as.numeric(yhat_rlasso)
+
+
+  # residualize treatment with Lasso
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
+  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
+  Dres <- D - as.numeric(dhat_rlasso)
+
+  # rest is the same as in the OLS case
+  hat <- mean(yres * Dres) / mean(Dres^2)
+  epsilon <- yres - hat * Dres
+  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
+  stderr <- sqrt(V / length(y))
+
+  return(list(hat = hat, stderr = stderr))
+}
+```
+
+```{r}
+double_lasso(y, D, cbind(D * X, X))
+```
+
+# Simulation
+
+### Two-Means
+
+```{r}
+# We now check the distributional properties of the different estimators across experiments
+# First is the simple two means estimate
+
+n_experiments <- 100
+# we will keep track of coverage (truth is in CI) and of the point estimate and stderr
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data(n, d, 0.2, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+  # Calculate two-means estimate
+  results <- twomeans(y, D)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+# Calculate average coverage (should be .95 ideally)
+coverage_rate <- mean(cov)
+
+cat("Coverage Rate (95% CI):", coverage_rate, "\n")
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+mean(hats) # mean of estimate; measures how biased the estimate is (should be =delta ideally)
+```
+
+```{r}
+sd(hats)# standard deviation of estimates; should be close to the standard errors we calculated for the CIs
+```
+
+```{r}
+mean(stderrs)
+```
+
+### Partialling Out
+
+```{r}
+# Let's repeat this for the partialling out process (OLS), controlling for X
+
+n_experiments <- 100
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data(n, d, 0.2, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+  # Calculate partialling out estimate with OLS
+  results <- partialling_out(y, D, X)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+mean(cov)
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+mean(hats)  # ols is heavily biased... mean of estimates very far from delta=1
+```
+
+```{r}
+sd(hats)
+```
+
+```{r}
+mean(stderrs) # standard error severely under estimates the variance of the estimate; all this is due to overfitting
+```
+
+### Double Lasso
+
+```{r}
+# Now let's try the double Lasso.
+n_experiments <- 100
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data(n, d, 0.2, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+  # Calculate partialling out estimate with OLS
+  results <- double_lasso(y, D, X)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+mean(cov)
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+mean(hats) # much closer to 1... (almost the same as two-means)
+sd(hats) # standard deviation much smaller than two means, which did not adjust for X
+mean(stderrs) # and close to the calculate standard errors; we correctly estimated uncertainty
+```
+
+### Single Lasso
+
+```{r}
+# Now we simply replace OLS with Lasso to implement the Double Lasso process
+
+double_lasso <- function(y, D, W) {
+
+  # residualize outcome with Lasso
+  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)
+  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))
+  yres <- y - as.numeric(yhat_rlasso)
+
+
+  # residualize treatment with Lasso
+  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)
+  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))
+  Dres <- D - as.numeric(dhat_rlasso)
+
+  # rest is the same as in the OLS case
+  hat <- mean(yres * Dres) / mean(Dres^2)
+  epsilon <- yres - hat * Dres
+  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
+  stderr <- sqrt(V / length(y))
+
+  return(list(hat = hat, stderr = stderr))
+}
+```
+
+```{r}
+# Now let's try the double Lasso.
+
+n_experiments <- 100
+hats <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data(n, d, 0.2, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+  # Calculate single lasso estimate
+
+
+  yfit_rlasso <- hdm::rlasso(cbind(D, X), y, post = FALSE)
+  hat <- yfit_rlasso$coefficients[2]
+
+  hats[i] <- hat
+}
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+# bias is comparable and larger than standard deviation.
+# Even if we could estimate the standard deviation, confidence intervals would undercover
+1 - mean(hats)
+sd(hats)
+```
+
+### Post-Lasso OLS
+
+```{r}
+# Now let's try the post-Lasso.
+n_experiments <- 100
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data(n, d, 0.2, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+
+  # run a big lasso y ~ D, X
+  DX <- cbind(D, X)
+  yfit_rlasso <- hdm::rlasso(DX, y, post = FALSE) # could just use this functionality
+  coefs <- yfit_rlasso$coefficients[2:n]
+  selected_columns <- X[, abs(coefs) > 0.0]
+  # run OLS on y ~ D, X[chosen by lasso]
+  # calculate standard error as if lasso step never happened
+  results <- partialling_out(y, D - mean(D), selected_columns)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+mean(cov)
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+1 - mean(hats) # quite un-biased; bias < standard deviation
+sd(hats)
+```
+
+```{r}
+# we under-estimated a bit the uncertainty; smaller estimated stderr than true std.
+# this is most prob a finite sample error, from ignoring the lasso variable selection step
+# this is an RCT and so even post lasso ols is Neyman orthogonal. We should expect good behavior.
+mean(stderrs)
+```
+
+### Not RCT Data
+
+```{r}
+gen_data_non_rct <- function(n, d, p, delta, base) {
+  X <- matrix(rnorm(n * d), nrow = n, ncol = d)
+  D <- X[, 1] + rnorm(n, mean = 0, sd = 1 / 4)
+  y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)
+  return(list(y = y, D = D, X = X))
+}
+```
+
+```{r}
+# post-lasso
+n_experiments <- 100
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data_non_rct(n, d, p, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+
+  # run a big lasso y ~ D, X
+  DX <- cbind(D, X)
+  yfit_rlasso <- hdm::rlasso(DX, y, post = FALSE) # could just use this functionality
+  coefs <- yfit_rlasso$coefficients[2:n]
+  selected_columns <- X[, abs(coefs) > 0.0]
+  # run OLS on y ~ D, X[chosen by lasso]
+  # calculate standard error as if lasso step never happened
+  results <- partialling_out(y, D - mean(D), selected_columns)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+mean(cov) # Oops! Post Lasso OLS severely undercovers; It is not Neyman orthogonal when D is correlated with X
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+mean(hats) # very heavily biased
+```
+
+```{r}
+# But now let's try the double Lasso.
+n_experiments <- 100
+cov <- numeric(n_experiments)
+hats <- numeric(n_experiments)
+stderrs <- numeric(n_experiments)
+
+for (i in 1:n_experiments) {
+  # Generate data for each experiment
+  data <- gen_data_non_rct(n, d, p, delta, base)
+  y <- data$y
+  D <- data$D
+  X <- data$X
+
+  # Calculate partialling out estimate with OLS
+  results <- double_lasso(y, D, X)
+  hat <- results$hat
+  stderr <- results$stderr
+
+  # Calculate the 95% confidence interval
+  ci_lower <- hat - 1.96 * stderr
+  ci_upper <- hat + 1.96 * stderr
+
+  # Check if the true parameter delta is within the confidence interval
+  cov[i] <- (ci_lower <= delta) & (delta <= ci_upper)
+
+  hats[i] <- hat
+  stderrs[i] <- stderr
+}
+```
+
+```{r}
+mean(cov) # great coverage
+```
+
+```{r}
+hist(hats, main = "Distribution of Estimates", xlab = "Estimate", col = "skyblue")
+```
+
+```{r}
+1 - mean(hats)
+sd(hats) # very small bias compared to standard deviation
+mean(stderrs)
+```
+
