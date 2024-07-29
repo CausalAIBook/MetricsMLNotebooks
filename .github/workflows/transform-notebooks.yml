@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - gen-Rmd
 
 concurrency:
   group: strip-transform-notebooks-${{ github.ref }}
