@@ -91,7 +91,6 @@ jobs:
             echo "Found changes"
             echo "$CHANGES"
             echo "changed=true" >> $GITHUB_OUTPUT
-            break 1
         fi
 
     - name: Commit and push stripped .ipynb files
