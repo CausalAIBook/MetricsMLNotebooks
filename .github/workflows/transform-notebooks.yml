@@ -40,6 +40,7 @@ jobs:
 
     - name: Strip outputs from .ipynb files
       run: |
+        git pull
         dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
         for dir in "${dirs[@]}"; do
         # Check if directory exists
@@ -64,12 +65,17 @@ jobs:
                 fi
             done
             echo "Converting .irnb to .Rmd to update the .Rmd version"
+            # first we delete all Rmd files and regenerate. This will make sure
+            # that if a .irnb file is deleted then the corresponding .Rmd file
+            # will also be removed by this script.
+            git rm "$dir"/*.Rmd
             R -e "
               files <- list.files(path = '$dir', pattern = '\\\\.irnb$', full.names = TRUE, recursive = FALSE)
               lapply(files, function(input) {
                 rmarkdown::convert_ipynb(input)
               })
             "
+            git add "$dir"/*.Rmd
         else
             echo "Directory $dir does not exist."
         fi
@@ -79,27 +85,15 @@ jobs:
       id: verify_diff
       run: |
         git pull
-        dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
-        for dir in "${dirs[@]}"; do
-            # Check if directory exists
-            if [ -d "$dir" ]; then
-                echo "Processing directory: $dir"
-                git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
-                git diff "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
-                CHANGES=$(git status --porcelain)
-                
-                if [ -z "$CHANGES" ]; then
-                # if git diff --quiet "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd; then
-                    echo "No changes were found"
-                else
-                    echo "Found changes in directory: $dir"
-                    echo "changed=true" >> $GITHUB_OUTPUT
-                    break 1
-                fi
-            else
-                echo "Directory $dir does not exist."
-            fi
-        done
+        git status --porcelain
+        CHANGES=$(git status --porcelain)
+        if [ -z "$CHANGES" ]; then
+            echo "No changes were found"
+        else
+            echo "Found changes"
+            echo "$CHANGES"
+            echo "changed=true" >> $GITHUB_OUTPUT
+        fi
 
     - name: Commit and push stripped .ipynb files
       if: steps.verify_diff.outputs.changed == 'true'
