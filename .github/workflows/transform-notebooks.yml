@@ -64,6 +64,10 @@ jobs:
                 fi
             done
             echo "Converting .irnb to .Rmd to update the .Rmd version"
+            # first we delete all Rmd files and regenerate. This will make sure
+            # that if a .irnb file is deleted then the corresponding .Rmd file
+            # will also be removed by this script.
+            rm "$dir"/*.Rmd
             R -e "
               files <- list.files(path = '$dir', pattern = '\\\\.irnb$', full.names = TRUE, recursive = FALSE)
               lapply(files, function(input) {
