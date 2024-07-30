@@ -65,7 +65,7 @@
     "id": "xXkzGJWag02O"
    },
    "source": [
-    "We provide an additional empirical example of partialling-out with Lasso to estimate the regression coefficient $\\beta_1$ in the high-dimensional linear regression model:\n",
+    "We provide an additional empirical example of partialling-out with Lasso to estimate the  regression coefficient $\\beta_1$ in the high-dimensional linear regression model:\n",
     "  $$\n",
     "  Y = \\beta_1 D +  \\beta_2'W + \\epsilon.\n",
     "  $$\n",
