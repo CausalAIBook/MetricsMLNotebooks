@@ -1,0 +1,214 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "7HCJkA2ifjEk"
+   },
+   "source": [
+    "# Simulation on Orthogonal Estimation\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "4sldk16nfXw9"
+   },
+   "source": [
+    "We compare the performance of the naive and orthogonal methods in a computational experiment where\n",
+    "$p=n=100$, $\\beta_j = 1/j^2$, $(\\gamma_{DW})_j = 1/j^2$ and $$Y = 1 \\cdot D + \\beta' W + \\epsilon_Y$$\n",
+    "\n",
+    "where $W \\sim N(0,I)$, $\\epsilon_Y \\sim N(0,1)$, and $$D = \\gamma'_{DW} W + \\tilde{D}$$ where $\\tilde{D} \\sim N(0,1)/4$.\n",
+    "\n",
+    "The true treatment effect here is 1. From the plots produced in this notebook (estimate minus ground truth), we show that the naive single-selection estimator is heavily biased (lack of Neyman orthogonality in its estimation strategy), while the orthogonal estimator based on partialling out, is approximately unbiased and Gaussian."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "dSvVz5Z6D14H",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"hdm\")\n",
+    "install.packages(\"ggplot2\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(hdm)\n",
+    "library(ggplot2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "_execution_state": "idle",
+    "_uuid": "051d70d956493feee0c6d64651c6a088724dca2a",
+    "id": "fAe2EP5VCFN_",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Initialize constants\n",
+    "B <- 10000  # Number of iterations\n",
+    "n <- 100  # Sample size\n",
+    "p <- 100  # Number of features\n",
+    "\n",
+    "# Initialize arrays to store results\n",
+    "Naive <- rep(0, B)\n",
+    "Orthogonal <- rep(0, B)\n",
+    "\n",
+    "\n",
+    "lambdaYs <- rep(0, B)\n",
+    "lambdaDs <- rep(0, B)\n",
+    "\n",
+    "for (i in 1:B) {\n",
+    "  # Generate parameters\n",
+    "  beta <- 1 / (1:p)^2\n",
+    "  gamma <- 1 / (1:p)^2\n",
+    "\n",
+    "  # Generate covariates / random data\n",
+    "  X <- matrix(rnorm(n * p), n, p)\n",
+    "  D <- X %*% gamma + rnorm(n) / 4\n",
+    "\n",
+    "  # Generate Y using DGP\n",
+    "  Y <- D + X %*% beta + rnorm(n)\n",
+    "\n",
+    "  # Single selection method\n",
+    "  rlasso_result <- hdm::rlasso(Y ~ D + X)  # Fit lasso regression\n",
+    "  sx_ids <- which(rlasso_result$coef[-c(1, 2)] != 0)  # Selected covariates\n",
+    "\n",
+    "  # Check if any Xs are selected\n",
+    "  if (sum(sx_ids) == 0) {\n",
+    "    Naive[i] <- lm(Y ~ D)$coef[2]  # Fit linear regression with only D if no Xs are selected\n",
+    "  } else {\n",
+    "    Naive[i] <- lm(Y ~ D + X[, sx_ids])$coef[2]  # Fit linear regression with selected X otherwise\n",
+    "  }\n",
+    "\n",
+    "  # Partialling out / Double Lasso\n",
+    "\n",
+    "  fitY <- hdm::rlasso(Y ~ X, post = TRUE)\n",
+    "  resY <- fitY$res\n",
+    "\n",
+    "  fitD <- hdm::rlasso(D ~ X, post = TRUE)\n",
+    "  resD <- fitD$res\n",
+    "\n",
+    "  Orthogonal[i] <- lm(resY ~ resD)$coef[2]  # Fit linear regression for residuals\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Bj174QuEaPb5"
+   },
+   "source": [
+    "## Make a Nice Plot"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "MjB3qbGEaRnl",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Specify ratio\n",
+    "img_width <- 15\n",
+    "img_height <- img_width / 2"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "N7bdztt1CFOE",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Create a data frame for the estimates\n",
+    "df <- data.frame(Method = rep(c(\"Naive\", \"Orthogonal\"), each = B),\n",
+    "                 Value = c(Naive - 1, Orthogonal - 1))\n",
+    "\n",
+    "# Create the histogram using ggplot2\n",
+    "hist_plot <- ggplot(df, aes(x = Value, fill = Method)) +\n",
+    "  geom_histogram(binwidth = 0.1, color = \"black\", alpha = 0.7) +\n",
+    "  facet_wrap(~Method, scales = \"fixed\") +\n",
+    "  labs(\n",
+    "    title = \"Distribution of Estimates (Centered around Ground Truth)\",\n",
+    "    x = \"Bias\",\n",
+    "    y = \"Frequency\"\n",
+    "  ) +\n",
+    "  scale_x_continuous(breaks = seq(-2, 1.5, 0.5)) +\n",
+    "  theme_minimal() +\n",
+    "  theme(\n",
+    "    plot.title = element_text(hjust = 0.5),  # Center the plot title\n",
+    "    strip.text = element_text(size = 10),  # Increase text size in facet labels\n",
+    "    legend.position = \"none\", # Remove the legend\n",
+    "    panel.grid.major = element_blank(),  # Make major grid lines invisible\n",
+    "    # panel.grid.minor = element_blank(),  # Make minor grid lines invisible\n",
+    "    strip.background = element_blank()  # Make the strip background transparent\n",
+    "  ) +\n",
+    "  theme(panel.spacing = unit(2, \"lines\"))  # Adjust the ratio to separate subplots wider\n",
+    "\n",
+    "# Set a wider plot size\n",
+    "options(repr.plot.width = img_width, repr.plot.height = img_height)\n",
+    "\n",
+    "# Display the histogram\n",
+    "print(hist_plot)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "8hrJ3M5mrD8_"
+   },
+   "source": [
+    "As we can see from the above bias plots (estimates minus the ground truth effect of 1), the double lasso procedure concentrates around zero whereas the naive estimator does not."
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "3.6.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
