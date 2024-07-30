@@ -86,6 +86,7 @@ jobs:
                 echo "Processing directory: $dir"
                 git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
                 git diff "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
+                git status --porcelain
                 CHANGES=$(git status --porcelain)
 
                 if [ -z "$CHANGES" ]; then
