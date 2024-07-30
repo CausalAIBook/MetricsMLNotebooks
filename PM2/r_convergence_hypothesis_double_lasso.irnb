@@ -70,7 +70,7 @@
     "  Y = \\beta_1 D +  \\beta_2'W + \\epsilon.\n",
     "  $$\n",
     "  \n",
-    "Specifically, we are interested in how the rates  at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).\n",
+    "Specifically, we are interested in how the rates at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).\n",
     "  \n",
     "The relationship is captured by $\\beta_1$, the *speed of convergence/divergence*, which measures the speed at which poor countries catch up $(\\beta_1< 0)$ or fall behind $(\\beta_1> 0)$ rich countries, after controlling for $W$. Our inference question here is: do poor countries grow faster than rich countries, controlling for educational and other characteristics? In other words, is the speed of convergence negative: $ \\beta_1 <0?$ This is the Convergence Hypothesis predicted by the Solow Growth Model. This is a structural economic model. Under some strong assumptions, that we won't state here, the predictive exercise we are doing here can be given causal interpretation.\n"
    ]
