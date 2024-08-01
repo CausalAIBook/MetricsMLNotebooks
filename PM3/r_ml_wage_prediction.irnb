@@ -57,7 +57,7 @@
     "install.packages(\"nnet\")\n",
     "install.packages(\"gbm\")\n",
     "install.packages(\"rpart.plot\")\n",
-    "install.packages(\"keras3\")"
+    "install.packages(\"keras\")"
    ]
   },
   {
@@ -78,7 +78,7 @@
     "library(nnet)\n",
     "library(gbm)\n",
     "library(rpart.plot)\n",
-    "library(keras3)"
+    "library(keras)"
    ]
   },
   {
@@ -1281,7 +1281,7 @@
     "\n",
     "# Compile the model\n",
     "model %>% compile(\n",
-    "  optimizer = optimizer_adam(learning_rate = 0.01),\n",
+    "  optimizer = optimizer_adam(lr = 0.01),\n",
     "  loss = \"mse\",\n",
     "  metrics = c(\"mae\"),\n",
     ")\n",
