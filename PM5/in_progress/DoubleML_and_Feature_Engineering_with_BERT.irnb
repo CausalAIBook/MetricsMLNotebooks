@@ -1,0 +1,1550 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "0",
+   "metadata": {
+    "id": "dYwg9btt1wJH"
+   },
+   "source": [
+    "# BERT\n",
+    "\n",
+    "**Bidirectional Encoder Representations from Transformers.**\n",
+    "\n",
+    "![alt](https://pytorch.org/assets/images/bert1.png) | ![alt](https://pytorch.org/assets/images/bert2.png)\n",
+    "\n",
+    "\n",
+    "### **Overview**\n",
+    "\n",
+    "BERT was released together with the paper [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805) by Jacob Devlin *et al.* The model is based on the Transformer architecture introduced in [Attention Is All You Need](https://arxiv.org/abs/1706.03762) by Ashish Vaswani *et al.* and has led to significant improvements in a wide range of natural language tasks.\n",
+    "\n",
+    "At the highest level, BERT maps from a block of text to a numeric vector which summarizes the relevant information in the text.\n",
+    "\n",
+    "What is remarkable is that numeric summary is sufficiently informative that, for example, the numeric summary of a paragraph followed by a reading comprehension question contains all the information necessary to satisfactorily answer the question.\n",
+    "\n",
+    "#### **Transfer Learning**\n",
+    "\n",
+    "BERT is a great example of a paradigm called *transfer learning*, which has proved very effective in recent years. In the first step, a network is trained on an unsupervised task using massive amounts of data. In the case of BERT, it was trained to predict missing words and to detect when pairs of sentences are presented in reversed order using all of Wikipedia. This was initially done by Google, using intense computational resources.\n",
+    "\n",
+    "Once this network has been trained, it is then used to perform many other supervised tasks using only limited data and computational resources: for example, sentiment classification in tweets or quesiton answering. The network is re-trained to perform these other tasks in such a way that only the final, output parts of the network are allowed to adjust by very much, so that most of the \"information'' originally learned the network is preserved. This process is called *fine tuning*."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1",
+   "metadata": {
+    "id": "wNjNs3ViKTiO"
+   },
+   "source": [
+    "##Getting to know BERT\n",
+    "\n",
+    "BERT, and many of its variants, are made avialable to the public by the open source [Huggingface Transformers](https://huggingface.co/transformers/) project. This is an amazing resource, giving researchers and practitioners easy-to-use access to this technology.\n",
+    "\n",
+    "In order to use BERT for modeling, we simply need to download the pre-trained neural network and fine tune it on our dataset, which is illustrated below."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "9rooQWVdri1m",
+    "outputId": "e8d7baf0-1420-4405-d5d5-c63466fbbcdd",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"remotes\")\n",
+    "remotes::install_github(\"rstudio/tensorflow\")\n",
+    "install.packages(\"dplyr\")\n",
+    "install.packages(\"DBI\")\n",
+    "install.packages(\"ggplot2\")\n",
+    "install.packages(\"reticulate\")\n",
+    "install.packages(\"readr\")\n",
+    "install.packages(\"stringr\")\n",
+    "install.packages(\"tidyr\")\n",
+    "install.packages(\"purrr\")\n",
+    "install.packages(\"glmnet\")\n",
+    "install.packages(\"caret\")\n",
+    "install.packages(\"keras\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3",
+   "metadata": {
+    "id": "TgWpXdSIl5KL"
+   },
+   "source": [
+    "##Getting to know BERT\n",
+    "\n",
+    "BERT, and many of its variants, are made avialable to the public by the open source [Huggingface Transformers](https://huggingface.co/transformers/) project. This is an amazing resource, giving researchers and practitioners easy-to-use access to this technology.\n",
+    "\n",
+    "In order to use BERT for modeling, we simply need to download the pre-trained neural network and fine tune it on our dataset, which is illustrated below."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "ppJlcoIatlAw",
+    "outputId": "3a5cbcea-04c9-4c67-ccb1-1b45e691ccf8",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(reticulate)\n",
+    "library(ggplot2)\n",
+    "library(DBI)\n",
+    "library(dplyr)\n",
+    "theme_set(theme_bw())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5",
+   "metadata": {
+    "id": "GmOhRKEG4jEy",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "use_python(\"/usr/bin/python3\", required = TRUE) # Adjust the path as needed"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "6",
+   "metadata": {
+    "id": "bUEb1TDIs4TK",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "py_run_string('\n",
+    "import tensorflow as tf\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "from transformers import BertTokenizer, TFBertModel\n",
+    "import warnings\n",
+    "warnings.simplefilter(\"ignore\")\n",
+    "')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8",
+   "metadata": {
+    "id": "hZaltj7Fv5Gh",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "ssq <- function(x) sum(x * x)\n",
+    "\n",
+    "get_r2 <- function(y, yhat) {\n",
+    "  resids <- yhat - y\n",
+    "  flucs <- y - mean(y)\n",
+    "  rss <- ssq(resids)\n",
+    "  tss <- ssq(flucs)\n",
+    "  cat(sprintf(\"RSS: %f, TSS + MEAN^2: %f, TSS: %f, R^2: %f\", rss, tss + mean(y)^2, tss, 1 - rss / tss))\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "9",
+   "metadata": {
+    "id": "CB3ur5xF41o-",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "py_run_string('\n",
+    "tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n",
+    "bert = TFBertModel.from_pretrained(\"bert-base-uncased\")\n",
+    "')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "10",
+   "metadata": {
+    "id": "26mRwUFwardQ"
+   },
+   "source": [
+    "### Tokenization\n",
+    "\n",
+    "The first step in using BERT (or any similar text embedding tool) is to *tokenize* the data. This step standardizes blocks of text, so that meaningless differences in text presentation don't affect the behavior of our algorithm.\n",
+    "\n",
+    "Typically the text is transformed into a sequence of 'tokens,' each of which corresponds to a numeric code."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "11",
+   "metadata": {
+    "id": "cER5mL4fMSCr",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "py_run_string('\n",
+    "s = \"What happens to this string?\"\n",
+    "tensors = tokenizer.encode_plus(s, add_special_tokens = True, return_tensors = \"tf\")\n",
+    "output = bert(tensors)\n",
+    "')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "12",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 329
+    },
+    "id": "KVETer7w5euE",
+    "outputId": "3b7b87f7-69f4-4727-bccf-3bd8d6162e00",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Let's try it out!\n",
+    "s <- \"What happens to this string?\"\n",
+    "py_run_string\n",
+    "input_ids <- py$tensors$input_ids\n",
+    "attention_mask <- py$tensors$attention_mask\n",
+    "token_type_ids <- py$tensors$token_type_ids\n",
+    "\n",
+    "print(sprintf('Original String: \"%s\"', s))\n",
+    "print(\"Numeric encoding: \")\n",
+    "print(list(\n",
+    "  input_ids = input_ids,\n",
+    "  attention_mask = attention_mask,\n",
+    "  token_type_ids = token_type_ids\n",
+    "))\n",
+    "# What does this mean?\n",
+    "py_run_string('tokens = tokenizer.convert_ids_to_tokens(tensors[\"input_ids\"].numpy().flatten().tolist())')\n",
+    "tokens <- py$tokens\n",
+    "print(\"Actual tokens:\")\n",
+    "print(tokens)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "13",
+   "metadata": {
+    "id": "JJaz6eEocefa"
+   },
+   "source": [
+    "### BERT in a nutshell\n",
+    "\n",
+    "Once we have our numeric tokens, we can simply plug them into the BERT network and get a numeric vector summary. Note that in applications, the BERT summary will be \"fine tuned\" to a particular task, which hasn't happened yet."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "14",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "Q1ODAgBMa3Zg",
+    "outputId": "7ccd4481-6489-4830-c86b-a3c40cb1c37c",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Load the reticulate library\n",
+    "library(reticulate)\n",
+    "\n",
+    "input_text <- \"What happens to this string?\"\n",
+    "\n",
+    "\n",
+    "cat(sprintf(\"Input: \\\"%s\\\"\\n\\n\", input_text))\n",
+    "\n",
+    "py_run_string(sprintf('\n",
+    "tensors_tf = tokenizer(\"%s\", return_tensors=\"tf\")\n",
+    "output = bert(tensors_tf)\n",
+    "', input_text))\n",
+    "\n",
+    "output <- py$output\n",
+    "\n",
+    "py_run_string('\n",
+    "from pprint import pformat\n",
+    "output_type = str(type(output[\"pooler_output\"]))\n",
+    "output_shape = output[\"pooler_output\"].shape\n",
+    "output_preview = pformat(output[\"pooler_output\"].numpy())\n",
+    "')\n",
+    "\n",
+    "output_type <- py$output_type\n",
+    "output_shape <- py$output_shape\n",
+    "output_preview <- py$output_preview\n",
+    "\n",
+    "cat(sprintf(\n",
+    "  \"Output type: %s\\n\\nOutput shape: %s\\n\\nOutput preview: %s\\n\",\n",
+    "  output_type,\n",
+    "  paste(output_shape, collapse = \", \"),\n",
+    "  output_preview\n",
+    "))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "15",
+   "metadata": {
+    "id": "y_CnEClsl_1p"
+   },
+   "source": [
+    "# A practical introduction to BERT\n",
+    "\n",
+    "In the next part of the notebook, we are going to explore how a tool like BERT may be useful for causal inference.\n",
+    "\n",
+    "In particular, we are going to apply BERT to a subset of data from the Amazon marketplace consisting of roughly 10,000 listings for products in the toy category. Each product comes with a text description, a price, and a number of times reviewed (which we'll use as a proxy for demand / market share).\n",
+    "\n",
+    "For more information on the dataset, checkout the [Dataset README](https://github.com/CausalAIBook/MetricsMLNotebooks/blob/main/data/amazon_toys.md).\n",
+    "\n",
+    "**For thought**:\n",
+    "What are some issues you may anticipate when using number of reviews as a proxy for demand or market share?\n",
+    "\n",
+    "### Getting to know the data\n",
+    "\n",
+    "First, we'll download and clean up the data, and do some preliminary inspection."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "17",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 247
+    },
+    "id": "5kzXygwH0BKw",
+    "outputId": "f368dd28-317f-4815-d05b-a0c2ce7f05d6",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(readr)\n",
+    "library(stringr)\n",
+    "library(tidyr)\n",
+    "library(purrr)\n",
+    "\n",
+    "data_url <- \"https://github.com/CausalAIBook/MetricsMLNotebooks/raw/main/data/amazon_toys.csv\"\n",
+    "data <- read_csv(data_url, show_col_types = FALSE)\n",
+    "problems(data)\n",
+    "\n",
+    "data <- data %>%\n",
+    "  mutate(\n",
+    "    number_of_reviews = as.numeric(str_replace_all(number_of_reviews, \",\", \"\"))\n",
+    "  )"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "18",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "1Su5vOGhD3Df",
+    "outputId": "577bbbd9-1a7d-4f7e-d9bd-decd46830dc0",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "data <- data %>%\n",
+    "  mutate(\n",
+    "    number_of_reviews = as.numeric(str_replace_all(number_of_reviews, \"\\\\D+\", \"\")),\n",
+    "    price = as.numeric(str_extract(price, \"\\\\d+\\\\.?\\\\d*\"))\n",
+    "  ) %>%\n",
+    "  filter(number_of_reviews > 0) %>%\n",
+    "  mutate(\n",
+    "    ln_p = log(price),\n",
+    "    ln_q = log(number_of_reviews / sum(number_of_reviews)),\n",
+    "    text = str_c(product_name, manufacturer, product_description, sep = \" | \")\n",
+    "  ) %>%\n",
+    "  select(text, ln_p, ln_q, amazon_category_and_sub_category) %>%\n",
+    "  drop_na()\n",
+    "print(head(data))\n",
+    "data$text_num_words <- str_split(data$text, \"\\\\s+\") %>% map_int(length)\n",
+    "print(quantile(data$text_num_words, 0.99, na.rm = TRUE))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "19",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 437
+    },
+    "id": "lovFEHaWp4lC",
+    "outputId": "2c191aaa-d7ed-4b62-ef28-c513fabfab05",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "ggplot(data, aes(x = text_num_words)) +\n",
+    "  geom_density() +\n",
+    "  labs(title = \"Density Plot of Text Lengths in Words\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "20",
+   "metadata": {
+    "id": "CDlHPQZfcv7I"
+   },
+   "source": [
+    "Let's make a two-way scatter plot of prices and (proxied) market shares."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "21",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 454
+    },
+    "id": "dNujhir1q_0N",
+    "outputId": "06ba2da1-4ffc-4dc4-d762-f0bd6cdc039c",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "p1 <- ggplot(data, aes(x = ln_p, y = ln_q)) +\n",
+    "  geom_point() +\n",
+    "  geom_smooth(method = \"lm\", color = \"red\") +\n",
+    "  labs(title = \"Scatter Plot with Regression Line\")\n",
+    "print(p1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "22",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 454
+    },
+    "id": "t7axTjsnq8qI",
+    "outputId": "84a6aa7b-41cd-43f6-e371-2c46d15c86eb",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "p2 <- ggplot(data, aes(x = ln_p, y = ln_q)) +\n",
+    "  geom_smooth(method = \"lm\", color = \"red\") +\n",
+    "  labs(title = \"Regression Line Only\")\n",
+    "print(p2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "23",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "aZPOUT5SvR4o",
+    "outputId": "c5186cae-c1da-4c35-91b0-08f0b9986919",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "model <- lm(ln_q ~ ln_p, data = data)\n",
+    "elasticity <- coef(model)[\"ln_p\"]\n",
+    "se <- summary(model)$coefficients[\"ln_p\", \"Std. Error\"]\n",
+    "r_squared_adj <- summary(model)$adj.r.squared\n",
+    "cat(sprintf(\"Elasticity: %f, SE: %f, R2: %f\\n\\n\", elasticity, se, r_squared_adj))\n",
+    "conf_intervals <- confint(model, c(\"(Intercept)\", \"ln_p\"), level = 0.95)\n",
+    "print(conf_intervals)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "24",
+   "metadata": {
+    "id": "cr2Ha215l4QK"
+   },
+   "source": [
+    "Let's begin with a simple prediction task. We will discover how well can we explain the price of these products using their textual descriptions."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "25",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "pGt-G-qpciGd",
+    "outputId": "dfdf62d9-66b7-4787-b00c-b019f9064cf4",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"caTools\")\n",
+    "install.packages(\"base\")\n",
+    "library(caTools)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "26",
+   "metadata": {
+    "id": "EPX_-K9CPpuO",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(caTools)\n",
+    "set.seed(124)\n",
+    "split <- sample.split(Y = data$ln_p, SplitRatio = 0.8)\n",
+    "train_main <- data[split, ]\n",
+    "holdout <- data[!split, ]\n",
+    "split_main <- sample.split(Y = train_main$ln_p, SplitRatio = 0.75)\n",
+    "train <- train_main[split_main, ]\n",
+    "val <- train_main[!split_main, ]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "27",
+   "metadata": {
+    "id": "IGFzO9sZPvAJ",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(reticulate)\n",
+    "\n",
+    "use_python(\"/usr/bin/python3\", required = TRUE)\n",
+    "py_run_string(\"import tensorflow as tf\")\n",
+    "\n",
+    "py$train_texts <- train$text\n",
+    "train_tensors <- py_run_string(\"\n",
+    "tensors = tokenizer(\n",
+    "    list(train_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "train_tensors <- py$tensors\n",
+    "\n",
+    "py$val_texts <- val$text\n",
+    "val_tensors <- py_run_string(\"\n",
+    "val_tensors = tokenizer(\n",
+    "    list(val_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "val_tensors <- py$val_tensors\n",
+    "\n",
+    "py$holdout_texts <- holdout$text\n",
+    "tensors_holdout <- py_run_string(\"\n",
+    "tensors_holdout = tokenizer(\n",
+    "    list(holdout_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "tensors_holdout <- py$tensors_holdout\n",
+    "ln_p <- train$ln_p\n",
+    "ln_q <- train$ln_q\n",
+    "val_ln_p <- val$ln_p\n",
+    "val_ln_q <- val$ln_q"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "28",
+   "metadata": {
+    "id": "XQ4DMJQ0drZm",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "ln_p <- train$ln_p\n",
+    "ln_q <- train$ln_q\n",
+    "val_ln_p <- val$ln_p\n",
+    "val_ln_q <- val$ln_q"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "29",
+   "metadata": {
+    "id": "gPYEMuKZ7ylj"
+   },
+   "source": [
+    "# Using BERT as Feature Extractor"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "31",
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 835
+    },
+    "id": "TsqfQ3OH-HR3",
+    "outputId": "a4107a7d-ce9e-4d09-a63e-1bab3174bf76",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(reticulate)\n",
+    "library(keras)\n",
+    "library(caTools)\n",
+    "library(dplyr)\n",
+    "library(readr)\n",
+    "library(reticulate)\n",
+    "library(keras)\n",
+    "library(caret)\n",
+    "library(glmnet)\n",
+    "library(stringr)\n",
+    "\n",
+    "use_python(\"/usr/bin/python3\", required = TRUE)\n",
+    "py_run_string(\"import tensorflow as tf\")\n",
+    "py_run_string(\"from transformers import BertTokenizer, TFBertModel\")\n",
+    "py_run_string('\n",
+    "tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n",
+    "bert_model = TFBertModel.from_pretrained(\"bert-base-uncased\")\n",
+    "')\n",
+    "\n",
+    "py$train_texts <- train$text\n",
+    "train_tensors <- py_run_string(\"\n",
+    "tensors = tokenizer(\n",
+    "    list(train_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "train_tensors <- py$tensors\n",
+    "\n",
+    "py$val_texts <- val$text\n",
+    "val_tensors <- py_run_string(\"\n",
+    "val_tensors = tokenizer(\n",
+    "    list(val_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "val_tensors <- py$val_tensors\n",
+    "\n",
+    "py$holdout_texts <- holdout$text\n",
+    "tensors_holdout <- py_run_string(\"\n",
+    "tensors_holdout = tokenizer(\n",
+    "    list(holdout_texts),\n",
+    "    padding=True,\n",
+    "    truncation=True,\n",
+    "    max_length=128,\n",
+    "    return_tensors='tf'\n",
+    ")\")\n",
+    "tensors_holdout <- py$tensors_holdout\n",
+    "\n",
+    "ln_p <- train$ln_p\n",
+    "val_ln_p <- val$ln_p\n",
+    "holdout_ln_p <- holdout$ln_p\n",
+    "\n",
+    "py_run_string('\n",
+    "import tensorflow as tf\n",
+    "from transformers import TFBertModel\n",
+    "\n",
+    "# Define the input layers\n",
+    "input_ids = tf.keras.layers.Input(shape=(128,), dtype=tf.int32, name=\"input_ids\")\n",
+    "token_type_ids = tf.keras.layers.Input(shape=(128,), dtype=tf.int32, name=\"token_type_ids\")\n",
+    "attention_mask = tf.keras.layers.Input(shape=(128,), dtype=tf.int32, name=\"attention_mask\")\n",
+    "\n",
+    "# Load the pre-trained BERT model\n",
+    "bert_model = TFBertModel.from_pretrained(\"bert-base-uncased\")\n",
+    "outputs = bert_model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)\n",
+    "\n",
+    "# Define the embedding model\n",
+    "embedding_model = tf.keras.models.Model(inputs=[input_ids, token_type_ids, attention_mask],\n",
+    "                                        outputs=outputs.last_hidden_state[:, 0, :])\n",
+    "')\n",
+    "\n",
+    "py_run_string('\n",
+    "import numpy as np\n",
+    "embeddings = embedding_model.predict({\n",
+    "    \"input_ids\": tf.convert_to_tensor(tensors[\"input_ids\"]),\n",
+    "    \"token_type_ids\": tf.convert_to_tensor(tensors[\"token_type_ids\"]),\n",
+    "    \"attention_mask\": tf.convert_to_tensor(tensors[\"attention_mask\"])\n",
+    "})\n",
+    "')\n",
+    "\n",
+    "embeddings <- py$embeddings\n",
+    "\n",
+    "py$ln_p <- ln_p\n",
+    "py_run_string(\"\n",
+    "from sklearn.linear_model import LassoCV\n",
+    "from sklearn.model_selection import KFold\n",
+    "from sklearn.preprocessing import StandardScaler\n",
+    "from sklearn.pipeline import make_pipeline\n",
+    "\n",
+    "lcv = make_pipeline(StandardScaler(), LassoCV(cv=KFold(n_splits=5, shuffle=True, random_state=123), random_state=123))\n",
+    "lcv.fit(embeddings, ln_p)\n",
+    "\")\n",
+    "\n",
+    "py_run_string('\n",
+    "embeddings_val = embedding_model.predict({\n",
+    "    \"input_ids\": tf.convert_to_tensor(val_tensors[\"input_ids\"]),\n",
+    "    \"token_type_ids\": tf.convert_to_tensor(val_tensors[\"token_type_ids\"]),\n",
+    "    \"attention_mask\": tf.convert_to_tensor(val_tensors[\"attention_mask\"])\n",
+    "})\n",
+    "val_predictions = lcv.predict(embeddings_val)\n",
+    "')\n",
+    "\n",
+    "val_predictions <- py$val_predictions\n",
+    "\n",
+    "r2_val <- caret::R2(val_predictions, val_ln_p)\n",
+    "\n",
+    "py_run_string('\n",
+    "embeddings_holdout = embedding_model.predict({\n",
+    "    \"input_ids\": tf.convert_to_tensor(tensors_holdout[\"input_ids\"]),\n",
+    "    \"token_type_ids\": tf.convert_to_tensor(tensors_holdout[\"token_type_ids\"]),\n",
+    "    \"attention_mask\": tf.convert_to_tensor(tensors_holdout[\"attention_mask\"])\n",
+    "})\n",
+    "holdout_predictions = lcv.predict(embeddings_holdout)\n",
+    "')\n",
+    "\n",
+    "holdout_predictions <- py$holdout_predictions\n",
+    "\n",
+    "r2_holdout <- caret::R2(holdout_predictions, holdout_ln_p)\n",
+    "\n",
+    "print(r2_val)\n",
+    "print(r2_holdout)\n",
+    "ln_p_hat_holdout <- holdout_predictions"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "32",
+   "metadata": {
+    "id": "mOc1_C5p7ta7"
+   },
+   "source": [
+    "# Linear Probing: Training Only Final Layer after BERT"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "33",
+   "metadata": {
+    "id": "Ck1xqRIrmx8I",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "### Now let's prepare our model\n",
+    "\n",
+    "from tensorflow.keras import Model, Input\n",
+    "from tensorflow.keras.layers import Dense, Dropout, Concatenate\n",
+    "import tensorflow_addons as tfa\n",
+    "from tensorflow.keras import regularizers\n",
+    "\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "\n",
+    "input_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "token_type_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "attention_mask = Input(shape=(128,), dtype=tf.int32)\n",
+    "\n",
+    "# # First we compute the text embedding\n",
+    "Z = bert(input_ids, token_type_ids, attention_mask)\n",
+    "\n",
+    "for layer in bert.layers:\n",
+    "    layer.trainable=False\n",
+    "    for w in layer.weights: w._trainable=False\n",
+    "\n",
+    "# # We want the \"pooled / summary\" embedding, not individual word embeddings\n",
+    "Z = Z[1]\n",
+    "\n",
+    "# # Then we do a regular regression\n",
+    "# Z = Dropout(0.2)(Z)\n",
+    "ln_p_hat = Dense(1, activation='linear',\n",
+    "                 kernel_regularizer=regularizers.L2(1e-3))(Z)\n",
+    "\n",
+    "PricePredictionNetwork = Model([\n",
+    "                                input_ids,\n",
+    "                                token_type_ids,\n",
+    "                                attention_mask,\n",
+    "                                ], ln_p_hat)\n",
+    "PricePredictionNetwork.compile(\n",
+    "    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),\n",
+    "    loss=tf.keras.losses.MeanSquaredError(),\n",
+    "    metrics=tfa.metrics.RSquare(),\n",
+    ")\n",
+    "PricePredictionNetwork.summary()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "34",
+   "metadata": {
+    "id": "XhTREb3NcZhH",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from livelossplot import PlotLossesKeras\n",
+    "\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)\n",
+    "modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(\"/content/gdrive/MyDrive/pweights.hdf5\", monitor='val_loss', save_best_only=True, save_weights_only=True)\n",
+    "\n",
+    "PricePredictionNetwork.fit(\n",
+    "                x= [tensors['input_ids'],\n",
+    "                    tensors['token_type_ids'],\n",
+    "                    tensors['attention_mask'],],\n",
+    "                y=ln_p,\n",
+    "                validation_data = (\n",
+    "                    [val_tensors['input_ids'],\n",
+    "                     val_tensors['token_type_ids'],\n",
+    "                     val_tensors['attention_mask']], val_ln_p\n",
+    "                ),\n",
+    "                epochs=5,\n",
+    "                callbacks = [earlystopping, modelcheckpoint,\n",
+    "                             PlotLossesKeras(groups = {'train_loss': ['loss'], 'train_rsq':['r_square'], 'val_loss': ['val_loss'], 'val_rsq': ['val_r_square']})],\n",
+    "                batch_size=16,\n",
+    "                shuffle=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "35",
+   "metadata": {
+    "id": "MyFxR5GC8C3K"
+   },
+   "source": [
+    "# Fine Tuning starting from the Linear Probing Trained Weights\n",
+    "\n",
+    "Now we train the whole network, initializing the weights based on the result of the linear probing phase in the previous section."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "36",
+   "metadata": {
+    "id": "NzWCkTY87luH",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "### Now let's prepare our model\n",
+    "\n",
+    "from tensorflow.keras import Model, Input\n",
+    "from tensorflow.keras.layers import Dense, Dropout, Concatenate\n",
+    "import tensorflow_addons as tfa\n",
+    "from tensorflow.keras import regularizers\n",
+    "\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "\n",
+    "input_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "token_type_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "attention_mask = Input(shape=(128,), dtype=tf.int32)\n",
+    "\n",
+    "# # First we compute the text embedding\n",
+    "Z = bert(input_ids, token_type_ids, attention_mask)\n",
+    "\n",
+    "for layer in bert.layers:\n",
+    "    layer.trainable=True\n",
+    "    for w in layer.weights: w._trainable=True\n",
+    "\n",
+    "# # We want the \"pooled / summary\" embedding, not individual word embeddings\n",
+    "Z = Z[1]\n",
+    "\n",
+    "# # Then we do a regularized linear regression\n",
+    "ln_p_hat = Dense(1, activation='linear',\n",
+    "                 kernel_regularizer=regularizers.L2(1e-3))(Z)\n",
+    "\n",
+    "PricePredictionNetwork = Model([\n",
+    "                                input_ids,\n",
+    "                                token_type_ids,\n",
+    "                                attention_mask,\n",
+    "                                ], ln_p_hat)\n",
+    "PricePredictionNetwork.compile(\n",
+    "    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),\n",
+    "    loss=tf.keras.losses.MeanSquaredError(),\n",
+    "    metrics=tfa.metrics.RSquare(),\n",
+    ")\n",
+    "PricePredictionNetwork.summary()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "37",
+   "metadata": {
+    "id": "PWauCl0T7nUo",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "38",
+   "metadata": {
+    "id": "iDSBZWAe8nhE",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from livelossplot import PlotLossesKeras\n",
+    "\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "\n",
+    "earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)\n",
+    "modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(\"/content/gdrive/MyDrive/pweights.hdf5\", monitor='val_loss', save_best_only=True, save_weights_only=True)\n",
+    "\n",
+    "PricePredictionNetwork.fit(\n",
+    "                x= [tensors['input_ids'],\n",
+    "                    tensors['token_type_ids'],\n",
+    "                    tensors['attention_mask'],],\n",
+    "                y=ln_p,\n",
+    "                validation_data = (\n",
+    "                    [val_tensors['input_ids'],\n",
+    "                     val_tensors['token_type_ids'],\n",
+    "                     val_tensors['attention_mask']], val_ln_p\n",
+    "                ),\n",
+    "                epochs=10,\n",
+    "                callbacks = [earlystopping, modelcheckpoint,\n",
+    "                             PlotLossesKeras(groups = {'train_loss': ['loss'], 'train_rsq':['r_square'], 'val_loss': ['val_loss'], 'val_rsq': ['val_r_square']})],\n",
+    "                batch_size=16,\n",
+    "                shuffle=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "39",
+   "metadata": {
+    "id": "wchpbXoqBAJu",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "PricePredictionNetwork.load_weights(\"/content/gdrive/MyDrive/pweights.hdf5\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "40",
+   "metadata": {
+    "id": "jpUmDHYfkJEZ",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Compute predictions\n",
+    "ln_p_hat_holdout = PricePredictionNetwork.predict([\n",
+    "                                                   tensors_holdout['input_ids'],\n",
+    "                                                   tensors_holdout['token_type_ids'],\n",
+    "                                                   tensors_holdout['attention_mask'],\n",
+    "                                                   ])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "41",
+   "metadata": {
+    "id": "g_XK81hpkQMN",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "print(\"Neural Net R^2, Price Prediction:\")\n",
+    "get_r2(holdout[\"ln_p\"], ln_p_hat_holdout)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "42",
+   "metadata": {
+    "id": "GR4QP4DJPQk0",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "plt.hist(ln_p_hat_holdout)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "43",
+   "metadata": {
+    "id": "RAGwE4peL1Me",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "44",
+   "metadata": {
+    "id": "bafy9ftcoBed"
+   },
+   "source": [
+    "Now, let's go one step further and construct a DML estimator of the average price elasticity. In particular, we will model market share $q_i$ as\n",
+    "$$\\ln q_i = \\alpha + \\beta \\ln p_i + \\psi(d_i) + \\epsilon_i,$$ where $d_i$ denotes the description of product $i$ and $\\psi$ is the composition of text embedding and a linear layer."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "45",
+   "metadata": {
+    "id": "Qiteu6FaoctV",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "## Build the quantity prediction network\n",
+    "\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "\n",
+    "# Initialize new BERT model from original\n",
+    "bert2 = TFBertModel.from_pretrained(\"bert-base-uncased\")\n",
+    "\n",
+    "# for layer in bert2.layers:\n",
+    "#     layer.trainable=False\n",
+    "#     for w in layer.weights: w._trainable=False\n",
+    "\n",
+    "# Define inputs\n",
+    "input_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "token_type_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "attention_mask = Input(shape=(128,), dtype=tf.int32)\n",
+    "\n",
+    "# First we compute the text embedding\n",
+    "Z = bert2(input_ids, token_type_ids, attention_mask)\n",
+    "\n",
+    "# We want the \"pooled / summary\" embedding, not individual word embeddings\n",
+    "Z = Z[1]\n",
+    "\n",
+    "ln_q_hat = Dense(1, activation='linear', kernel_regularizer=regularizers.L2(1e-3))(Z)\n",
+    "\n",
+    "# Compile model and optimization routine\n",
+    "QuantityPredictionNetwork = Model([\n",
+    "                                   input_ids,\n",
+    "                                   token_type_ids,\n",
+    "                                   attention_mask,\n",
+    "                                   ], ln_q_hat)\n",
+    "QuantityPredictionNetwork.compile(\n",
+    "    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),\n",
+    "    loss=tf.keras.losses.MeanSquaredError(),\n",
+    "    metrics=tfa.metrics.RSquare(),\n",
+    ")\n",
+    "QuantityPredictionNetwork.summary()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "46",
+   "metadata": {
+    "id": "aaxHV0gGMqpw",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "## Fit the quantity prediction network in the main sample\n",
+    "tf.keras.utils.set_random_seed(123)\n",
+    "\n",
+    "earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)\n",
+    "modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(\"/content/gdrive/MyDrive/qweights.hdf5\", monitor='val_loss', save_best_only=True, save_weights_only=True)\n",
+    "\n",
+    "QuantityPredictionNetwork.fit(\n",
+    "                [\n",
+    "                 tensors['input_ids'],\n",
+    "                 tensors['token_type_ids'],\n",
+    "                 tensors['attention_mask'],\n",
+    "                 ],\n",
+    "                ln_q,\n",
+    "                validation_data = (\n",
+    "                    [val_tensors['input_ids'],\n",
+    "                 val_tensors['token_type_ids'],\n",
+    "                 val_tensors['attention_mask']], val_ln_q\n",
+    "                ),\n",
+    "                epochs=10,\n",
+    "                callbacks = [earlystopping, modelcheckpoint,\n",
+    "                             PlotLossesKeras(groups = {'train_loss': ['loss'], 'train_rsq':['r_square'], 'val_loss': ['val_loss'], 'val_rsq': ['val_r_square']})],\n",
+    "                batch_size=16,\n",
+    "                shuffle=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "47",
+   "metadata": {
+    "id": "TfyQV3lw-xf2",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "QuantityPredictionNetwork.load_weights(\"/content/gdrive/MyDrive/qweights.hdf5\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "48",
+   "metadata": {
+    "id": "YADpNj0jMygZ",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "## Predict in the holdout sample, residualize and regress\n",
+    "\n",
+    "ln_q_hat_holdout = QuantityPredictionNetwork.predict([\n",
+    "                                                      tensors_holdout['input_ids'],\n",
+    "                                                      tensors_holdout['token_type_ids'],\n",
+    "                                                      tensors_holdout['attention_mask'],\n",
+    "                                                      ])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "49",
+   "metadata": {
+    "id": "jh4criU1hGIP",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "print(\"Neural Net R^2, Quantity Prediction:\")\n",
+    "get_r2(holdout[\"ln_q\"], ln_q_hat_holdout)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "50",
+   "metadata": {
+    "id": "ir-_yAfkPM6f",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Compute residuals\n",
+    "r_p = holdout[\"ln_p\"] - ln_p_hat_holdout.reshape((-1,))\n",
+    "r_q = holdout[\"ln_q\"] - ln_q_hat_holdout.reshape((-1,))\n",
+    "\n",
+    "# Regress to obtain elasticity estimate\n",
+    "beta = np.mean(r_p * r_q) / np.mean(r_p * r_p)\n",
+    "\n",
+    "# standard error on elastiticy estimate\n",
+    "se = np.sqrt(np.mean( (r_p* r_q)**2)/(np.mean(r_p*r_p)**2)/holdout[\"ln_p\"].size)\n",
+    "\n",
+    "print('Elasticity of Demand with Respect to Price: {}'.format(beta))\n",
+    "print('Standard Error: {}'.format(se))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "51",
+   "metadata": {
+    "id": "VCqeRTB_BNEH"
+   },
+   "source": [
+    "# Heterogeneous Elasticities within Major Product Categories\n",
+    "\n",
+    "We now look at the major product categories that have many products and we investigate whether the \"within group\" price elasticities"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "52",
+   "metadata": {
+    "id": "XRUZEXqc8HPG",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "holdout['category'] = holdout['amazon_category_and_sub_category'].str.split('>').apply(lambda x: x[0])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "53",
+   "metadata": {
+    "id": "ymWJv4Ej7lt9",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Elasticity within the main product categories\n",
+    "sql.run(\"\"\"\n",
+    "  SELECT category, COUNT(*)\n",
+    "  FROM holdout\n",
+    "  GROUP BY 1\n",
+    "  HAVING COUNT(*)>=100\n",
+    "  ORDER BY 2 desc\n",
+    "\"\"\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "54",
+   "metadata": {
+    "id": "E3ncPtwt8nJi",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "main_cats = sql.run(\"\"\"\n",
+    "  SELECT category\n",
+    "  FROM holdout\n",
+    "  GROUP BY 1\n",
+    "  HAVING COUNT(*)>=100\n",
+    "\"\"\")['category']\n",
+    "\n",
+    "dfs = []\n",
+    "for cat in main_cats:\n",
+    "    r_p = holdout[holdout['category'] == cat][\"ln_p\"] - ln_p_hat_holdout.reshape((-1,))[holdout['category'] == cat]\n",
+    "    r_q = holdout[holdout['category'] == cat][\"ln_q\"] - ln_q_hat_holdout.reshape((-1,))[holdout['category'] == cat]\n",
+    "    # Regress to obtain elasticity estimate\n",
+    "    beta = np.mean(r_p * r_q) / np.mean(r_p * r_p)\n",
+    "\n",
+    "    # standard error on elastiticy estimate\n",
+    "    se = np.sqrt(np.mean( (r_p* r_q)**2)/(np.mean(r_p*r_p)**2)/holdout[\"ln_p\"].size)\n",
+    "\n",
+    "    df = pd.DataFrame({'point': beta, 'se': se, 'lower': beta - 1.96 * se, 'upper': beta + 1.96 * se}, index=[0])\n",
+    "    df['category'] = cat\n",
+    "    df['N'] = holdout[holdout['category'] == cat].shape[0]\n",
+    "    dfs.append(df)\n",
+    "\n",
+    "df = pd.concat(dfs)\n",
+    "df"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "55",
+   "metadata": {
+    "id": "QFTjf9vP6Zfu"
+   },
+   "source": [
+    "## Clustering Products\n",
+    "\n",
+    "In this final part of the notebook, we'll illustrate how the BERT text embeddings can be used to cluster products based on their  descriptions.\n",
+    "\n",
+    "Intiuitively, our neural network has now learned which aspects of the text description are relevant to predict prices and market shares.\n",
+    "We can therefore use the embeddings produced by our network to cluster products, and we might expect that the clusters reflect market-relevant information.\n",
+    "\n",
+    "In the following block of cells, we compute embeddings using our learned models and cluster them using $k$-means clustering with $k=10$. Finally, we will explore how the estimated price elasticity differs across clusters.\n",
+    "\n",
+    "### Overview of **$k$-means clustering**\n",
+    "The $k$-means clustering algorithm seeks to divide $n$ data vectors into $k$ groups, each of which contain points that are \"close together.\"\n",
+    "\n",
+    "In particular, let $C_1, \\ldots, C_k$ be a partitioning of the data into $k$ disjoint, nonempty subsets (clusters), and define\n",
+    "$$\\bar{C_i}=\\frac{1}{\\#C_i}\\sum_{x \\in C_i} x$$\n",
+    "to be the *centroid* of the cluster $C_i$. The $k$-means clustering score $\\mathrm{sc}(C_1 \\ldots C_k)$ is defined to be\n",
+    "$$\\mathrm{sc}(C_1 \\ldots C_k) = \\sum_{i=1}^k \\sum_{x \\in C_i} \\left(x - \\bar{C_i}\\right)^2.$$\n",
+    "\n",
+    "The $k$-means clustering is then defined to be any partitioning $C^*_1 \\ldots C^*_k$ that minimizes the score $\\mathrm{sc}(-)$.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "56",
+   "metadata": {
+    "id": "Mc7I00JPK6wJ",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "## STEP 1: Compute embeddings\n",
+    "\n",
+    "input_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "token_type_ids = Input(shape=(128,), dtype=tf.int32)\n",
+    "attention_mask = Input(shape=(128,), dtype=tf.int32)\n",
+    "\n",
+    "Y1 = bert(input_ids, token_type_ids, attention_mask)[1]\n",
+    "Y2 = bert2(input_ids, token_type_ids, attention_mask)[1]\n",
+    "Y = Concatenate()([Y1,Y2])\n",
+    "\n",
+    "embedding_model = Model([input_ids, token_type_ids, attention_mask], Y)\n",
+    "\n",
+    "embeddings = embedding_model.predict([tensors_holdout['input_ids'],\n",
+    "                                      tensors_holdout['token_type_ids'],\n",
+    "                                      tensors_holdout['attention_mask']])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "57",
+   "metadata": {
+    "id": "hCG2MunU6iF-"
+   },
+   "source": [
+    "### Dimension reduction and the **Johnson-Lindenstrauss transform**\n",
+    "\n",
+    "Our learned embeddings have dimension in the $1000$s, and $k$-means clustering is often an expensive operation. To improve the situation, we will use a neat trick that is used extensively in machine learning applications: the *Johnson-Lindenstrauss transform*.\n",
+    "\n",
+    "This trick involves finding a low-dimensional linear projection of the embeddings that approximately preserves pairwise distances.\n",
+    "\n",
+    "In fact, Johnson and Lindenstrauss proved a much more interesting statement: a Gaussian random matrix will *almost always* approximately preserve pairwise distances.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "58",
+   "metadata": {
+    "id": "afGiLR7v6ecJ",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# STEP 2 Make low-dimensional projections\n",
+    "from sklearn.random_projection import GaussianRandomProjection\n",
+    "\n",
+    "jl = GaussianRandomProjection(eps=.25)\n",
+    "embeddings_lowdim = jl.fit_transform(embeddings)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "59",
+   "metadata": {
+    "id": "9Tl9AM3J6j3X",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# STEP 3 Compute clusters\n",
+    "from sklearn.cluster import KMeans\n",
+    "\n",
+    "k_means = KMeans(n_clusters=10)\n",
+    "k_means.fit(embeddings_lowdim)\n",
+    "cluster_ids = k_means.labels_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "60",
+   "metadata": {
+    "id": "0l7De-Do6mD0",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# STEP 4 Regress within each cluster\n",
+    "\n",
+    "betas = np.zeros(10)\n",
+    "ses = np.zeros(10)\n",
+    "\n",
+    "r_p = holdout[\"ln_p\"] - ln_p_hat_holdout.reshape((-1,))\n",
+    "r_q = holdout[\"ln_q\"] - ln_q_hat_holdout.reshape((-1,))\n",
+    "\n",
+    "for c in range(10):\n",
+    "\n",
+    "  r_p_c = r_p[cluster_ids == c]\n",
+    "  r_q_c = r_q[cluster_ids == c]\n",
+    "\n",
+    "  # Regress to obtain elasticity estimate\n",
+    "  betas[c] = np.mean(r_p_c * r_q_c) / np.mean(r_p_c * r_p_c)\n",
+    "\n",
+    "  # standard error on elastiticy estimate\n",
+    "  ses[c] = np.sqrt(np.mean( (r_p_c * r_q_c)**2)/(np.mean(r_p_c*r_p_c)**2)/r_p_c.size)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "61",
+   "metadata": {
+    "id": "oXoe98f06njT",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# STEP 5 Plot\n",
+    "from matplotlib import pyplot as plt\n",
+    "\n",
+    "plt.bar(range(10), betas, yerr = 1.96 * ses)"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.0.5"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 427.936706,
+   "end_time": "2022-04-19T09:13:53.230849",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2022-04-19T09:06:45.294143",
+   "version": "2.3.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

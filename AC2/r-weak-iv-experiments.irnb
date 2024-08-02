@@ -1,166 +1,188 @@
 {
-  "metadata": {
-    "kernelspec": {
-      "name": "ir",
-      "display_name": "R",
-      "language": "R"
-    },
-    "language_info": {
-      "name": "R",
-      "codemirror_mode": "r",
-      "pygments_lexer": "r",
-      "mimetype": "text/x-r-source",
-      "file_extension": ".r",
-      "version": "3.6.3"
-    },
-    "colab": {
-      "provenance": []
-    }
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "k2wYjiHw-MNx"
+   },
+   "source": [
+    "# A Simple Example of Properties of IV estimator when Instruments are Weak"
+   ]
   },
-  "nbformat_minor": 0,
-  "nbformat": 4,
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# A Simple Example of Properties of IV estimator when Instruments are Weak"
-      ],
-      "metadata": {
-        "id": "k2wYjiHw-MNx"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "install.packages(\"hdm\")\n",
-        "\n",
-        "library(hdm)"
-      ],
-      "metadata": {
-        "id": "Fr38spdV-Xdr"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Simulation Design"
-      ],
-      "metadata": {
-        "id": "w7UUXXwZ-MNz"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Simulation Design\n",
-        "set.seed(1)\n",
-        "\n",
-        "n=100\n",
-        "beta = .1   # .1 weak IV\n",
-        "#beta = 1   #  1 strong IV\n",
-        "\n",
-        "# One realization\n",
-        "U = rnorm(n)\n",
-        "Z = rnorm(n)    # generate instrument\n",
-        "D = beta*Z + U  # generate endogenougs variable\n",
-        "Y = D + U       # the true causal effect is 1\n",
-        "\n",
-        "\n",
-        "summary(lm(D~Z))  # first stage is very weak here when we set beta = .1"
-      ],
-      "metadata": {
-        "trusted": true,
-        "id": "svk7GbHx-MNz"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "summary(tsls(x=NULL, d=D, y=Y, z=Z))"
-      ],
-      "metadata": {
-        "id": "086YR0feH0LU"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "Note that the instrument is weak here (strength of the instrument is controlled by setting $\\beta$) -- the t-stat is smaller than any rule-of-thumb suggested in the literature (e.g. $\\sqrt{10}$) ."
-      ],
-      "metadata": {
-        "id": "G_O5sAa7-MN1"
-      }
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# Run 10000 trials to evaluate distribution of the IV estimator"
-      ],
-      "metadata": {
-        "id": "u-SaSi2L-MN1"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# Simulation Design\n",
-        "\n",
-        "set.seed(1)\n",
-        "B= 10000 # trials\n",
-        "IVEst = rep(0, B)\n",
-        "\n",
-        "for(i in 1:B){\n",
-        "U =  rnorm(n)\n",
-        "Z = rnorm(n)  #generate instrument\n",
-        "D = beta*Z + U  #generate endogenougs variable\n",
-        "Y =  D+ U  # the true causal effect is 1\n",
-        "IVEst[i] = coef(tsls(x=NULL, d=D, y=Y, z=Z))[1,1]\n",
-        "}\n",
-        "\n"
-      ],
-      "metadata": {
-        "trusted": true,
-        "id": "Fc2Sjzhk-MN1"
-      },
-      "execution_count": null,
-      "outputs": []
-    },
-    {
-      "cell_type": "markdown",
-      "source": [
-        "# Plot the Actual Distribution against the Normal Approximation (based on Strong Instrument Assumption)"
-      ],
-      "metadata": {
-        "id": "-uvOcpa1-MN1"
-      }
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "plot(density(IVEst-1, n=1000, from=-5, to=5),col=4, xlim= c(-5, 5),\n",
-        "     xlab= \"IV Estimator -True Effect\", main=\"Actual Distribution vs Gaussian\")\n",
-        "\n",
-        "val=seq(-5, 5, by=.05)\n",
-        "var = (1/beta^2)*(1/100) # theoretical variance of IV\n",
-        "sd = sqrt(var)\n",
-        "lines(val, dnorm(val, sd=sd), col=2, lty=2)\n",
-        "\n",
-        "rejection.frequency = sum(( abs(IVEst-1)/sd > 1.96))/B\n",
-        "\n",
-        "cat(c(\"Rejection Frequency is \", rejection.frequency, \" while we expect it to be .05\"))\n"
-      ],
-      "metadata": {
-        "trusted": true,
-        "id": "Mvq4cLzC-MN2"
-      },
-      "execution_count": null,
-      "outputs": []
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "Fr38spdV-Xdr",
+    "vscode": {
+     "languageId": "r"
     }
-  ]
+   },
+   "outputs": [],
+   "source": [
+    "install.packages(\"hdm\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "library(hdm)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "w7UUXXwZ-MNz"
+   },
+   "source": [
+    "Simulation Design"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "svk7GbHx-MNz",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Simulation Design\n",
+    "set.seed(1)\n",
+    "\n",
+    "n <- 100\n",
+    "beta <- .1 # .1 weak IV (change to 1.0 for strong IV)\n",
+    "\n",
+    "# One realization\n",
+    "U <- rnorm(n)\n",
+    "Z <- rnorm(n) # generate instrument\n",
+    "D <- beta * Z + U # generate endogenougs variable\n",
+    "Y <- D + U # the true causal effect is 1\n",
+    "\n",
+    "summary(lm(D ~ Z)) # first stage is very weak here when we set beta = .1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "086YR0feH0LU",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "summary(tsls(x = NULL, d = D, y = Y, z = Z))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "G_O5sAa7-MN1"
+   },
+   "source": [
+    "Note that the instrument is weak here (strength of the instrument is controlled by setting $\\beta$) -- the t-stat is smaller than any rule-of-thumb suggested in the literature (e.g. $\\sqrt{10}$) ."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "u-SaSi2L-MN1"
+   },
+   "source": [
+    "# Run 10000 trials to evaluate distribution of the IV estimator"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "Fc2Sjzhk-MN1",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Simulation Design\n",
+    "\n",
+    "set.seed(1)\n",
+    "B <- 10000 # trials\n",
+    "IVEst <- rep(0, B)\n",
+    "\n",
+    "for (i in 1:B) {\n",
+    "  U <- rnorm(n)\n",
+    "  Z <- rnorm(n) # generate instrument\n",
+    "  D <- beta * Z + U # generate endogenougs variable\n",
+    "  Y <- D + U # the true causal effect is 1\n",
+    "  IVEst[i] <- coef(tsls(x = NULL, d = D, y = Y, z = Z))[1, 1]\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "-uvOcpa1-MN1"
+   },
+   "source": [
+    "# Plot the Actual Distribution against the Normal Approximation (based on Strong Instrument Assumption)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "Mvq4cLzC-MN2",
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "plot(density(IVEst - 1, n = 1000, from = -5, to = 5),\n",
+    "  col = 4, xlim = c(-5, 5),\n",
+    "  xlab = \"IV Estimator -True Effect\", main = \"Actual Distribution vs Gaussian\"\n",
+    ")\n",
+    "\n",
+    "val <- seq(-5, 5, by = .05)\n",
+    "var <- (1 / beta^2) * (1 / 100) # theoretical variance of IV\n",
+    "sd <- sqrt(var)\n",
+    "lines(val, dnorm(val, sd = sd), col = 2, lty = 2)\n",
+    "\n",
+    "rejection_frequency <- sum((abs(IVEst - 1) / sd > 1.96)) / B\n",
+    "\n",
+    "cat(c(\"Rejection Frequency is \", rejection_frequency, \" while we expect it to be .05\"))"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "3.6.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
 }

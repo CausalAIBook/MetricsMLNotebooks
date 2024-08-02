@@ -1,0 +1,307 @@
+name: Check R Notebooks
+
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 12 * * 0'  # Runs every Sunday at 12 PM UTC
+
+concurrency:
+  group: test-R-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-R-notebooks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+      - name: Find changed notebooks in PR
+        if: github.event_name == 'pull_request'
+        id: find_notebooks_pr
+        run: |
+          # git fetch origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
+          # git diff --name-only origin/${{ github.event.pull_request.base.ref }}...origin/${{ github.event.pull_request.head.ref }} > changed_files.txt
+          git diff --name-only -r HEAD^1 HEAD > changed_files.txt
+          if grep -q -E '^${{ matrix.directory }}/[^/]+\.Rmd$' changed_files.txt; then
+            echo "Changing directly the .Rmd files is prohibited. You should only be changing the .irnb files"
+            echo "The .Rmd files will be automatically generated and updated when the PR is merged in the main branch"
+            echo "It seems that you changed directly the following files:"
+            grep -E '^${{ matrix.directory }}/[^/]+\.Rmd$' changed_files.txt
+            exit 1
+          fi
+          grep -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+
+      - name: Find changed notebooks in Push
+        if: github.event_name == 'push'
+        id: find_notebooks_push
+        run: |
+          git diff --name-only ${{ github.event.before }} ${{ github.event.after }} > changed_files.txt
+          grep  -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+
+      - name: Check if any notebooks changed in PR or Push
+        if: (github.event_name == 'push') || (github.event_name == 'pull_request')
+        id: check_notebooks
+        run: |
+          cat changed_notebooks.txt
+          if grep -q -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_notebooks.txt; then
+            echo "notebooks_changed=true" >> $GITHUB_ENV
+          else
+            echo "notebooks_changed=false" >> $GITHUB_ENV
+            echo "No R notebooks changed in folder ${{ matrix.directory }} in this PR."
+          fi
+
+      - name: Set notebooks changed to true for schedule
+        if: "! ((github.event_name == 'push') || (github.event_name == 'pull_request'))"
+        id: set_check_notebooks_true
+        run: |
+          # we run all folders if it is the weekly scheduled run to
+          # check if something broke due to changes in dependencies
+          echo "notebooks_changed=true" >> $GITHUB_ENV
+
+      - name: Install system dependencies
+        if: env.notebooks_changed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - name: Set up Python
+        if: env.notebooks_changed == 'true'
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'  # Specify your Python version here
+
+      - name: Install Python dependencies
+        if: env.notebooks_changed == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install nbstripout
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        shell: bash
+
+      - name: Set up R
+        if: env.notebooks_changed == 'true'
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Install rmarkdown, knitr, and lintr packages
+        if: env.notebooks_changed == 'true'
+        run: |
+          R -e 'install.packages(c("rmarkdown", "knitr", "lintr", "xfun", "remotes"), repos="https://cloud.r-project.org")'
+
+      - name: Strip outputs from .irnb files
+        if: env.notebooks_changed == 'true'
+        run: |
+          for notebook in ${{ matrix.directory }}/*.irnb; do
+            ipynb_notebook="${notebook%.irnb}.ipynb"
+            mv "$notebook" "$ipynb_notebook"
+            nbstripout "$ipynb_notebook"
+            mv "$ipynb_notebook" "$notebook"
+          done
+
+      - name: Convert .irnb to .Rmd and .R
+        if: env.notebooks_changed == 'true'
+        run: |
+          R -e '
+            files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.irnb$", full.names = TRUE, recursive = FALSE)
+            lapply(files, function(input) {
+              rmarkdown::convert_ipynb(input)
+              rmd_file <- xfun::with_ext(input, "Rmd")
+              knitr::purl(rmd_file, output = xfun::with_ext(input, "R"))
+            })
+          '
+
+      - name: Lint .Rmd files
+        if: env.notebooks_changed == 'true'
+        id: lint
+        run: |
+          R -e '
+            library(lintr)
+            linters <- with_defaults(line_length_linter = line_length_linter(120),
+                                     object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")),
+                                     object_usage_linter = NULL)
+            rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
+            linting_error <- FALSE
+            for (rfile in rmd_files) {
+              lints <- lint(rfile, linters)
+              if (length(lints) > 0) {
+                cat("Warnings found during linting:\n")
+                print(lints)
+                # stop("Linting failed with warnings")
+                linting_error <- TRUE
+              }
+            }
+            if (linting_error) {
+              writeLines("linting_errors_found=true", "linting_errors_check.txt")
+            } else {
+              writeLines("linting_errors_found=false", "linting_errors_check.txt")
+            }
+          '
+
+      - name: Publish result of linting error check
+        if: env.notebooks_changed == 'true'
+        run: |
+          cat linting_errors_check.txt >> $GITHUB_ENV
+          rm linting_errors_check.txt
+
+      - name: Execute R scripts and log output
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
+        id: execute
+        run: |
+          log_file="${{ matrix.directory }}_r_script_execution.log"
+          R -e '
+            options(show.error.locations = TRUE)
+            files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.R$", full.names = TRUE, recursive = FALSE)
+            log_con <- file("'$log_file'", open = "wt")
+            sink(log_con, type = "output")
+            sink(log_con, type = "message")
+            errors <- list()
+            for (gitrfile in files) {
+              withCallingHandlers(
+                withRestarts(
+                  source(gitrfile),
+                  muffleStop = function() NULL
+                ),
+                error = function(e) {
+                  traceback_info <- sys.calls()
+                  errors[[length(errors) + 1]] <<- list(gitrfile = gitrfile, location = capture.output(print(e$call)), message = e$message, traceback = traceback_info)
+                  invokeRestart("muffleStop")
+                  }
+                )
+            }
+            sink(type = "output")
+            sink(type = "message")
+            close(log_con)
+            if (length(errors) > 0) {
+              writeLines("errors_found=true", "errors_check.txt")
+              for (error in errors) {
+                cat("Error found in file:", error$gitrfile, "\n")
+                cat("at line::", error$location, "\n")
+                cat("Error message:", error$message, "\n")
+                print("Traceback:\n")
+                cat(paste(error$traceback, collapse = "\n"))
+                print("\n")
+              }
+              # quit(status = 1, save = "no")  # Exit with an error status if errors are found
+            } else {
+              writeLines("errors_found=false", "errors_check.txt")
+            }
+          ' 2>/dev/null
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload execution log
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.directory }}-r-script-execution-log
+          path: ${{ matrix.directory }}_r_script_execution.log
+
+      - name: Zip .R files
+        if: env.notebooks_changed == 'true'
+        run: |
+          mkdir r_scripts
+          mv ${{ matrix.directory }}/*.R r_scripts/
+          zip -r ${{ matrix.directory }}_r_scripts.zip r_scripts
+
+      - name: Upload artifact
+        if: env.notebooks_changed == 'true'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.directory }}-r-scripts
+          path: ${{ matrix.directory }}_r_scripts.zip
+
+      - name: Delete .R files and zip
+        if: env.notebooks_changed == 'true'
+        run: |
+          rm -rf r_scripts
+          rm ${{ matrix.directory }}_r_scripts.zip
+      
+      - name: Publish result of error check
+        if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
+        run: |
+          cat errors_check.txt >> $GITHUB_ENV
+          rm errors_check.txt
+
+      - name: Send failure mail
+        if: "((github.event_name == 'schedule') && (env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Required mail server address if not connection_url:
+          server_address: smtp.gmail.com
+          # Server port, default 25:
+          server_port: 465
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional (recommended) mail server username:
+          username: ${{secrets.MAIL_USERNAME}}
+          # Optional (recommended) mail server password:
+          password: ${{secrets.MAIL_PASSWORD}}
+          # Required mail subject:
+          subject: FAILURE R (${{matrix.directory}}) test Github Action job failed!
+          # Required recipients' addresses:
+          to: bsyrganis@gmail.com
+          # Required sender full name (address can be skipped):
+          from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+          # Optional plain body:
+          body: R notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} failed.
+          ignore_cert: true
+
+      - name: fail if errors
+        if: "((env.notebooks_changed == 'true') && ((env.linting_errors_found == 'true') || (env.errors_found == 'true')))"
+        run: exit 1
+          
+      - name: Send success mail
+        if: "((github.event_name == 'schedule') && (env.notebooks_changed == 'true'))"
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Required mail server address if not connection_url:
+          server_address: smtp.gmail.com
+          # Server port, default 25:
+          server_port: 465
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional (recommended) mail server username:
+          username: ${{secrets.MAIL_USERNAME}}
+          # Optional (recommended) mail server password:
+          password: ${{secrets.MAIL_PASSWORD}}
+          # Required mail subject:
+          subject: SUCCESS R (${{matrix.directory}}) test Github Action job succeeded!
+          # Required recipients' addresses:
+          to: bsyrganis@gmail.com
+          # Required sender full name (address can be skipped):
+          from: GA-MetricsML-Notebooks <ga.metricsml.notebooks@gmail.com>
+          # Optional plain body:
+          body: R notebook tests of directory ${{matrix.directory}} in Git repo ${{github.repository}} succedded.
+          ignore_cert: true
+
+      # - name: Check out the branch for pull request
+      #   if: "(github.event_name == 'pull_request') && (env.notebooks_changed == 'true')"
+      #   run: |
+      #     git fetch --all
+      #     git checkout ${{ github.event.pull_request.head.ref }}
+
+      # - name: Check if there are any changes
+      #   if: env.notebooks_changed == 'true'
+      #   id: verify_diff
+      #   run: |
+      #     git pull
+      #     git diff --quiet ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd || echo "changed=true" >> $GITHUB_OUTPUT
+
+      # - name: Commit and push stripped .irnb and .Rmd files
+      #   if: "(env.notebooks_changed == 'true') && (steps.verify_diff.outputs.changed == 'true')"
+      #   run: |
+      #     git config --global user.name 'github-actions[bot]'
+      #     git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      #     git pull
+      #     git add ${{ matrix.directory }}/*.irnb ${{ matrix.directory }}/*.Rmd
+      #     git commit -m 'Strip outputs from .irnb, convert to .Rmd, lint .Rmd files, and execute .R files in ${{ matrix.directory }} [skip ci]'
+      #     git push --force-with-lease
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

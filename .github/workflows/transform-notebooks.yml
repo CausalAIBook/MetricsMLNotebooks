@@ -1,0 +1,117 @@
+name: Strip Python and R Notebooks from Outputs and Transform .irnb to .Rmd
+
+on:
+  push:
+    branches:
+      - main
+      - gen-Rmd
+
+concurrency:
+  group: strip-transform-notebooks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  strip-transform-notebooks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'  # Use Python 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install jupyter nbstripout
+      shell: bash
+
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+
+    - name: Install rmarkdown package
+      run: |
+        R -e 'install.packages(c("rmarkdown"), repos="https://cloud.r-project.org")'
+
+    - name: Strip outputs from .ipynb files
+      run: |
+        git pull
+        dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
+        for dir in "${dirs[@]}"; do
+        # Check if directory exists
+        if [ -d "$dir" ]; then
+            echo "Processing directory: $dir"
+            # Loop over all .ipynb files in the directory (non-recursively)
+            for notebook in "$dir"/*.ipynb; do
+                # Check if there are any .ipynb files
+                if [ -e "$notebook" ]; then
+                    echo "Stripping output from notebook: $notebook"
+                    nbstripout "$notebook"
+                fi
+            done
+            for notebook in "$dir"/*.irnb; do
+                # Check if there are any .irnb files
+                if [ -e "$notebook" ]; then                    
+                    echo "Stripping output from notebook: $notebook"
+                    ipynb_notebook=$(mktemp --suffix=.ipynb)
+                    mv "$notebook" "$ipynb_notebook"
+                    nbstripout "$ipynb_notebook"
+                    mv "$ipynb_notebook" "$notebook"
+                fi
+            done
+            echo "Converting .irnb to .Rmd to update the .Rmd version"
+            # first we delete all Rmd files and regenerate. This will make sure
+            # that if a .irnb file is deleted then the corresponding .Rmd file
+            # will also be removed by this script.
+            git rm "$dir"/*.Rmd
+            R -e "
+              files <- list.files(path = '$dir', pattern = '\\\\.irnb$', full.names = TRUE, recursive = FALSE)
+              lapply(files, function(input) {
+                rmarkdown::convert_ipynb(input)
+              })
+            "
+            git add "$dir"/*.Rmd
+        else
+            echo "Directory $dir does not exist."
+        fi
+        done
+
+    - name: Check if there are any changes (e.g. stripped outputs)
+      id: verify_diff
+      run: |
+        git pull
+        git status --porcelain
+        CHANGES=$(git status --porcelain)
+        if [ -z "$CHANGES" ]; then
+            echo "No changes were found"
+        else
+            echo "Found changes"
+            echo "$CHANGES"
+            echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push stripped .ipynb files
+      if: steps.verify_diff.outputs.changed == 'true'
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git pull
+        dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
+        for dir in "${dirs[@]}"; do
+            # Check if directory exists
+            if [ -d "$dir" ]; then
+                echo "Adding changed files from directory: $dir"
+                git add "$dir"/*.ipynb "$dir"/*.irnb "$dir"/*.Rmd
+            else
+                echo "Directory $dir does not exist."
+            fi
+        done
+        git commit -m 'Strip outputs from .ipynb files [skip ci]'
+        git push --force-with-lease
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
