@@ -68,14 +68,14 @@ jobs:
             # first we delete all Rmd files and regenerate. This will make sure
             # that if a .irnb file is deleted then the corresponding .Rmd file
             # will also be removed by this script.
-            git rm "$dir"/*.Rmd
+            find "$dir" -maxdepth 1 -type f -name '*.Rmd' -exec git rm {} \;
             R -e "
               files <- list.files(path = '$dir', pattern = '\\\\.irnb$', full.names = TRUE, recursive = FALSE)
               lapply(files, function(input) {
                 rmarkdown::convert_ipynb(input)
               })
             "
-            git add "$dir"/*.Rmd
+            find "$dir" -maxdepth 1 -type f -name '*.Rmd' -exec git add {} \;
         else
             echo "Directory $dir does not exist."
         fi
