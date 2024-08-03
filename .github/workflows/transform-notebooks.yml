@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   strip-transform-notebooks:
+    if: github.event.commits[0].author.name != 'GitHubActions'
     runs-on: ubuntu-latest
 
     steps:
@@ -99,8 +100,8 @@ jobs:
     - name: Commit and push stripped .ipynb files
       if: steps.verify_diff.outputs.changed == 'true'
       run: |
-        git config --global user.name 'metricsml-bot'
-        git config --global user.email 'ga.metricsml.bot@gmail.com'
+        git config --global user.name 'GitHubActions'
+        git config --global user.email '<>'
         git pull
         dirs=(PM1 PM2 PM3 PM4 PM5 CM1 CM2 CM3 AC1 AC2 T)
         for dir in "${dirs[@]}"; do
@@ -113,6 +114,4 @@ jobs:
             fi
         done
         git commit -m 'Strip outputs from .ipynb files [skip ci]'
-        git push --force-with-lease
-      env:
-        GITHUB_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN }}
+        git push
