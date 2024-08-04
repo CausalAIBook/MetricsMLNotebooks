@@ -25,7 +25,7 @@ library(gbm)
 library(keras)
 ```
 
-# Functional Approximation by a Tree
+# Function Approximation by a Tree
 
 We play around with the penalty level $cp$ below to illustrate how it affects the complexity of tree. Recall we may use this to prune the tree to improve predictive performance and lessen the noise in our final estimate. A simple penalty would be the number of leaves times a penalty level $\alpha$.
 
