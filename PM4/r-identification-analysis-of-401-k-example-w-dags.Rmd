@@ -1,0 +1,198 @@
+---
+title: An R Markdown document converted from "PM4/r-identification-analysis-of-401-k-example-w-dags.irnb"
+output: html_document
+---
+
+# Using Dagitty in the Analysis of Impact of 401(k) on Net Financial Wealth
+
+```{r}
+# install and load package
+install.packages("dagitty")
+install.packages("ggdag")
+```
+
+```{r}
+library(dagitty)
+library(ggdag)
+```
+
+# Graphs for 401(K) Analsyis
+
+Here we have
+ * $Y$ -- net financial assets;
+ * $X$ -- worker characteristics (income, family size, other retirement plans; see lecture notes for details);
+ * $F$ -- latent (unobserved) firm characteristics
+ * $D$ -- 401(K) eligibility, deterimined by $F$ and $X$
+
+**One graph (where F determines X):**
+
+```{r}
+# generate a DAGs and plot them
+
+G1 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [uobserved, pos="0, -1"]
+D -> Y
+X -> D
+F -> X
+F -> D
+X -> Y}')
+
+
+ggdag(G1) + theme_dag()
+```
+
+**List minimal adjustment sets to identify causal effects $D \to Y$**
+
+
+```{r}
+adjustmentSets(G1, "D", "Y", effect = "total")
+```
+
+**What is the underlying principle?**
+
+Here conditioning on X blocks backdoor paths from Y to D (Pearl).  Dagitty correctly finds X (and does many more correct decisions when we consider more elaborate structures. Why do we want to consider more elaborate structures? The very empirical problem requires us to do so!)
+
+**Another Graph (wherere $X$ determines $F$):**
+
+```{r}
+# generate a couple of DAGs and plot them
+
+G2 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [uobserved, pos="0, -1"]
+D -> Y
+X -> D
+X -> F
+F -> D
+X -> Y}')
+
+
+ggdag(G2) + theme_dag()
+```
+
+```{r}
+adjustmentSets(G2, "D", "Y", effect = "total")
+```
+
+**One more graph (encompassing the previous ones), where (F, X) are jointly determined by latent factors $A$.**
+
+We can allow in fact the whole triple (D, F, X) to be jointly determined by latent factors $A$.
+
+This is much more realistic graph to consider.
+
+```{r}
+G3 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [unobserved, pos="0, -1"]
+A [unobserved, pos="-1, -1"]
+D -> Y
+X -> D
+F -> D
+A -> F
+A -> X
+A -> D
+X -> Y}')
+
+adjustmentSets(G3, "D", "Y", effect = "total")
+
+ggdag(G3) + theme_dag()
+```
+
+# Threat to Identification:
+
+What if $F$ also directly affects $Y$? (Note that there are no valid adjustment sets in this case.)
+
+```{r}
+G4 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [unobserved, pos="0, -1"]
+A [unobserved, pos="-1, -1"]
+D -> Y
+X -> D
+F -> D
+A -> F
+A -> X
+A -> D
+F -> Y
+X -> Y}')
+
+
+ggdag(G4) + theme_dag()
+```
+
+```{r}
+adjustmentSets(G4, "D", "Y", effect = "total")
+```
+
+**Note that no output means that there is no valid adustment set (among observed variables).**
+
+**How can F affect Y directly? Is it reasonable?**
+
+Introduce Match Amount $M$. The match amount is a potential important mediator (why mediator?). $M$ is not observed. Luckily, adjusting for $X$ still works if there is no arrow $F \to M$.
+
+```{r}
+G5 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [unobserved, pos="0, -1"]
+A [unobserved, pos="-1, -1"]
+M [unobserved, pos="2, -.5"]
+D -> Y
+X -> D
+F -> D
+A -> F
+A -> X
+A -> D
+D -> M
+M -> Y
+X -> M
+X -> Y}')
+
+print(adjustmentSets(G5, "D", "Y", effect = "total"))
+
+ggdag(G5) + theme_dag()
+```
+
+If there is an $F \to M$ arrow, then adjusting for $X$ is not sufficient.
+
+```{r}
+G6 <- dagitty('dag{
+Y [outcome,pos="4, 0"]
+D [exposure,pos="0, 0"]
+X [confounder, pos="2,-2"]
+F [unobserved, pos="0, -1"]
+A [unobserved, pos="-1, -1"]
+M [uobserved, pos="2, -.5"]
+D -> Y
+X -> D
+F -> D
+A -> F
+A -> X
+D -> M
+F -> M
+A -> D
+M -> Y
+X -> M
+X -> Y}')
+
+print(adjustmentSets(G6, "D", "Y"), effect = "total")
+
+ggdag(G6) + theme_dag()
+```
+
+Again, note that no output was returned for the adjustment set. There is no valid adjustment set here.
+
+ # Question:
+
+Given the analysis above, do you find the adjustment for workers' characteristics a credible strategy to identify the causal (total effect) of 401 (k) elligibility on net financial wealth?
+

@@ -1,0 +1,405 @@
+---
+title: An R Markdown document converted from "PM1/r-ols-and-lasso-for-wage-prediction.irnb"
+output: html_document
+---
+
+## Introduction
+
+An important question in labor economics is what determines the wage of workers. This is a causal question, but we can begin to investigate it from a predictive perspective.
+
+In the following wage example, $Y$ is the (log) hourly wage of a worker and $X$ is a vector of worker's characteristics, e.g., education, experience, gender. Two main questions here are:
+
+* How can we use job-relevant characteristics, such as education and experience, to best predict wages?
+
+* What is the difference in predicted wages between men and women with the same job-relevant characteristics?
+
+In this lab, we focus on the prediction question first.
+
+## Data
+
+The data set we consider is from the 2015 March Supplement of the U.S. Current Population Survey.  We select white non-hispanic individuals, aged 25 to 64 years, and working more than 35 hours per week for at least 50 weeks of the year. We exclude self-employed workers; individuals living in group quarters; individuals in the military, agricultural or private household sectors;  individuals with inconsistent reports on earnings and employment status; individuals with allocated or missing information in any of the variables used in the analysis; and individuals with hourly wage below $3$.
+
+The variable of interest $Y$ is the (log) hourly wage rate constructed as the ratio of the annual earnings to the total number of hours worked, which is constructed in turn as the product of number of weeks worked and the usual number of hours worked per week. In our analysis, we also focus on single (never married) workers. The final sample is of size $n=5150$.
+
+```{r}
+install.packages("xtable")
+install.packages("hdm") # a library for high-dimensional metrics
+install.packages("glmnet") # for lasso CV
+```
+
+```{r}
+library(hdm)
+library(xtable)
+library(glmnet)
+```
+
+## Data analysis
+
+We start by loading the data set.
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+data <- read.csv(file)
+dim(data)
+```
+
+Let's have a look at the structure of the data.
+
+```{r}
+str(data)
+```
+
+We construct the output variable $Y$ and the matrix $Z$ which includes the characteristics of workers that are given in the data.
+
+```{r}
+# construct matrices for estimation from the data
+y <- log(data$wage)
+n <- length(y)
+Z <- data[- which(colnames(data) %in% c("wage", "lwage"))]
+p <- dim(Z)[2]
+
+cat("Number of observations:", n, "\n")
+cat("Number of raw regressors:", p)
+```
+
+For the outcome variable *wage* and a subset of the raw regressors, we calculate the empirical mean to get familiar with the data.
+
+```{r}
+# generate a table of means of variables
+Zsubset <- data[which(colnames(data) %in% c("lwage", "sex", "shs", "hsg", "scl",
+                                            "clg", "ad", "mw", "so", "we", "ne", "exp1"))]
+table <- matrix(0, 12, 1)
+table[1:12, 1] <- as.numeric(lapply(Zsubset, mean))
+rownames(table) <- c("Log Wage", "Sex", "Some High School",
+                     "High School Graduate", "Some College", "College Graduate",
+                     "Advanced Degree", "Midwest", "South", "West", "Northeast", "Experience")
+colnames(table) <- c("Sample mean")
+tab <- xtable(table, digits = 2)
+tab
+```
+
+E.g., the share of female workers in our sample is ~44% ($sex=1$ if female).
+
+Alternatively, using the xtable package, we can also print the table in LaTeX.
+
+```{r}
+print(tab, type = "latex") # type="latex" for printing table in LaTeX
+```
+
+## Prediction Question
+
+Now, we will construct a prediction rule for (log) hourly wage $Y$, which depends linearly on job-relevant characteristics $X$:
+
+\begin{equation}
+Y = \beta'X+ \epsilon.
+\end{equation}
+
+Our goals are
+
+* Predict wages using various characteristics of workers.
+
+* Assess the predictive performance of a given model using the (adjusted) sample MSE, the (adjusted) sample $R^2$ and the out-of-sample MSE and $R^2$.
+
+
+Toward answering the latter, we measure the prediction quality of the two models via data splitting:
+
+- Randomly split the data into one training sample and one testing sample. Here we just use a simple method (stratified splitting is a more sophisticated version of splitting that we might consider).
+- Use the training sample to estimate the parameters of the Basic Model and the Flexible Model.
+- Before using the testing sample, we evaluate in-sample fit.
+
+```{r}
+# splitting the data
+set.seed(1) # to make the results replicable (we will generate random numbers)
+random <- sample(1:n, floor(n * 4 / 5)) # draw (4/5)*n random numbers from 1 to n without replacing
+train <- data[random, ]
+test <- data[-random, ]
+```
+
+
+We employ two different specifications for prediction:
+
+
+1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators,  occupation and industry indicators and regional indicators).
+
+
+2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus a dictionary of transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions of a polynomial in experience with other regressors. An example of a regressor created through a two-way interaction is *experience* times the indicator of having a *college degree*.
+
+Using the **Flexible Model** enables us to approximate the real relationship by a more complex regression model and therefore to reduce the bias. The **Flexible Model** increases the range of potential shapes of the estimated regression function. In general, flexible models often deliver higher prediction accuracy but are harder to interpret.
+
+## Data-Splitting: In-sample performance
+
+Let us fit both models to our data by running ordinary least squares (ols):
+
+```{r}
+# 1. basic model
+basic <- lwage ~ (sex + exp1 + shs + hsg + scl + clg + mw + so + we + C(occ2) + C(ind2))
+regbasic <- lm(basic, data = train) # perform ols using the defined model
+# number of regressors in the Basic Model
+cat("Number of regressors in the basic model:", length(regbasic$coef), "\n")
+```
+
+##### Note that the basic model consists of $51$ regressors.
+
+```{r}
+# 2. flexible model
+flex <- lwage ~ sex + shs + hsg + scl + clg + mw + so + we + C(occ2) + C(ind2) +
+  (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)
+regflex <- lm(flex, data = train)
+# number of regressors in the Flexible Model
+cat("Number of regressors in the flexible model:", length(regflex$coef))
+```
+
+##### Note that the flexible model consists of $246$ regressors.
+
+#### Re-estimating the flexible model using Lasso
+We re-estimate the flexible model using Lasso (the least absolute shrinkage and selection operator) rather than ols. Lasso is a penalized regression method that can be used to reduce the complexity of a regression model when the ratio $p/n$ is not small. We will introduce this approach formally later in the course, but for now, we try it out here as a black-box method.  
+
+```{r}
+# Flexible model using Lasso, in-sample fit
+train_flex <- model.matrix(flex, train) # all regressors
+fit_lasso_cv <- cv.glmnet(as.matrix(train_flex), train$lwage, family = "gaussian", alpha = 1, nfolds = 5)
+# in-sample fit right now, not out-of-sample using "test"
+yhat_lasso_cv <- predict(fit_lasso_cv, newx = as.matrix(train_flex), s = "lambda.min")
+```
+
+#### Evaluating the predictive performance of the basic and flexible models in-sample
+Now, we can evaluate the performance of both models based on the (adjusted) $R^2_{sample}$ and the (adjusted) $MSE_{sample}$:
+
+```{r}
+# Assess predictive performance
+sumbasic <- summary(regbasic)
+sumflex <- summary(regflex)
+# no summary() for lassocv
+
+ntrain <- nrow(train)
+
+# R-squared and adjusted R-squared
+r2_1 <- sumbasic$r.squared
+cat("R-squared for the basic model: ", r2_1, "\n")
+r2_adj1 <- sumbasic$adj.r.squared
+cat("adjusted R-squared for the basic model: ", r2_adj1, "\n")
+
+r2_2 <- sumflex$r.squared
+cat("R-squared for the flexible model: ", r2_2, "\n")
+r2_adj2 <- sumflex$adj.r.squared
+cat("adjusted R-squared for the flexible model: ", r2_adj2, "\n")
+
+p_l <- fit_lasso_cv$nzero[fit_lasso_cv$index[1]]
+r2_l <- 1 - sum((yhat_lasso_cv - train$lwage)^2) / sum((train$lwage - mean(train$lwage))^2)
+cat("R-squared for the lasso with flexible model: ", r2_l, "\n")
+r2_adj_l <- 1 -
+  (sum((yhat_lasso_cv - train$lwage)^2) / (ntrain - p_l - 1)) /
+    (sum((train$lwage - mean(train$lwage))^2) / (ntrain - 1))
+cat("adjusted R-squared for the flexible model: ", r2_adj_l, "\n")
+
+# MSE and adjusted MSE
+mse1 <- mean(sumbasic$res^2)
+cat("MSE for the basic model: ", mse1, "\n")
+p1 <- sumbasic$df[1] # number of regressors
+mse_adj1 <- (ntrain / (ntrain - p1)) * mse1
+cat("adjusted MSE for the basic model: ", mse_adj1, "\n")
+
+mse2 <- mean(sumflex$res^2)
+cat("MSE for the flexible model: ", mse2, "\n")
+p2 <- sumflex$df[1]
+mse_adj2 <- (ntrain / (ntrain - p2)) * mse2
+cat("adjusted MSE for the lasso flexible model: ", mse_adj2, "\n")
+
+lasso_res <- train$lwage - yhat_lasso_cv
+mse_l <- mean(lasso_res^2)
+cat("MSE for the lasso flexible model: ", mse_l, "\n")
+mse_adj_l <- (ntrain / (ntrain - p_l - 1)) * mse_l
+cat("adjusted MSE for the lasso flexible model: ", mse_adj_l, "\n")
+```
+
+```{r}
+# Output the table
+table <- matrix(0, 3, 5)
+table[1, 1:5] <- c(p1, r2_1, mse1, r2_adj1, mse_adj1)
+table[2, 1:5] <- c(p2, r2_2, mse2, r2_adj2, mse_adj2)
+table[3, 1:5] <- c(p_l, r2_l, mse_l, r2_adj_l, mse_adj_l)
+colnames(table) <- c("p", "$R^2_{sample}$", "$MSE_{sample}$", "$R^2_{adjusted}$", "$MSE_{adjusted}$")
+rownames(table) <- c("basic reg", "flexible reg", "lasso flex")
+tab <- xtable(table, digits = c(0, 0, 2, 2, 2, 2))
+print(tab, type = "latex")
+tab
+```
+
+Considering the measures above, the flexible model performs slightly better than the basic model.
+
+As $p/n$ is not large, the discrepancy between the adjusted and unadjusted measures is not large. However, if it were, we might still like to apply **data splitting** as a more general procedure to deal with potential overfitting if $p/n$. We illustrate the approach in the following.
+
+## Data Splitting: Out-of-sample performance
+
+Now that we have seen in-sample fit, we evaluate our models on the out-of-sample performance:
+- Use the testing sample for evaluation. Predict the $\mathtt{wage}$  of every observation in the testing sample based on the estimated parameters in the training sample.
+- Calculate the Mean Squared Prediction Error $MSE_{test}$ based on the testing sample for both prediction models.
+
+```{r}
+# basic model
+options(warn = -1) # ignore warnings
+regbasic <- lm(basic, data = train)
+
+# calculating the out-of-sample MSE
+yhat_bas <- predict(regbasic, newdata = test)
+y_test <- test$lwage
+mean_train <- mean(train$lwage)
+mse_test1 <- sum((y_test - yhat_bas)^2) / length(y_test)
+r2_test1 <- 1 - mse_test1 / mean((y_test - mean_train)^2)
+
+cat("Test MSE for the basic model: ", mse_test1, " ")
+cat("Test R2 for the basic model: ", r2_test1)
+```
+
+In the basic model, the $MSE_{test}$ is quite close to the $MSE_{sample}$.
+
+```{r}
+# flexible model
+options(warn = -1) # ignore warnings
+regflex <- lm(flex, data = train)
+
+# calculating the out-of-sample MSE
+yhat_flex <- predict(regflex, newdata = test)
+y_test <- test$lwage
+mean_train <- mean(train$lwage)
+mse_test2 <- sum((y_test - yhat_flex)^2) / length(y_test)
+r2_test2 <- 1 - mse_test2 / mean((y_test - mean_train)^2)
+
+cat("Test MSE for the flexible model: ", mse_test2, " ")
+
+cat("Test R2 for the flexible model: ", r2_test2)
+```
+
+In the flexible model too, the discrepancy between the $MSE_{test}$ and the $MSE_{sample}$ is not large.
+
+It is worth noticing that the $MSE_{test}$ varies across different data splits. Hence, it is a good idea to average the out-of-sample MSE over different data splits to get valid results.
+
+Nevertheless, we observe that, based on the out-of-sample $MSE$, the basic model using ols regression performs **about as well (or slightly better)** than the flexible model.
+
+Next, let us use lasso regression in the flexible model instead of ols regression. The out-of-sample $MSE$ on the test sample can be computed for any black-box prediction method, so we also compare the performance of lasso regression in the flexible model to ols regression.
+
+```{r}
+# Flexible model using Lasso
+# model matrix should be formed before train/test as some levels dropped
+flex_data <- model.matrix(flex, data)
+train_flex <- flex_data[random, ]
+test_flex <- flex_data[-random, ]
+
+fit_lasso_cv <- cv.glmnet(train_flex, train$lwage, family = "gaussian", alpha = 1, nfolds = 5)
+yhat_lasso_cv <- predict(fit_lasso_cv, newx = test_flex, s = "lambda.min")
+
+# calculating the out-of-sample MSE
+mse_lasso <- sum((y_test - yhat_lasso_cv)^2) / length(y_test)
+r2_lasso <- 1 - mse_lasso / mean((y_test - mean(train$lwage))^2)
+
+cat("Test MSE for the lasso on flexible model: ", mse_lasso, " ")
+
+cat("Test R2 for the lasso flexible model: ", r2_lasso)
+```
+
+Finally, let us summarize the results:
+
+```{r}
+# Output the comparison table
+table2 <- matrix(0, 3, 2)
+table2[1, 1] <- mse_test1
+table2[2, 1] <- mse_test2
+table2[3, 1] <- mse_lasso
+table2[1, 2] <- r2_test1
+table2[2, 2] <- r2_test2
+table2[3, 2] <- r2_lasso
+
+rownames(table2) <- c("basic reg", "flexible reg", "lasso regression")
+colnames(table2) <- c("$MSE_{test}$", "$R^2_{test}$")
+tab2 <- xtable(table2, digits = 3)
+tab2
+```
+
+```{r}
+print(tab2, type = "latex")
+```
+
+## Extra flexible model and Overfitting
+Given the results above, it is not immediately clear why one would choose to use Lasso as results are fairly similar. To motivate, we consider an extra flexible model to show how OLS can overfit significantly to the in-sample train data and perform poorly on the out-of-sample testing data.
+
+
+```{r}
+# extra flexible model
+extraflex <- lwage ~ sex + (exp1 + exp2 + exp3 + exp4 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)^2
+regextra <- lm(extraflex, data = train)
+sumextra <- summary(regextra)
+cat("Number of Extra-Flex Controls", length(regextra$coef) - 1, "\n")
+n <- length(data$wage)
+p <- length(regextra$coef)
+ntrain <- length(train$wage)
+```
+
+```{r}
+## In-sample
+# R-squared and adjusted R-squared
+r2_extra <- sumextra$r.squared
+cat("R-squared for the extra flexible model (in-sample): ", r2_extra, "\n")
+r2_adjextra <- sumextra$adj.r.squared
+cat("adjusted R-squared for the extra flexible model (in-sample): ", r2_adjextra, "\n")
+
+# MSE and adjusted MSE
+mse_extra <- mean(sumextra$res^2)
+cat("MSE for the extra flexible model (in-sample): ", mse_extra, "\n")
+mse_adjextra <- (ntrain / (ntrain - p)) * mse_extra
+cat("adjusted MSE for the basic model (in-sample): ", mse_adj1, "\n")
+```
+
+```{r}
+## Out-of-sample
+yhat_ex <- predict(regextra, newdata = test)
+y_test_ex <- test$lwage
+mse_test_ex <- sum((y_test_ex - yhat_ex)^2) / length(y_test_ex)
+r2_test_ex <- 1 - mse_test_ex / mean((y_test_ex - mean(train$lwage))^2)
+
+cat("Test MSE for the basic model: ", mse_test_ex, " ")
+cat("Test R2 for the basic model: ", r2_test_ex)
+```
+
+As we can see, a simple OLS overfits when the dimensionality of covariates is high, as the out-of-sample performance suffers dramatically in comparison to the in-sample performance.
+
+Contrast this with Lasso:
+
+```{r}
+# model matrix should be formed before train/test as some levels dropped
+flex_data <- model.matrix(extraflex, data)
+train_flex <- flex_data[random, ]
+test_flex <- flex_data[-random, ]
+
+# fit model
+fit_lcv <- cv.glmnet(train_flex, train$lwage, family = "gaussian", alpha = 1, nfolds = 5)
+
+# in-sample
+yhat_lcv <- predict(fit_lcv, newx = train_flex, s = "lambda.min")
+
+r2_l <- 1 - sum((yhat_lcv - train$lwage)^2) / sum((train$lwage - mean(train$lwage))^2)
+p_l <- fit_lcv$nzero[fit_lcv$index[1]]
+r2_adj_l <- 1 -
+  (sum((yhat_lcv - train$lwage) ^ 2) / (ntrain - p_l - 1)) /
+    (sum((train$lwage - mean(train$lwage))^2) / (ntrain - 1))
+
+lasso_res <- train$lwage - yhat_lcv
+mse_l <- mean(lasso_res^2)
+mse_adj_l <- (ntrain / (ntrain - p_l - 1)) * mse_l
+
+cat("R-squared for the lasso with the extra flexible model (in-sample): ", r2_l, "\n")
+cat("adjusted R-squared for the extra flexible model (in-sample): ", r2_adj_l, "\n")
+cat("MSE for the lasso with the extra flexible model (in-sample): ", mse_l, "\n")
+cat("adjusted MSE for the lasso with the extraflexible model (in-sample): ", mse_adj_l, "\n")
+
+# out-of-sample
+yhat_lcv_test <- predict(fit_lcv, newx = test_flex, s = "lambda.min")
+mse_lasso <- sum((test$lwage - yhat_lcv_test)^2) / length(test$lwage)
+r2_lasso <- 1 - mse_lasso / mean((test$lwage - mean(train$lwage))^2)
+
+cat("\n")
+cat("Test R2 for the lasso the extra flexible model: ", r2_lasso, "\n")
+cat("Test MSE for the lasso on the extra flexible model: ", mse_lasso)
+```
+
+As shown above, the overfitting effect is mitigated with the penalized regression model.
+

@@ -1,0 +1,594 @@
+---
+title: An R Markdown document converted from "PM3/r_ml_wage_prediction.irnb"
+output: html_document
+---
+
+# Machine Learning Estimators for Wage Prediction
+
+We illustrate how to predict an outcome variable Y in a high-dimensional setting, where the number of covariates $p$ is large in relation to the sample size $n$. So far we have used linear prediction rules, e.g. Lasso regression, for estimation.
+Now, we also consider nonlinear prediction rules including tree-based methods.
+
+```{r}
+# Import relevant packages
+install.packages("xtable")
+install.packages("hdm")
+install.packages("glmnet")
+install.packages("randomForest")
+install.packages("rpart")
+install.packages("nnet")
+install.packages("gbm")
+install.packages("rpart.plot")
+install.packages("keras")
+```
+
+```{r}
+library(hdm)
+library(xtable)
+library(glmnet)
+library(randomForest)
+library(rpart)
+library(nnet)
+library(gbm)
+library(rpart.plot)
+library(keras)
+```
+
+## Data
+
+Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.
+The preproccessed sample consists of $5150$ never-married individuals.
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+data <- read.csv(file)
+dim(data)
+```
+
+The outcomes $Y_i$'s are hourly (log) wages of never-married workers living in the U.S. The raw regressors $Z_i$'s consist of a variety of characteristics, including experience, education and industry and occupation indicators.
+
+```{r}
+Z <- subset(data, select = -c(lwage, wage)) # regressors
+colnames(Z)
+```
+
+The following figure shows the weekly wage distribution from the US survey data.
+
+```{r}
+hist(data$wage, xlab = "hourly wage", main = "Empirical wage distribution from the US survey data", breaks = 35)
+```
+
+Wages show a high degree of skewness. Hence, wages are transformed in almost all studies by
+the logarithm.
+
+## Analysis
+
+Due to the skewness of the data, we are considering log wages which leads to the following regression model
+
+$$log(wage) = g(Z) + \epsilon.$$
+
+We will estimate the two sets of prediction rules: Linear and Nonlinear Models.
+In linear models, we estimate the prediction rule of the form
+
+$$\hat g(Z) = \hat \beta'X.$$
+Again, we generate $X$ in two ways:
+
+1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, regional indicators).
+
+
+2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions.
+
+To evaluate the out-of-sample performance, we split the data first.
+
+```{r}
+set.seed(1234)
+training <- sample(nrow(data), nrow(data) * (3 / 4), replace = FALSE)
+
+data_train <- data[training, ]
+data_test <- data[-training, ]
+```
+
+We construct the two different model matrices $X_{basic}$ and $X_{flex}$ for both the training and the test sample:
+
+```{r}
+x_basic <- "sex + exp1 + shs + hsg+ scl + clg + mw + so + we + C(occ2)+ C(ind2)"
+x_flex <- paste("sex + exp1 + shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we ",
+                "+ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)")
+formula_basic <- as.formula(paste("lwage", "~", x_basic))
+formula_flex <- as.formula(paste("lwage", "~", x_flex))
+
+model_x_basic_train <- model.matrix(formula_basic, data_train)
+model_x_basic_test <- model.matrix(formula_basic, data_test)
+p_basic <- dim(model_x_basic_train)[2]
+model_x_flex_train <- model.matrix(formula_flex, data_train)
+model_x_flex_test <- model.matrix(formula_flex, data_test)
+p_flex <- dim(model_x_flex_train)[2]
+```
+
+```{r}
+y_train <- data_train$lwage
+y_test <- data_test$lwage
+```
+
+```{r}
+p_basic
+p_flex
+```
+
+As known from our first lab, the basic model consists of $51$ regressors and the flexible model of $246$ regressors. Let us fit our models to the training sample using the two different model specifications. We are starting by running a simple ols regression.
+
+### OLS
+
+We fit the basic model to our training data by running an ols regression and compute the mean squared error on the test sample.
+
+```{r}
+# ols (basic model)
+fit_lm_basic <- lm(formula_basic, data_train)
+```
+
+```{r}
+# Compute the Out-Of-Sample Performance
+yhat_lm_basic <- predict(fit_lm_basic, newdata = data_test)
+# MSE OLS (basic model)
+cat("The mean squared error (MSE) using the basic model is equal to", mean((y_test - yhat_lm_basic)^2))
+```
+
+To determine the out-of-sample $MSE$ and the standard error in one step, we can use the function *lm*:
+
+```{r}
+mse_lm_basic <- summary(lm((y_test - yhat_lm_basic)^2 ~ 1))$coef[1:2]
+mse_lm_basic
+```
+
+We also compute the out-of-sample $R^2$:
+
+```{r}
+r2_lm_basic <- 1 - mse_lm_basic[1] / var(y_test)
+# MSE OLS (basic model)
+cat("The R^2 using the basic model is equal to", r2_lm_basic)
+```
+
+We repeat the same procedure for the flexible model.
+
+```{r}
+# ols (flexible model)
+fit_lm_flex <- lm(formula_flex, data_train)
+# Compute the Out-Of-Sample Performance
+options(warn = -1)
+yhat_lm_flex <- predict(fit_lm_flex, newdata = data_test)
+mse_lm_flex <- summary(lm((y_test - yhat_lm_flex)^2 ~ 1))$coef[1:2]
+r2_lm_flex <- 1 - mse_lm_flex[1] / var(y_test)
+cat("The R^2 using the flexible model is equal to", r2_lm_flex) # MSE OLS (flexible model)
+```
+
+We observe that ols regression works better for the basic model with smaller $p/n$ ratio. We now proceed by running lasso regressions and related penalized methods.
+
+### Lasso, Ridge and Elastic Net
+
+Considering the basic model, we run a lasso/post-lasso regression first and then we compute the measures for the out-of-sample performance. Note that applying the package *hdm* and the function *rlasso* we rely on a theoretical based choice of the penalty level $\lambda$ in the lasso regression.
+
+```{r}
+# lasso and variants
+fit_rlasso <- hdm::rlasso(formula_basic, data_train, post = FALSE)
+fit_rlasso_post <- hdm::rlasso(formula_basic, data_train, post = TRUE)
+yhat_rlasso <- predict(fit_rlasso, newdata = data_test)
+yhat_rlasso_post <- predict(fit_rlasso_post, newdata = data_test)
+
+mse_lasso <- summary(lm((y_test - yhat_rlasso)^2 ~ 1))$coef[1:2]
+mse_lasso_post <- summary(lm((y_test - yhat_rlasso_post)^2 ~ 1))$coef[1:2]
+
+r2_lasso <- 1 - mse_lasso[1] / var(y_test)
+r2_lasso_post <- 1 - mse_lasso_post[1] / var(y_test)
+# R^2 lasso/post-lasso (basic model)
+cat("The R^2 using the basic model is equal to", r2_lasso, "for lasso and", r2_lasso_post, "for post-lasso")
+```
+
+Now, we repeat the same procedure for the flexible model.
+
+```{r}
+fit_rlasso_flex <- hdm::rlasso(formula_flex, data_train, post = FALSE)
+fit_rlasso_post_flex <- hdm::rlasso(formula_flex, data_train, post = TRUE)
+yhat_rlasso_flex <- predict(fit_rlasso_flex, newdata = data_test)
+yhat_rlasso_post_flex <- predict(fit_rlasso_post_flex, newdata = data_test)
+
+mse_lasso_flex <- summary(lm((y_test - yhat_rlasso_flex)^2 ~ 1))$coef[1:2]
+mse_lasso_post_flex <- summary(lm((y_test - yhat_rlasso_post_flex)^2 ~ 1))$coef[1:2]
+
+# R^2 lasso/post-lasso (flexible model)
+r2_lasso_flex <- 1 - mse_lasso_flex[1] / var(y_test)
+r2_lasso_post_flex <- 1 - mse_lasso_post_flex[1] / var(y_test)
+cat("The R^2 using the flexible model is equal to", r2_lasso_flex,
+    "for lasso and", r2_lasso_post_flex, "for post-lasso")
+```
+
+In contrast to a theoretical based choice of the tuning parameter $\lambda$ in the lasso regression, we can also use cross-validation to determine the penalty level by applying the package *glmnet* and the function cv.glmnet. In this context, we also run a ridge and a elastic net regression by adjusting the parameter *alpha*.
+
+```{r}
+fit_lasso_cv <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet <- cv.glmnet(model_x_basic_train, y_train, family = "gaussian", alpha = .5)
+
+yhat_lasso_cv <- predict(fit_lasso_cv, newx = model_x_basic_test)
+yhat_ridge <- predict(fit_ridge, newx = model_x_basic_test)
+yhat_elnet <- predict(fit_elnet, newx = model_x_basic_test)
+
+mse_lasso_cv <- summary(lm((y_test - yhat_lasso_cv)^2 ~ 1))$coef[1:2]
+mse_ridge <- summary(lm((y_test - yhat_ridge)^2 ~ 1))$coef[1:2]
+mse_elnet <- summary(lm((y_test - yhat_elnet)^2 ~ 1))$coef[1:2]
+
+r2_lasso_cv <- 1 - mse_lasso_cv[1] / var(y_test)
+r2_ridge <- 1 - mse_ridge[1] / var(y_test)
+r2_elnet <- 1 - mse_elnet[1] / var(y_test)
+
+# R^2 using cross-validation (basic model)
+cat("R^2 using cross-validation for lasso, ridge and elastic net in the basic model:",
+    r2_lasso_cv, r2_ridge, r2_elnet)
+```
+
+Note that the following calculations for the flexible model need some computation time.
+
+```{r}
+fit_lasso_cv_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 1)
+fit_ridge_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = 0)
+fit_elnet_flex <- cv.glmnet(model_x_flex_train, y_train, family = "gaussian", alpha = .5)
+
+yhat_lasso_cv_flex <- predict(fit_lasso_cv_flex, newx = model_x_flex_test)
+yhat_ridge_flex <- predict(fit_ridge_flex, newx = model_x_flex_test)
+yhat_elnet_flex <- predict(fit_elnet_flex, newx = model_x_flex_test)
+
+mse_lasso_cv_flex <- summary(lm((y_test - yhat_lasso_cv_flex)^2 ~ 1))$coef[1:2]
+mse_ridge_flex <- summary(lm((y_test - yhat_ridge_flex)^2 ~ 1))$coef[1:2]
+mse_elnet_flex <- summary(lm((y_test - yhat_elnet_flex)^2 ~ 1))$coef[1:2]
+
+r2_lasso_cv_flex <- 1 - mse_lasso_cv_flex[1] / var(y_test)
+r2_ridge_flex <- 1 - mse_ridge_flex[1] / var(y_test)
+r2_elnet_flex <- 1 - mse_elnet_flex[1] / var(y_test)
+
+# R^2 using cross-validation (flexible model)
+cat("R^2 using cross-validation for lasso, ridge and elastic net in the flexible model:",
+    r2_lasso_cv_flex, r2_ridge_flex, r2_elnet_flex)
+```
+
+The performance of the lasso regression with cross-validated penalty is quite similar to the performance of lasso using a theoretical based choice of the tuning parameter.
+
+#Non-linear models
+
+Besides linear regression models, we consider nonlinear regression models to build a predictive model. We are applying regression trees, random forests, boosted trees and neural nets to estimate the regression function $g(X)$.
+
+## Regression Trees
+
+We fit a regression tree to the training data using the basic model. The variable *cp* controls the complexity of the regression tree, i.e. how deep we build the tree.
+
+```{r}
+# tree
+fit_trees <- rpart(formula_basic, data_train, minbucket = 5, cp = 0.001)
+# plotting the tree
+prp(fit_trees, leaf.round = 1, space = 2, yspace = 2, split.space = 2, shadow.col = "gray", trace = 1)
+```
+
+An important method to improve predictive performance is called "Pruning the Tree". This
+means the process of cutting down the branches of a tree. We apply pruning to the complex tree above to reduce the depth. Initially, we determine the optimal complexity of the regression tree.
+
+```{r}
+bestcp <- fit_trees$cptable[which.min(fit_trees$cptable[, "xerror"]), "CP"]
+bestcp
+```
+
+Now, we can prune the tree and visualize the prediction rule.
+
+```{r}
+fit_prunedtree <- prune(fit_trees, cp = bestcp)
+prp(fit_prunedtree, leaf.round = 1, space = 3, yspace = 3, split.space = 7,
+    shadow.col = "gray", trace = 1, yesno = 1)
+```
+
+Finally, we calculate the mean-squared error and the $R^2$ on the test sample to evaluate the out-of-sample performance of the pruned tree.
+
+```{r}
+yhat_pt <- predict(fit_prunedtree, newdata = data_test)
+mse_pt <- summary(lm((y_test - yhat_pt)^2 ~ 1))$coef[1:2]
+r2_pt <- 1 - mse_pt[1] / var(y_test)
+
+# R^2 of the pruned tree
+cat("R^2 of the pruned tree:", r2_pt)
+```
+
+## Random Forest and Boosted Trees
+
+In the next step, we apply the more advanced tree-based methods random forest and boosted trees.
+
+```{r}
+# random forest
+fit_rf <- randomForest(model_x_basic_train, y_train, ntree = 2000, nodesize = 20, data = data_train)
+
+## Evaluating the method
+yhat_rf <- predict(fit_rf, newdata = model_x_basic_test) # prediction
+
+mse_rf <- summary(lm((y_test - yhat_rf)^2 ~ 1))$coef[1:2]
+r2_rf <- 1 - mse_rf[1] / var(y_test)
+```
+
+```{r}
+# boosting
+fit_boost <- gbm(formula_basic, data = data_train, distribution = "gaussian", bag.fraction = .5,
+                 interaction.depth = 2, n.trees = 1000, shrinkage = .01)
+best_boost <- gbm.perf(fit_boost, plot.it = FALSE) # cross-validation to determine when to stop
+
+## Evaluating the method
+yhat_boost <- predict(fit_boost, newdata = data_test, n.trees = best_boost)
+
+mse_boost <- summary(lm((y_test - yhat_boost)^2 ~ 1))$coef[1:2]
+r2_boost <- 1 - mse_boost[1] / var(y_test)
+```
+
+```{r}
+# printing R^2
+cat("R^2 of the random forest and boosted trees:", r2_rf, r2_boost)
+```
+
+## NNets
+
+First, we need to determine the structure of our network. We are using the R package *keras* to build a simple sequential neural network with three dense layers -- 2 hidden and one output layer.
+
+```{r}
+# Define the neural network architecture
+model <- keras_model_sequential() %>%
+  layer_dense(units = 50, activation = "relu", input_shape = dim(model_x_basic_train)[2]) %>%
+  layer_dense(units = 50, activation = "relu") %>%
+  layer_dense(units = 1) # Output layer with 1 unit for regression task
+
+# Compile the model
+model %>% compile(
+  optimizer = optimizer_adam(lr = 0.01),
+  loss = "mse",
+  metrics = c("mae"),
+)
+
+summary(model)
+```
+
+```{r}
+num_epochs <- 100
+
+# Define early stopping based on validation set (20%) performance
+# Patience set to 5 epochs (default in skorch is 5)
+early_stopping <- callback_early_stopping(monitor = "val_loss", patience = 5)
+
+# Train the model
+model %>% fit(
+  model_x_basic_train, y_train,
+  epochs = num_epochs,
+  batch_size = 10,
+  validation_split = 0.2, # 20% validation set
+  verbose = 0,
+  callbacks = list(early_stopping)
+)
+```
+
+```{r}
+# evaluating the performance
+model %>% evaluate(model_x_basic_test, y_test, verbose = 0)
+```
+
+```{r}
+# Calculating the performance measures
+yhat_nn <- model %>% predict(model_x_basic_test)
+mse_nn <- summary(lm((y_test - yhat_nn)^2 ~ 1))$coef[1:2]
+r2_nn <- 1 - mse_nn[1] / var(y_test)
+# printing R^2
+cat("R^2 of the neural network:", r2_nn)
+```
+
+To conclude, let us have a look at our results.
+
+## Results
+
+```{r}
+table <- matrix(0, 16, 3)
+table[1, 1:2] <- mse_lm_basic
+table[2, 1:2] <- mse_lm_flex
+table[3, 1:2] <- mse_lasso
+table[4, 1:2] <- mse_lasso_post
+table[5, 1:2] <- mse_lasso_flex
+table[6, 1:2] <- mse_lasso_post_flex
+table[7, 1:2] <- mse_lasso_cv
+table[8, 1:2] <- mse_ridge
+table[9, 1:2] <- mse_elnet
+table[10, 1:2] <- mse_lasso_cv_flex
+table[11, 1:2] <- mse_ridge_flex
+table[12, 1:2] <- mse_elnet_flex
+table[13, 1:2] <- mse_rf
+table[14, 1:2] <- mse_boost
+table[15, 1:2] <- mse_pt
+table[16, 1:2] <- mse_nn
+
+
+table[1, 3] <- r2_lm_basic
+table[2, 3] <- r2_lm_flex
+table[3, 3] <- r2_lasso
+table[4, 3] <- r2_lasso_post
+table[5, 3] <- r2_lasso_flex
+table[6, 3] <- r2_lasso_post_flex
+table[7, 3] <- r2_lasso_cv
+table[8, 3] <- r2_ridge
+table[9, 3] <- r2_elnet
+table[10, 3] <- r2_lasso_cv_flex
+table[11, 3] <- r2_ridge_flex
+table[12, 3] <- r2_elnet_flex
+table[13, 3] <- r2_rf
+table[14, 3] <- r2_boost
+table[15, 3] <- r2_pt
+table[16, 3] <- r2_nn
+
+
+colnames(table) <- c("MSE", "S.E. for MSE", "R-squared")
+rownames(table) <- c(
+  "Least Squares (basic)", "Least Squares (flexible)", "Lasso", "Post-Lasso",
+  "Lasso (flexible)", "Post-Lasso (flexible)",
+  "Cross-Validated lasso", "Cross-Validated ridge", "Cross-Validated elnet",
+  "Cross-Validated lasso (flexible)", "Cross-Validated ridge (flexible)", "Cross-Validated elnet (flexible)",
+  "Random Forest", "Boosted Trees", "Pruned Tree", "Neural Net (Early)"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
+tab
+```
+
+Above, we displayed the results for a single split of data into the training and testing part. The table shows the test MSE in column 1 as well as the standard error in column 2 and the test $R^2$
+in column 3. We see that most models perform similarly. For most of these methods, test MSEs are within one standard error of each other. Remarkably, OLS with just the basic variables performs extremely well. However, OLS on a flexible model with many regressors performs very poorly giving nearly the highest test MSE. It is worth noticing that, as this is just a simple illustration meant to be relatively quick, the nonlinear models are not tuned. Thus, there is potential to improve the performance of the nonlinear methods we used in the analysis.
+
+### Ensemble learning
+
+In the final step, we can build a prediction model by combing the strengths of the models we considered so far. This ensemble method is of the form
+	$$ f(x) = \sum_{k=1}^K \alpha_k f_k(x) $$
+where the $f_k$'s denote our prediction rules from the table above and the $\alpha_k$'s are the corresponding weights.
+
+We first estimate the weights without penalization.
+
+```{r}
+ensemble_ols <- summary(lm(y_test ~ yhat_lm_basic + yhat_lm_flex + yhat_rlasso + yhat_rlasso_flex +
+                             yhat_rlasso_post + yhat_rlasso_post_flex + yhat_lasso_cv + yhat_lasso_cv_flex +
+                             yhat_ridge + yhat_ridge_flex + yhat_elnet + yhat_elnet_flex +
+                             yhat_pt + yhat_rf + yhat_boost + yhat_nn))
+ensemble_ols
+```
+
+Alternatively, we can determine the weights via lasso regression.
+
+```{r}
+ensemble_lasso <- summary(hdm::rlasso(y_test ~ yhat_lm_basic + yhat_lm_flex + yhat_rlasso + yhat_rlasso_flex +
+                                        yhat_rlasso_post + yhat_rlasso_post_flex + yhat_lasso_cv + yhat_lasso_cv_flex +
+                                        yhat_ridge + yhat_ridge_flex + yhat_elnet + yhat_elnet_flex +
+                                        yhat_pt + yhat_rf + yhat_boost + yhat_nn))
+ensemble_lasso
+```
+
+The estimated weights are shown in the following table.
+
+```{r}
+table <- matrix(0, 17, 2)
+table[1:17, 1] <- ensemble_ols$coef[1:17]
+table[1:17, 2] <- ensemble_lasso$coef[1:17]
+
+colnames(table) <- c("Weight OLS", "Weight Lasso")
+
+rownames(table) <- c(
+  "Constant", "Least Squares (basic)", "Least Squares (flexible)", "Lasso (basic)",
+  "Lasso (flexible)", "Post-Lasso (basic)", "Post-Lasso (flexible)", "LassoCV (basic)",
+  "Lasso CV (flexible)", "Ridge CV (basic)", "Ridge CV (flexible)", "ElNet CV (basic)",
+  "ElNet CV (flexible)", "Pruned Tree", "Random Forest", "Boosted Trees", "Neural Net"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
+tab
+```
+
+We note the superior $R^2$ performance of the ensembles. Though for more unbiased performance evaluation, we should have left out a third sample to validate the performance of the stacked model.
+
+```{r}
+# print ensemble R^2
+cat("R^2 of stacking with LS weights:", ensemble_ols$adj.r.squared, "\n")
+cat("R^2 of stacking with Lasso weights:", ensemble_lasso$adj.r.squared, "\n")
+```
+
+# Automatic Machine Learning with H20 AutoML
+
+We illustrate how to predict an outcome variable Y in a high-dimensional setting, using the AutoML package *H2O* that covers the complete pipeline from the raw dataset to the deployable machine learning model. In last few years, AutoML or automated machine learning has become widely popular among data science community. Again, we reanalyze the wage prediction problem using data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.
+
+We can use AutoML as a benchmark and compare it to the methods that we used previously where we applied one machine learning method after the other.
+
+On a unix system, installation of the package h2o also requires the RCurl package, which requires the libcurl library to have been installed. If the installation of the h2o package fails, try installing the libcurl package first and repeating the cell. You can install the libcurl package for instance by running:
+```bash
+sudo apt-get install -y libcurl4-openssl-dev
+```
+
+```{r}
+# load the H2O package
+install.packages("h2o")
+```
+
+```{r}
+library(h2o)
+```
+
+```{r}
+# start h2o cluster
+h2o.init()
+```
+
+```{r}
+# convert data as h2o type
+train_h <- as.h2o(data_train)
+test_h <- as.h2o(data_test)
+
+# have a look at the data
+h2o.describe(train_h)
+```
+
+```{r}
+y_name <- "lwage"
+x_names <- setdiff(names(data), c("lwage", "wage", "occ", "ind"))
+
+# run AutoML for 10 base models and a maximal runtime of 100 seconds
+aml <- h2o.automl(
+  x = x_names, y = y_name,
+  training_frame = train_h,
+  leaderboard_frame = test_h,
+  max_models = 10,
+  seed = 1,
+  max_runtime_secs = 100
+)
+# AutoML Leaderboard
+lb <- aml@leaderboard
+print(lb, n = nrow(lb))
+```
+
+We see that two Stacked Ensembles are at the top of the leaderboard. Stacked Ensembles often outperform a single model. The out-of-sample (test) MSE of the leading model is given by
+
+```{r}
+aml@leaderboard$mse[1]
+```
+
+The in-sample performance can be evaluated by
+
+```{r}
+aml@leader
+```
+
+This is in line with our previous results. To understand how the ensemble works, let's take a peek inside the Stacked Ensemble "All Models" model.  The "All Models" ensemble is an ensemble of all of the individual models in the AutoML run.  This is often the top performing model on the leaderboard.
+
+```{r}
+model_ids <- as.data.frame(aml@leaderboard$model_id)[, 1]
+# Get the "All Models" Stacked Ensemble model
+se <- h2o.getModel(grep("StackedEnsemble_AllModels", model_ids, value = TRUE)[1])
+# Get the Stacked Ensemble metalearner model
+metalearner <- se@model$metalearner_model
+h2o.varimp(metalearner)
+```
+
+The table above gives us the variable importance of the metalearner in the ensemble. The AutoML Stacked Ensembles use the default metalearner algorithm (GLM with non-negative weights), so the variable importance of the metalearner is actually the standardized coefficient magnitudes of the GLM.
+
+```{r}
+h2o.varimp_plot(metalearner)
+```
+
+## Generating Predictions Using Leader Model
+
+We can also generate predictions on a test sample using the leader model object.
+
+```{r}
+pred <- as.matrix(h2o.predict(aml@leader, test_h)) # make prediction using x data from the test sample
+head(pred)
+```
+
+```{r}
+y_test <- as.matrix(test_h$lwage)
+r2_test <- 1 - summary(lm((y_test - pred)^2 ~ 1))$coef[1] / var(y_test)
+cat("MSE, SE, R^2:", summary(lm((y_test - pred)^2 ~ 1))$coef[1:2], r2_test)
+```
+
+We observe both a similar MSE and $R^2$ relative to the better performing models in our previous results.
+
+```{r}
+h2o.shutdown(prompt = FALSE) # shut down the h20 automatically without prompting user
+```
+

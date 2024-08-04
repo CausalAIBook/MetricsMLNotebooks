@@ -1,0 +1,573 @@
+---
+title: An R Markdown document converted from "PM4/r_dml_inference_for_gun_ownership.irnb"
+output: html_document
+---
+
+# A Case Study: The Effect of Gun Ownership on Gun-Homicide Rates
+
+We consider the problem of estimating the effect of gun ownership on the homicide rate. For this purpose, we perform inference on $\beta$ in the following the partially linear model:
+$$
+Y_{j, t}=\beta D_{j,(t-1)}+g\left(X_{j, t}, \bar{X}_j, \bar{X}_t, X_{j, 0}, Y_{j, 0}, t\right)+\epsilon_{j, t}
+$$
+$Y_{j, t}$ is the log homicide rate in county $j$ at time $t. D_{j, t-1}$ is the log fraction of suicides committed with a firearm in county $j$ at time $t-1$, which we use as a proxy for gun ownership $G_{j, t}$, which is not observed. $X_{j, t}$ is a set of demographic and economic characteristics of county $j$ at time $t$. We use $\bar{X}_j$ to denote the within county average of $X_{j, t}$ and $\bar{X}_t$ to denote the within time period average of $X_{j, t} . X_{j, 0}$ and $Y_{j, 0}$ denote initial conditions in county $j$. We use $Z_{j, t}$ to denote the set of observed control variables $\left\{X_{j, t}, \bar{X}_j, \bar{X}_t, X_{j, 0}, Y_{j, 0}, t\right\}$, so that our model is
+
+$$
+ Y_{i,t} = \beta D_{i,(t-1)} + g(Z_{i,t}) + \epsilon_{i,t}.
+$$
+
+## Data
+
+$Y_{j,t}$ is the log homicide rate in county $j$ at time $t$, $D_{j, t-1}$ is the log fraction of suicides committed with a firearm in county $j$ at time $t-1$, which we use as a proxy for gun ownership,  and  $Z_{j,t}$ is a set of demographic and economic characteristics of county $j$ at time $t$. Assuming the firearm suicide rate is a good proxy for gun ownership, the parameter $\beta$ is the effect of gun ownership on homicide rates, controlling for county-level demographic and economic characteristics.
+
+The sample covers 195 large United States counties between the years 1980 through 1999, giving us 3900 observations.
+
+```{r}
+install.packages("glmnet")
+install.packages("randomForest")
+install.packages("xgboost")
+install.packages("keras")
+install.packages("tensorflow")
+install.packages("xtable")
+install.packages("dplyr")
+install.packages("sandwich")
+```
+
+```{r}
+library(glmnet)
+library(randomForest)
+library(xgboost)
+library(keras)
+library(tensorflow)
+library(xtable)
+library(dplyr)
+library(sandwich)
+```
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/gun_clean.csv"
+data <- read.csv(file)
+dim(data)
+```
+
+## Preprocessing
+
+To attempt to flexibly account for fixed heterogeneity across counties, common time factors, and deterministic time trends, we include county-level averages, time period averages, initial conditions, and the time index as additional control variables. This strategy is related to strategies for addressing latent sources of heterogeneity via conditioning.
+
+We first reweight time and county variables as the data are population weighted.
+
+```{r}
+# Note: These data are population weighted. Specifically,
+# looking at the JBES replication files, they seem to be multiplied
+# by sqrt((1/T sum_t population_{j,t})/100000). To get the
+# unweighted variables need to divide by this number - which we can
+# get from the time effects. We are mostly just going to use the weighted
+# variables as inputs - except for time and county. We'll take
+# cross-sectional and time series means of these weighted variables
+# as well. Note that there is nothing wrong with this, but it does not
+# reproduce a weighted regression in a setting where covariates may
+# enter nonlinearly and flexibly.
+
+## County FE
+county_vars <- select(data, starts_with("X_J"))
+
+## Time variables and population weights
+# Pull out time variables
+time_vars <- select(data, starts_with("X_T"))
+
+# Use these to construct population weights
+pop_weights <- rowSums(time_vars)
+
+# Unweighted time variables
+time_vars <- time_vars / pop_weights
+
+# For any columns with only zero (like the first one), just drop
+time_vars <- time_vars[, colSums(time_vars != 0) > 0]
+
+# Create time index
+time_ind <- rowSums(time_vars * (seq(1:20)))
+```
+
+Now we create initial conditions, county-level averages, and time period averages.
+
+```{r}
+###### Create new data frame with variables we'll use
+
+# Function to find variable names
+var_list <- function(df = NULL, type = c("numeric", "factor", "character"), pattern = "", exclude = NULL) {
+  vars <- character(0)
+  if (any(type %in% "numeric")) {
+    vars <- c(vars, names(df)[sapply(df, is.numeric)])
+  }
+  if (any(type %in% "factor")) {
+    vars <- c(vars, names(df)[sapply(df, is.factor)])
+  }
+  if (any(type %in% "character")) {
+    vars <- c(vars, names(df)[sapply(df, is.character)])
+  }
+  vars[(!vars %in% exclude) & grepl(vars, pattern = pattern)]
+}
+
+# census control variables
+census <- NULL
+census_var <- c("^AGE", "^BN", "^BP", "^BZ", "^ED", "^EL", "^HI", "^HS", "^INC", "^LF", "^LN",
+                "^PI", "^PO", "^PP", "^PV", "^SPR", "^VS")
+
+for (i in seq_along(census_var)) {
+  census <- append(census, var_list(data, pattern = census_var[i]))
+}
+
+# other control variables
+X1 <- c("logrobr", "logburg", "burg_missing", "robrate_missing")
+X2 <- c("newblack", "newfhh", "newmove", "newdens", "newmal")
+
+# "treatment" variable
+d <- "logfssl"
+
+# outcome variable
+y <- "logghomr"
+
+# new data frame for time index
+usedata <- as.data.frame(time_ind)
+colnames(usedata) <- "time_ind"
+usedata[, "weights"] <- pop_weights
+
+var_list <- c(y, d, X1, X2, census)
+for (i in seq_along(var_list)) {
+  usedata[, var_list[i]] <- data[, var_list[i]]
+}
+
+####################### Construct county specific means,
+# time specific means, initial conditions
+
+# Initial conditions
+var_list0 <- c(y, X1, X2, census)
+for (i in seq_along(var_list0)) {
+  usedata[, paste(var_list0[i], "0", sep = "")] <- kronecker(
+    usedata[time_ind == 1, var_list0[i]],
+    rep(1, 20)
+  )
+}
+
+# County means
+var_list_j <- c(X1, X2, census)
+county_vars <- as.matrix(county_vars)
+for (i in seq_along(var_list_j)) {
+  usedata[, paste(var_list_j[i], "J", sep = "")] <-
+    county_vars %*% qr.solve(county_vars, as.matrix(usedata[, var_list_j[i]]))
+}
+
+# Time means
+time_vars <- as.matrix(time_vars)
+for (i in seq_along(var_list_j)) {
+  usedata[, paste(var_list_j[i], "T", sep = "")] <-
+    time_vars %*% qr.solve(time_vars, as.matrix(usedata[, var_list_j[i]]))
+}
+```
+
+# Estimation
+
+
+## Baseline OLS Estimates
+
+After preprocessing the data, as a baseline model, we first look at simple regression of $Y_{j,t}$ on $D_{j,t-1}$ without controls in the full data set.
+
+```{r}
+# Simple regression
+lm0 <- lm(logghomr ~ logfssl, data = usedata)
+vc0 <- vcovHC(lm0)
+cat("Baseline OLS:", lm0$coefficients[2], " (", sqrt(vc0[2, 2]), ")\n")
+# Confidence Interval with HC3 covariance
+tt <- qt(c(0.025, 0.975), summary(lm0)$df[2])
+se <- sqrt(diag(vc0))
+ci <- coef(lm0) + se %o% tt
+cat("2.5%: ", ci[2, 1], "97.5%: ", ci[2, 2])
+```
+
+The point estimate is $0.302$ with the confidence interval ranging from 0.277 to 0.327. This
+suggests that increases in gun ownership rates are related to gun homicide rates - if gun ownership increases by 1% then the predicted gun homicide rate goes up by 0.3%, without controlling for counties' characteristics.
+
+
+Next we estimate with the baseline set of controls.
+
+```{r}
+# Regression on baseline controls
+var_list <- c(d, X1, X2, census)
+lmC <- lm(paste("logghomr ~", paste(var_list, collapse = "+")), data = usedata)
+vcC <- vcovHC(lmC)
+cat("OLS with Controls:", lmC$coefficients["logfssl"], " (", sqrt(vcC["logfssl", "logfssl"]), ")\n")
+```
+
+<!-- Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we next include time and space averages. -->
+
+We can also run our regression with time and space averages as controls.
+
+```{r}
+# Regression on time and cross sectional averages
+var_list_x <- c(X1, X2, census)
+var_list_means <- c(d, X1, X2, census)
+for (i in seq_along(var_list_x)) {
+  var_list_means <- c(var_list_means, paste(var_list_x[i], "J", sep = ""))
+}
+for (i in seq_along(var_list_x)) {
+  var_list_means <- c(var_list_means, paste(var_list_x[i], "T", sep = ""))
+}
+lmM <- lm(paste("logghomr ~", paste(var_list_means, collapse = "+")), data = usedata)
+vcM <- vcovHC(lmM)
+cat("OLS with Averages:", lmM$coefficients["logfssl"], " (", sqrt(vcM["logfssl", "logfssl"]), ")\n")
+```
+
+Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we now include all controls.
+
+```{r}
+# Regression on all controls
+lmA <- lm(logghomr ~ ., data = usedata)
+vcA <- vcovHC(lmA)
+cat("OLS All:", lmA$coefficients["logfssl"], " (", sqrt(vcA["logfssl", "logfssl"]), ")\n")
+```
+
+After controlling for a rich set of characteristics, the point estimate of gun ownership attenuates to 0.179.
+
+***NB***: In the background, `lm()` is dropping variables based on collinearity diagnostics. These depend on system linear algebra routines and can lead to large differences in high-dimensional or other ill-conditioned settings when using otherwise identical code across languages and/or machines.
+
+Now we turn to our double machine learning framework, employing linear and flexible estimation methods with cross-fitting.
+
+## DML Estimates
+
+We perform inference on $\beta$ in the following the partially linear model:
+ $$
+Y_{j, t}=\beta D_{j,(t-1)}+g(Z_{j,t})+\epsilon_{j, t}.
+$$
+In the first stage, using cross-fitting, we employ modern regression methods to build estimators $\hat \ell(Z_{j,t})$ and $\hat m(Z_{j,t})$, where
+- $\ell(Z_{j,t}):=E(Y_{j,t}|Z_{j,t})$
+- $m(Z_{j,t}):=E(D_{j,t}|Z_{j,t})$
+
+Using these, we obtain the estimates of the residualized quantities
+- $\tilde Y_{j,t} = Y_{j,t}- E(Y_{j,t}|Z_{j,t})$
+- $\tilde D_{j,t}= D_{j,t}- E(D_{j,t}|Z_{j,t})$
+
+Using these residualized quantities, we note our model can be written as
+$$
+\tilde Y_{j,t} = \beta \tilde D_{j,t} + \epsilon_{j,t}, \quad E (\epsilon_{j,t} |\tilde D_{j,t}) =0.
+$$
+In the final stage, using ordinary least squares of $\tilde Y_{j,t}$ on $\tilde D_{j,t}$, we obtain the
+estimate of $\beta$.
+
+In the following, we consider 10 different methods for the first-stage models for $\ell(\cdot)$ and $m(\cdot)$ covering linear, penalized linear, and flexible methods. We also report the first-stage RMSE scores for estimating $Y$ and $D$.
+
+```{r}
+# NB: this cell takes > 3 hours to runon colab. To reduce computation time,
+# reduce the number of cross-fitting folds. Note this may affect stability
+# of estimates.
+
+set.seed(123)
+
+# Cross-fitting
+n <- nrow(usedata)
+Kf <- 5 # Number of cross-fitting folds
+sampleframe <- rep(1:Kf, ceiling(n / Kf))
+cvgroup <- sample(sampleframe, size = n, replace = FALSE) # Cross-fitting groups
+
+# Initialize variables for cross-fit predictions
+yhat_r <- matrix(NA, n, 10) # Going to consider 10 learners
+dhat_r <- matrix(NA, n, 10)
+
+# Cross-fitting loop
+for (k in 1:Kf) {
+  cat("fold: ", k, "\n")
+  indk <- cvgroup == k
+
+  ktrain <- usedata[!indk, ]
+  ktest <- usedata[indk, ]
+
+  #### Simple regression models ####
+
+  # Simple regression
+  yhat_r[indk, 1] <- ktest$logghomr - mean(ktrain$logghomr)
+  dhat_r[indk, 1] <- ktest$logfssl - mean(ktrain$logfssl)
+
+  # Baseline controls
+  var_list <- c(X1, X2, census)
+  lmyk_c <- lm(paste("logghomr ~", paste(var_list, collapse = "+")), data = ktrain)
+  yhat_r[indk, 2] <- ktest$logghomr - predict(lmyk_c, ktest)
+  lmdk_c <- lm(paste("logfssl ~", paste(var_list, collapse = "+")), data = ktrain)
+  dhat_r[indk, 2] <- ktest$logfssl - predict(lmdk_c, ktest)
+
+  # All controls
+  lmyk_a <- lm(logghomr ~ . - logfssl, data = ktrain)
+  yhat_r[indk, 3] <- ktest$logghomr - predict(lmyk_a, ktest)
+  lmdk_a <- lm(logfssl ~ . - logghomr, data = ktrain)
+  dhat_r[indk, 3] <- ktest$logfssl - predict(lmdk_a, ktest)
+
+  #### Penalized Linear Models ####
+
+  # Lasso - default CV tuning
+  ytrain <- as.matrix(usedata[!indk, "logghomr"])
+  dtrain <- as.matrix(usedata[!indk, "logfssl"])
+  xtrain <- as.matrix(usedata[!indk, !names(usedata) %in%
+                                c("logghomr", "logfssl")])
+  ytest <- as.matrix(usedata[indk, "logghomr"])
+  dtest <- as.matrix(usedata[indk, "logfssl"])
+  xtest <- as.matrix(usedata[indk, !names(usedata) %in%
+                               c("logghomr", "logfssl")])
+
+  lassoyk <- cv.glmnet(xtrain, ytrain)
+  yhat_r[indk, 4] <- ytest - predict(lassoyk, newx = xtest, s = "lambda.min")
+
+  lassodk <- cv.glmnet(xtrain, dtrain)
+  dhat_r[indk, 4] <- dtest - predict(lassodk, newx = xtest, s = "lambda.min")
+
+  # Ridge
+  ridgeyk <- cv.glmnet(xtrain, ytrain, alpha = 0)
+  yhat_r[indk, 5] <- ytest - predict(ridgeyk, newx = xtest, s = "lambda.min")
+
+  ridgedk <- cv.glmnet(xtrain, dtrain, alpha = 0)
+  dhat_r[indk, 5] <- dtest - predict(ridgedk, newx = xtest, s = "lambda.min")
+
+  # EN, .5 - no cv over alpha
+  enyk <- cv.glmnet(xtrain, ytrain, alpha = .5)
+  yhat_r[indk, 6] <- ytest - predict(enyk, newx = xtest, s = "lambda.min")
+
+  endk <- cv.glmnet(xtrain, dtrain, alpha = .5)
+  dhat_r[indk, 6] <- dtest - predict(endk, newx = xtest, s = "lambda.min")
+
+  #### Flexible regression models ####
+
+  # Random forest
+  rfyk <- randomForest(logghomr ~ . - logfssl, data = ktrain)
+  yhat_r[indk, 7] <- ktest$logghomr - predict(rfyk, ktest)
+  rfdk <- randomForest(logfssl ~ . - logghomr, data = ktrain)
+  dhat_r[indk, 7] <- ktest$logfssl - predict(rfdk, ktest)
+
+  # Boosted tree - depth 4
+  xgb_train_y <- xgb.DMatrix(
+    data = as.matrix(usedata[!indk, !names(usedata) %in%
+                               c("logghomr", "logfssl")]),
+    label = as.matrix(usedata[!indk, "logghomr"])
+  )
+  xgb_test_y <- xgb.DMatrix(
+    data = as.matrix(usedata[indk, !names(usedata) %in%
+                               c("logghomr", "logfssl")]),
+    label = as.matrix(usedata[indk, "logghomr"])
+  )
+  xgb_train_d <- xgb.DMatrix(
+    data = as.matrix(usedata[!indk, !names(usedata) %in%
+                               c("logghomr", "logfssl")]),
+    label = as.matrix(usedata[!indk, "logfssl"])
+  )
+  xgb_test_d <- xgb.DMatrix(
+    data = as.matrix(usedata[indk, !names(usedata) %in%
+                               c("logghomr", "logfssl")]),
+    label = as.matrix(usedata[indk, "logfssl"])
+  )
+
+  byk <- xgb.cv(
+    data = xgb_train_y,
+    nrounds = 1000, verbose = 0, eta = .1, max_depth = 4, nfold = 5
+  )
+  best_iter <- which.min(as.matrix(byk$evaluation_log[, 4]))
+  byk <- xgboost(
+    data = xgb_train_y,
+    nrounds = 1000, verbose = 0, eta = .1, max_depth = 4
+  )
+  yhat_r[indk, 8] <- ktest$logghomr - predict(byk,
+    newdata = xgb_test_y,
+    iterationrange = c(1, (best_iter + 1))
+  )
+
+  bdk <- xgb.cv(
+    data = xgb_train_d,
+    nrounds = 1000, verbose = 0, eta = .1, max_depth = 4, nfold = 5
+  )
+  best_iter <- which.min(as.matrix(bdk$evaluation_log[, 4]))
+  bdk <- xgboost(
+    data = xgb_train_d,
+    nrounds = 1000, verbose = 0, eta = .1, max_depth = 4
+  )
+  dhat_r[indk, 8] <- ktest$logfssl - predict(bdk,
+    newdata = xgb_test_d,
+    iterationrange = c(1, (best_iter + 1))
+  )
+
+  #### Neural Networks  ####
+
+  # normalize the covariate data
+  mean <- apply(xtrain, 2, mean)
+  std <- apply(xtrain, 2, sd)
+  xtrainNN <- scale(xtrain, center = mean, scale = std)
+  xtestNN <- scale(xtest, center = mean, scale = std)
+
+  xtestNN <- xtestNN[, which(!is.nan(colMeans(xtrainNN)))]
+  xtrainNN <- xtrainNN[, which(!is.nan(colMeans(xtrainNN)))]
+
+  # DNN 50/50/50/50, .5 dropout
+  NNmodely <- keras_model_sequential()
+  NNmodely %>%
+    layer_dense(units = 50, activation = "relu", input_shape = c(ncol(xtrainNN))) %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 1)
+
+  NNmodely %>% compile(
+    loss = "mse",
+    optimizer = optimizer_rmsprop()
+  )
+
+  fit_nn_model_y <- NNmodely %>% fit(
+    xtrainNN, ytrain,
+    epochs = 200, batch_size = 200,
+    validation_split = .2, verbose = 0
+  )
+  yhat_r[indk, 9] <- ktest$logghomr - predict(NNmodely, xtestNN)
+
+  NNmodeld <- keras_model_sequential()
+  NNmodeld %>%
+    layer_dense(units = 50, activation = "relu", input_shape = c(ncol(xtrainNN))) %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dropout(rate = .5) %>%
+    layer_dense(units = 1)
+
+  NNmodeld %>% compile(
+    loss = "mse",
+    optimizer = optimizer_rmsprop()
+  )
+
+  fit_nn_model_d <- NNmodeld %>% fit(
+    xtrainNN, dtrain,
+    epochs = 200, batch_size = 200,
+    validation_split = .2, verbose = 0
+  )
+  dhat_r[indk, 9] <- ktest$logfssl - predict(NNmodeld, xtestNN)
+
+  # DNN 50/50/50/50, early stopping
+  NNmodely <- keras_model_sequential()
+  NNmodely %>%
+    layer_dense(units = 50, activation = "relu", input_shape = c(ncol(xtrainNN))) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 1)
+
+  NNmodely %>% compile(
+    loss = "mse",
+    optimizer = optimizer_rmsprop()
+  )
+
+  early_stop <- callback_early_stopping(
+    monitor = "val_loss", patience = 25,
+    restore_best_weights = TRUE
+  )
+
+  fit_nn_model_y <- NNmodely %>% fit(
+    xtrainNN, ytrain,
+    epochs = 200, batch_size = 200,
+    validation_split = .2, verbose = 0,
+    callbacks = list(early_stop)
+  )
+  yhat_r[indk, 10] <- ktest$logghomr - predict(NNmodely, xtestNN)
+
+  NNmodeld <- keras_model_sequential()
+  NNmodeld %>%
+    layer_dense(units = 50, activation = "relu", input_shape = c(ncol(xtrainNN))) %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 50, activation = "relu") %>%
+    layer_dense(units = 1)
+
+  NNmodeld %>% compile(
+    loss = "mse",
+    optimizer = optimizer_rmsprop()
+  )
+
+  early_stop <- callback_early_stopping(
+    monitor = "val_loss", patience = 25,
+    restore_best_weights = TRUE
+  )
+
+  fit_nn_model_d <- NNmodeld %>% fit(
+    xtrainNN, dtrain,
+    epochs = 200, batch_size = 200,
+    validation_split = .2, verbose = 0,
+    callbacks = list(early_stop)
+  )
+  dhat_r[indk, 10] <- ktest$logfssl - predict(NNmodeld, xtestNN)
+}
+
+################################################################################
+# Predictions done, now DML
+
+rmse_y <- sqrt(colMeans(yhat_r^2))
+rmse_d <- sqrt(colMeans(dhat_r^2))
+
+# dml coefficient estimates
+b_dml <- rep(NA, 10)
+s_dml <- rep(NA, 10)
+for (k in 1:10) {
+  lm_k <- lm(yhat_r[, k] ~ dhat_r[, k] - 1)
+  v_k <- vcovHC(lm_k)
+  b_dml[k] <- lm_k$coefficients
+  s_dml[k] <- sqrt(v_k)
+}
+
+# "best" coefficient estimate
+lm_k <- lm(yhat_r[, which.min(rmse_y)] ~ dhat_r[, which.min(rmse_d)] - 1)
+v_k <- vcovHC(lm_k)
+b_dml[11] <- lm_k$coefficients
+s_dml[11] <- sqrt(v_k)
+
+# ls model average
+yhat <- usedata$logghomr - yhat_r
+dhat <- usedata$logfssl - dhat_r
+
+ma_y <- lm(usedata$logghomr ~ yhat - 1)
+ma_d <- lm(usedata$logfssl ~ dhat - 1)
+weights_y <- ma_y$coefficients
+weights_d <- ma_d$coefficients
+lm_k <- lm(ma_y$residuals ~ ma_d$residuals - 1)
+v_k <- vcovHC(lm_k)
+b_dml[12] <- lm_k$coefficients
+s_dml[12] <- sqrt(v_k)
+
+## Display results
+table1 <- matrix(0, 10, 2)
+table1[, 1] <- rmse_y
+table1[, 2] <- rmse_d
+colnames(table1) <- c("RMSE Y", "RMSE D")
+rownames(table1) <- c(
+  "OLS - No Controls", "OLS - Basic", "OLS - All",
+  "Lasso (CV)", "Ridge (CV)", "Elastic Net (.5,CV)",
+  "Random Forest", "Boosted trees - depth 4",
+  "DNN - 50/50/50/50, dropout", "DNN - 50/50/50/50, early stopping"
+)
+tab1 <- xtable(table1, digits = c(0, 4, 4))
+tab1
+
+table2 <- matrix(0, 12, 2)
+table2[, 1] <- b_dml
+table2[, 2] <- s_dml
+colnames(table2) <- c("Point Estimate", "Std. Error")
+rownames(table2) <- c(
+  "OLS - No Controls", "OLS - Basic", "OLS - All",
+  "Lasso (CV)", "Ridge (CV)", "Elastic Net (.5,CV)",
+  "Random Forest", "Boosted trees - depth 4",
+  "DNN - 50/50/50/50, dropout", "DNN - 50/50/50/50, early stopping",
+  "Best", "Least Squares Model Average"
+)
+tab2 <- xtable(table2, digits = c(0, 4, 4))
+tab2
+```
+
+```{r}
+print(xtable(table1, type = "latex"))
+print(xtable(table2, type = "latex"))
+```
+

@@ -1,0 +1,286 @@
+---
+title: An R Markdown document converted from "AC2/r-debiased-ml-for-partially-linear-iv-model.irnb"
+output: html_document
+---
+
+# Double/Debiased ML for Partially Linear IV Model
+
+This is a simple implementation of Debiased Machine Learning for the Partially Linear
+IV Regression Model, which provides an application of DML IV inference.
+
+
+Reference:
+
+- https://arxiv.org/abs/1608.00060
+- https://www.amazon.com/Business-Data-Science-Combining-Accelerate/dp/1260452778
+
+The code is based on the book.
+
+
+# Partially Linear IV Model
+
+We consider the partially linear structural equation model:
+\begin{align}
+ Y :=~& D\theta_0 + g_0(X) + \zeta,  & E[\zeta \mid Z,X]= 0,\\
+ Z :=~& m_0(X) +  V,   &  E[V \mid X] = 0.
+\end{align}
+
+
+Note that this model is not a regression model unless $Z=D$.  The model  is a canonical
+model in causal inference, going back to P. Wright's work on IV methods for estimating demand/supply equations, with the modern difference being that $g_0$ and $m_0$ are nonlinear, potentially complicated functions of high-dimensional $X$.  
+
+
+The idea of this model is that there is a structural or causal relation between $Y$ and $D$, captured by $\theta_0$, and $g_0(X) + \zeta$ is the stochastic error, partly explained by covariates $X$.  $V$ and $\zeta$ are stochastic errors that are not explained by $X$. Since $Y$ and $D$ are jointly determined, we need an external factor, commonly referred to as an instrument, $Z$ to create exogenous variation
+in $D$.   Note that $Z$ should affect $D$.  The $X$ here serve again as confounding factors, so we can think of variation in $Z$ as being exogenous only conditional on $X$.
+
+
+The causal DAG this model corresponds to is given by:
+$$
+Z \to D,  X \to (Y, Z, D),  L \to (Y,D),
+$$
+where $L$ is the latent confounder affecting both $Y$ and $D$, but not $Z$.
+
+
+
+---
+
+# Example
+
+A simple contextual example is from biostatistics, where $Y$ is a health outcome and $D$ is indicator of smoking.  Thus, $\theta_0$ is captures the effect of smoking on health.  Health outcome $Y$ and smoking behavior $D$ are treated as being jointly determined.  $X$ represents patient characteristics, and $Z$ could be a doctor's advice not to smoke (or another behavioral treatment) that may affect the outcome $Y$ only through shifting the behavior $D$, conditional on characteristics $X$.   
+
+----
+
+
+
+# PLIVM in Residualized Form
+
+The PLIV model above can be rewritten in the following residualized form:
+$$
+  \tilde Y = \tilde D \theta_0 + \zeta,   \quad  E[\zeta \mid V,X]= 0,
+$$
+where
+$$
+ \tilde Y = (Y- \ell_0(X)),  \quad \ell_0(X) = E[Y \mid X] \\
+   \tilde D = (D - r_0(X)), \quad r_0(X) = E[D \mid X] \\
+   \tilde Z = (Z- m_0(X)), \quad m_0(X) = E[Z \mid X].
+$$
+   The "tilde" variables (e.g. $\tilde Y$) above represent original variables after taking out or "partialling out"
+  the effect of $X$.  Note that $\theta_0$ is identified from this equation if $V$
+  and $U$ have non-zero correlation, which automatically means that $U$ and $V$
+  must have non-zero variation.
+
+  
+
+-----
+
+# DML for PLIV Model
+
+Given identification, DML  proceeds as follows
+
+Compute the estimates $\hat \ell_0$, $\hat r_0$, and $\hat m_0$ , which amounts
+to solving the three problems of predicting $Y$, $D$, and $Z$ using
+$X$, using any generic  ML method, giving us estimated residuals
+$$
+\tilde Y = Y - \hat \ell_0(X), \\ \tilde D= D - \hat r_0(X), \\ \tilde Z = Z- \hat m_0(X).
+$$
+The estimates should be of a cross-validated form, as detailed in the algorithm below.
+
+Estimate $\theta_0$ by the the intstrumental
+variable regression of $\tilde Y$ on $\tilde D$ using $\tilde Z$ as an instrument.
+Use the conventional inference for the IV regression estimator, ignoring
+the estimation error in these residuals.
+
+The reason we work with this residualized form is that it eliminates the bias
+arising when solving the prediction problem in stage 1. The role of cross-validation
+is to avoid another source of bias due to potential overfitting.
+
+The estimator is adaptive,
+in the sense that the first stage estimation errors do not affect the second
+stage errors.
+
+```{r}
+install.packages("hdm")
+install.packages("AER")
+install.packages("randomForest")
+install.packages("lfe")
+install.packages("glmnet")
+```
+
+```{r}
+library(hdm)
+library(AER) # applied econometrics library
+library(randomForest) # random Forest library
+library(lfe) # high-dimensional econometrics library
+library(glmnet) # glm net
+
+set.seed(1)
+```
+
+```{r}
+# DML for PLIVM
+
+dml2_for_plivm <- function(x, d, z, y, dreg, yreg, zreg, nfold = 5) {
+  # this implements DML2 algorithm, where there moments are estimated via DML, before constructing
+  # the pooled estimate of theta randomly split data into folds
+  nobs <- nrow(x)
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)]
+  I <- split(1:nobs, foldid)
+  # create residualized objects to fill
+  ytil <- dtil <- ztil <- rep(NA, nobs)
+  # obtain cross-fitted residuals
+  cat("fold: ")
+  for (b in seq_along(I)) {
+    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+    zfit <- zreg(x[-I[[b]], ], z[-I[[b]]]) # take a fold out
+    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a folot out
+    dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the fold out
+    zhat <- predict(zfit, x[I[[b]], ], type = "response") # predict the fold out
+    yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the fold out
+    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual
+    ztil[I[[b]]] <- (z[I[[b]]] - zhat) # record residual
+    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial
+    cat(b, " ")
+  }
+  ivfit <- tsls(y = ytil, d = dtil, x = NULL, z = ztil, intercept = FALSE)
+  coef_est <- ivfit$coef # extract coefficient
+  se <- ivfit$se # record standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef_est, se))
+  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil, ztil = ztil))
+}
+```
+
+-----
+
+# Emprical Example:  Acemoglu, Johnson, Robinson (AER).
+
+
+* Y is log GDP;
+* D is a measure of Protection from Expropriation, a proxy for
+quality of insitutions;
+* Z is the log of Settler's mortality;
+* W are geographical variables (latitude, latitude squared, continent dummies as well as interactions)
+
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/AJR.csv"
+AJR <- read.csv(file)
+dim(AJR)
+```
+
+```{r}
+y <- AJR$GDP
+d <- AJR$Exprop
+z <- AJR$logMort
+xraw <- model.matrix(~ Latitude + Africa + Asia + Namer + Samer, data = AJR)
+x <- model.matrix(~ -1 + (Latitude + Latitude2 + Africa + Asia + Namer + Samer)^2, data = AJR)
+dim(x)
+```
+
+```{r}
+set.seed(1)
+# DML with PostLasso
+cat(sprintf("\n DML with Post-Lasso \n"))
+
+dreg <- function(x, d) {
+  hdm::rlasso(x, d)
+} # ML method=lasso
+yreg <- function(x, y) {
+  hdm::rlasso(x, y)
+} # ML method=lasso
+zreg <- function(x, z) {
+  hdm::rlasso(x, z)
+} # ML method=lasso
+
+dml2_lasso <- dml2_for_plivm(x, d, z, y, dreg, yreg, zreg, nfold = 5)
+
+
+# DML with Random Forest
+cat(sprintf("\n DML with Random Forest \n"))
+
+dreg <- function(x, d) {
+  randomForest(x, d)
+} # ML method=Forest
+yreg <- function(x, y) {
+  randomForest(x, y)
+} # ML method=Forest
+zreg <- function(x, z) {
+  randomForest(x, z)
+} # ML method=Forest
+
+dml2_rf <- dml2_for_plivm(xraw, d, z, y, dreg, yreg, zreg, nfold = 5)
+
+# Compare Forest vs Lasso
+comp_tab <- matrix(NA, 3, 2)
+comp_tab[1, ] <- c(sqrt(mean((dml2_rf$ytil)^2)), sqrt(mean((dml2_lasso$ytil)^2)))
+comp_tab[2, ] <- c(sqrt(mean((dml2_rf$dtil)^2)), sqrt(mean((dml2_lasso$dtil)^2)))
+comp_tab[3, ] <- c(sqrt(mean((dml2_rf$ztil)^2)), sqrt(mean((dml2_lasso$ztil)^2)))
+rownames(comp_tab) <- c("RMSE for Y:", "RMSE for D:", "RMSE for Z:")
+colnames(comp_tab) <- c("RF", "LASSO")
+print(comp_tab, digits = 3)
+```
+
+# Weak Instruments?
+
+```{r}
+# using lfe package
+summary(felm(dml2_lasso$dtil ~ dml2_lasso$ztil), robust = TRUE)
+summary(felm(dml2_rf$dtil ~ dml2_rf$ztil), robust = TRUE)
+```
+
+## Anderson-Rubin Idea for Inference with Weak Instruments
+
+As shown above, we may have weak instruments because the t-stat in the regression $\tilde D \sim \tilde Z$ is small relative to standard rules of thumb -- for example Stock and Yogo (2005) suggest accounting for weak instruments if the first stage F-statistic is less than 10 (and more recent work suggests even larger cutoffs).
+
+
+ Here, we consider one specific approach (from Anderson and Rubin (1949)) to doing valid inference under weak identification based upon the statistic:
+$$
+C(\theta) = \frac{ |E_n [(\tilde Y -  \theta  \tilde D) \tilde Z]|^2}{ \mathbb{V}_n [(\tilde Y -  \theta \tilde  D) \tilde Z ]/n}.
+$$
+The empirical variance $\mathbb{V}_n$ is defined as:
+\begin{align*}
+\mathbb{V}_{n}[ g(W_i)] &:=   \mathbb{E}_{n}g(W_i)g(W_i)' - \mathbb{E}_{n}[ g(W_i)]\mathbb{E}_{n}[ g(W_i)]'.
+\end{align*}
+
+If $\theta_0 = \theta$, then $C(\theta) \overset{a}{\sim} N(0,1)^2 = \chi^2(1)$. Therefore,  we can reject the hypothesis $\theta_0 = \theta$ at level $a$ (for example $a = .05$ for a 5\% level test)  if $C(\theta)> c(1-a)$ where $c(1-a)$ is the $(1-a)$- quantile of a $\chi^2(1)$ variable.  The probability of falsely rejecting the true hypothesis is approximately $a \times 100\%$.  
+To construct a $(1-a) \times 100$\% confidence region for $\theta$, we can then simply invert the test by collecting all parameter values that are not rejected at the $a$ level:
+$$
+CR(\theta) = \{ \theta \in \Theta: C(\theta)  \leq c(1-a)\}.
+$$
+
+
+In more complex settings with many controls or controls that enter with unknown functional form, we can simply replace the residuals $\tilde Y$, $\tilde D$, and $\tilde Z$ by machine
+learned cross-fitted residuals $\check Y$, $\check D$, and $ \check Z$.  Thanks to the orthogonality of the IV moment condition underlying the formulation outlined above, we can formally assert that the properties of $C(\theta)$ and the subsequent testing procedure and confidence region for $\theta$ continue to hold when using cross-fitted residuals. We will further be able to apply the general procedure to cases where $D$
+is a vector, with a suitable adjustment of the statistic $C(\theta)$.
+
+```{r}
+# DML-AR (DML with Anderson-Rubin)
+
+dml_ar_pliv <- function(rY, rD, rZ, grid, alpha = .05) {
+  n <- length(rY)
+  Cstat <- rep(0, length(grid))
+  for (i in seq_along(grid)) {
+    Cstat[i] <- n * (mean((rY - grid[i] * rD) * rZ))^2 / var((rY - grid[i] * rD) * rZ)
+  }
+  LB <- min(grid[Cstat < qchisq(1 - alpha, 1)])
+  UB <- max(grid[Cstat < qchisq(1 - alpha, 1)])
+  plot(range(grid), range(c(Cstat)), type = "n", xlab = "Effect of institutions", ylab = "Statistic", main = " ")
+  lines(grid, Cstat, lty = 1, col = 1)
+  abline(h = qchisq(1 - alpha, 1), lty = 3, col = 4)
+  abline(v = LB, lty = 3, col = 2)
+  abline(v = UB, lty = 3, col = 2)
+  return(list(UB = UB, LB = LB))
+}
+```
+
+```{r}
+dml_ar_pliv(
+  rY = dml2_lasso$ytil, rD = dml2_lasso$dtil, rZ = dml2_lasso$ztil,
+  grid = seq(-2, 2, by = .01)
+)
+
+dml_ar_pliv(
+  rY = dml2_rf$ytil, rD = dml2_rf$dtil, rZ = dml2_rf$ztil,
+  grid = seq(-2, 2, by = .01)
+)
+```
+

@@ -1,0 +1,75 @@
+---
+title: An R Markdown document converted from "AC2/r-weak-iv-experiments.irnb"
+output: html_document
+---
+
+# A Simple Example of Properties of IV estimator when Instruments are Weak
+
+```{r}
+install.packages("hdm")
+```
+
+```{r}
+library(hdm)
+```
+
+Simulation Design
+
+```{r}
+# Simulation Design
+set.seed(1)
+
+n <- 100
+beta <- .1 # .1 weak IV (change to 1.0 for strong IV)
+
+# One realization
+U <- rnorm(n)
+Z <- rnorm(n) # generate instrument
+D <- beta * Z + U # generate endogenougs variable
+Y <- D + U # the true causal effect is 1
+
+summary(lm(D ~ Z)) # first stage is very weak here when we set beta = .1
+```
+
+```{r}
+summary(tsls(x = NULL, d = D, y = Y, z = Z))
+```
+
+Note that the instrument is weak here (strength of the instrument is controlled by setting $\beta$) -- the t-stat is smaller than any rule-of-thumb suggested in the literature (e.g. $\sqrt{10}$) .
+
+# Run 10000 trials to evaluate distribution of the IV estimator
+
+```{r}
+# Simulation Design
+
+set.seed(1)
+B <- 10000 # trials
+IVEst <- rep(0, B)
+
+for (i in 1:B) {
+  U <- rnorm(n)
+  Z <- rnorm(n) # generate instrument
+  D <- beta * Z + U # generate endogenougs variable
+  Y <- D + U # the true causal effect is 1
+  IVEst[i] <- coef(tsls(x = NULL, d = D, y = Y, z = Z))[1, 1]
+}
+```
+
+# Plot the Actual Distribution against the Normal Approximation (based on Strong Instrument Assumption)
+
+```{r}
+plot(density(IVEst - 1, n = 1000, from = -5, to = 5),
+  col = 4, xlim = c(-5, 5),
+  xlab = "IV Estimator -True Effect", main = "Actual Distribution vs Gaussian"
+)
+
+val <- seq(-5, 5, by = .05)
+var <- (1 / beta^2) * (1 / 100) # theoretical variance of IV
+sd <- sqrt(var)
+lines(val, dnorm(val, sd = sd), col = 2, lty = 2)
+
+rejection_frequency <- sum((abs(IVEst - 1) / sd > 1.96)) / B
+
+cat(c("Rejection Frequency is ", rejection_frequency, " while we expect it to be .05"))
+```
+

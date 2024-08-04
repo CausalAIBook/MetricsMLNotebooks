@@ -1,0 +1,117 @@
+---
+title: An R Markdown document converted from "CM1/r-sim-precision-adj.irnb"
+output: html_document
+---
+
+# Analyzing RCT with Precision by Adjusting for Baseline Covariates
+
+```{r}
+install.packages("sandwich")
+install.packages("lmtest")
+```
+
+```{r}
+library(sandwich) # heterokedasticity robust standard errors
+library(lmtest) # coefficient testing
+```
+
+# Jonathan Roth's DGP
+
+Here we set up a DGP with heterogenous effects. In this example, which is due to Jonathan Roth, we have
+$$
+E [Y(0) | Z] = - Z, \quad E [Y(1) |Z] = Z, \quad Z \sim N(0,1).
+$$
+The CATE is
+$$
+E [Y(1) - Y(0) | Z ]= 2 Z.
+$$
+and the ATE is
+$$
+2 E Z = 0.
+$$
+
+We would like to estimate the ATE as precisely as possible.
+
+An economic motivation for this example could be provided as follows: Let D be the treatment of going to college, and let $Z$ be academic skills.  Suppose that academic skills cause lower earnings Y(0) in jobs that don't require a college degree, and cause higher earnings  Y(1) in jobs that do require college degrees. This type of scenario is reflected in the DGP set-up above.
+
+
+```{r}
+# generate the simulated dataset
+set.seed(123) # set MC seed
+n <- 1000 # sample size
+Z <- rnorm(n) # generate Z
+Y0 <- -Z + rnorm(n) # conditional average baseline response is -Z
+Y1 <- Z + rnorm(n) # conditional average treatment effect is +Z
+D <- (runif(n) < .2) # treatment indicator; only 20% get treated
+Y <- Y1 * D + Y0 * (1 - D) # observed Y
+D <- D - mean(D) # demean D
+Z <- Z - mean(Z) # demean Z
+```
+
+# Analyze the RCT data with Precision Adjustment
+
+Consider the follow regression models:
+
+*  classical 2-sample approach, no adjustment (CL)
+*  classical linear regression adjustment (CRA)
+*  interactive regression adjusment (IRA)
+
+We carry out inference using heteroskedasticity robust inference, using the sandwich formulas for variance (Eicker-Huber-White).  
+
+We observe that the CRA delivers estimates that are less efficient than the CL (pointed out by Freedman), whereas the IRA delivers a more efficient approach (pointed out by Lin). In order for the CRA to be more efficient than the CL, we need the linear model to be a correct model of the conditional expectation function of Y given D and X, which is not the case here.
+
+```{r}
+# implement each of the models on the simulated data
+CL <- lm(Y ~ D)
+CRA <- lm(Y ~ D + Z) # classical
+IRA <- lm(Y ~ D + Z + Z * D) # interactive approach
+
+# we are interested in the coefficients on variable "D".
+coeftest(CL, vcov = vcovHC(CL, type = "HC1"))
+coeftest(CRA, vcov = vcovHC(CRA, type = "HC1"))
+coeftest(IRA, vcov = vcovHC(IRA, type = "HC1"))
+```
+
+# Using classical standard errors (non-robust) is misleading here.
+
+We don't teach non-robust standard errors in econometrics courses, but the default statistical inference for lm() procedure in R, summary.lm(), still uses 100-year old concepts, perhaps in part due to historical legacy.  
+
+Here the non-robust standard errors suggest that there is not much difference between the different approaches, contrary to the conclusions reached using the robust standard errors.
+
+```{r}
+summary(CL)
+summary(CRA)
+summary(IRA)
+```
+
+# Verify Asymptotic Approximations Hold in Finite-Sample Simulation Experiment
+
+```{r}
+set.seed(123)
+n <- 1000
+B <- 1000
+
+CLs <- rep(0, B)
+CRAs <- rep(0, B)
+IRAs <- rep(0, B)
+
+for (i in 1:B) {
+  Z <- rnorm(n)
+  Y0 <- -Z + rnorm(n)
+  Y1 <- Z + rnorm(n)
+  Z <- Z - mean(Z)
+  D <- (runif(n) < .1)
+  D <- D - mean(D)
+  Y <- Y1 * D + Y0 * (1 - D)
+  CLs[i] <- lm(Y ~ D)$coef[2]
+  CRAs[i] <- lm(Y ~ D + Z)$coef[2]
+  IRAs[i] <- lm(Y ~ D + Z + Z * D)$coef[2]
+}
+
+print("Standard deviations for estimators")
+
+sqrt(mean(CLs^2))
+sqrt(mean(CRAs^2))
+sqrt(mean(IRAs^2))
+```
+

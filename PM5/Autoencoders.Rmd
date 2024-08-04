@@ -1,0 +1,262 @@
+---
+title: An R Markdown document converted from "PM5/Autoencoders.irnb"
+output: html_document
+---
+
+# Autoencoders
+
+In this notebook, we'll introduce and explore "autoencoders," which are a very successful family of models in modern deep learning. In particular we will:
+
+
+1.   Illustrate the connection between autoencoders and classical *Principal Component Analysis (PCA)*
+3.   Train a non-linear auto-encoder that uses a deep neural network
+
+### Overview
+As explained in the text, autoencoders are a way of discovering *latent, low-dimensional structure* in a dataset. In particular, a random data vector $X \in \mathbb{R}^d$ can be said to have low-dimensional structure if we can find some functions $f: \mathbb{R}^d \to \mathbb{R}^k$ and $g: \mathbb{R}^k \to \mathbb{R}^d$, with $k \ll d$, such that 
+$$g(f(X)) \approx X.$$
+
+In other words, $f(X)$ is a parsimonious, $k$-dimensional representation of $X$ that contains all of the information necessary to approximately reconstruct the full vector $X$. Traditionally, $f(X)$ is called an *encoding* of $X$.
+
+It turns out that this is meaningless unless we restrict what kinds of functions $f$ and $g$ are allowed to be, because it's possible to write down some (completely ugly) one-to-one function $\mathbb{R}^d \to \mathbb{R}^1$ for any $d$. This gives rise to the notion of *autoencoders* where, given some sets of reasonable functions $F$ and $G$, we aim to minimize
+$$\mathbb{E}[\mathrm{loss}(X, f(g(X))]$$
+over functions $f \in F$ and $g \in G$. As usual, this is done by minimizing the sample analog.
+
+
+
+## Linear Autoencoders and PCA: Practice
+
+It turns out that linear autoencoders are the same as PCA. Let's do a small sanity check to verify this. In particular, let's perform PCA two ways: first using a standard (linear algebra) toolkit, and second as a linear autoencoder using a neural network library.
+If all goes well, they should give you the same reconstructions!
+
+To make it a bit more fun, we will use the [*Labeled Faces in the Wild*](https://www.kaggle.com/jessicali9530/celeba-dataset) dataset which consists of standardized images of roughly 5,000 celebrities' faces. In this data, PCA amounts to looking for a small number of "proto-faces" such that a linear combination of them can accurately reconstruct any celebrity's face.
+
+```{r}
+install.packages("keras")
+```
+
+```{r}
+install.packages("reticulate")
+install.packages("abind")
+install.packages("grid")
+install.packages("gridExtra")
+install.packages("dplyr")
+install.packages("purrr")
+install.packages("reshape2")
+install.packages("ggplot2")
+```
+
+```{r}
+library(reticulate)
+
+# Import Python's sklearn.datasets
+sklearn <- import("sklearn.datasets")
+
+# Fetch the dataset
+faces <- sklearn$fetch_lfw_people()
+
+# Access the images and reshape the data similar to Python's reshape method
+n_examples <- dim(faces$images)[1]
+height <- dim(faces$images)[2]
+width <- dim(faces$images)[3]
+design_matrix <- array_reshape(faces$images, c(n_examples, height * width))
+
+n_features <- dim(design_matrix)[2]
+
+# Print the dataset details
+cat(sprintf(
+  paste("Labeled Faces in the Wild Dataset:\n Number of examples: %d\n ",
+        "Number of features: %d\n Image height: %d\n Image width: %d"),
+  n_examples, n_features, height, width
+))
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(grid)
+
+# Find indices where the label is 'Arnold Schwarzenegger'
+# faces$target uses python style indexing that starts at 0 rather than R style
+#            indexing that starts at 1, so we subtract 1 so the indexing lines up
+arnold_labels <- which(faces$target_names == "Arnold Schwarzenegger") - 1
+# Get indices of all images corresponding to Arnold
+arnold_pics <- which(faces$target %in% arnold_labels)
+
+plot_faces <- function(images, n_row = 2, n_col = 3, width, height) {
+  par(mfrow = c(n_row, n_col), mar = c(0.5, 0.5, 0.5, 0.5))
+  for (i in seq_len(n_row * n_col)) {
+    if (i <= length(images)) {
+      # image needs to be transposed for and then flipped for correct orientation
+      # using R "image"
+      tmp <- t(images[[i]])
+      tmp <- tmp[, rev(seq_len(ncol(tmp)))]
+      image(tmp, col = gray.colors(256), axes = FALSE, xlab = "", ylab = "")
+    }
+  }
+}
+
+# Ensure arnold_images contains the right amount of data and is not NULL
+arnold_images <- lapply(arnold_pics[seq_len(min(6, length(arnold_pics)))], function(idx) {
+  faces$images[idx, , ]
+})
+
+plot_faces(arnold_images, n_row = 2, n_col = 3, height = 62, width = 47)
+```
+
+```{r}
+library(stats)
+
+# Perform PCA on the design matrix
+pca <- prcomp(design_matrix, rank. = 128, retx = TRUE, center = TRUE, scale. = FALSE)
+
+# Extract the principal components (eigenfaces)
+eigenfaces <- pca$rotation
+```
+
+```{r}
+# 2. Plot the first 6 "eigenfaces," the six images whose linear span best explains the variation in our dataset
+pca_images <- lapply(1:6, function(idx) {
+  array_reshape(eigenfaces[, idx], c(height, width))
+})
+
+plot_faces(pca_images, height = height, width = width)
+# we check the first six eigenvectors/projection axes, reshaped (the eigenvectors that
+# captured the highest variation in our dataset of images)
+# here, eigenvector1 orthog to eigenvector2 and all the others => decorrelation
+# (there's no way to reconstruct eigenvector1 using a linear combination of all the other eigenvectors)
+```
+
+```{r}
+reconstruct <- function(image_vector, n_components, eigenfaces) {
+  components <- eigenfaces[, 1:n_components, drop = FALSE]
+  compimage <- components %*% (t(components) %*% image_vector)
+  return(array_reshape(compimage, c(height, width)))
+}
+
+# Select an Arnold image for reconstruction
+face_vector <- t(design_matrix[arnold_pics[1], , drop = FALSE])
+
+# Perform reconstructions with varying number of components
+reconstructions <- lapply(c(1, 2, 8, 32, 64, 128), function(k) {
+  reconstruct(face_vector, k, eigenfaces)
+})
+
+# Plot the reconstructed faces
+plot_faces(reconstructions, height = height, width = width)
+```
+
+```{r}
+# 4. Train linear autoencoder with 64 neurons using Keras
+# 5. Compare reconstructions of Arnold's face both using MSE and visually
+```
+
+```{r}
+library(keras)
+
+encoding_dimension <- 64
+input_image <- layer_input(shape = n_features)
+encoded <- layer_dense(units = encoding_dimension, activation = "linear")(input_image)
+decoded <- layer_dense(units = n_features, activation = "linear")(encoded)
+autoencoder <- keras_model(inputs = input_image, outputs = decoded)
+autoencoder %>% compile(
+  optimizer = "adam",
+  loss = "mse"
+)
+autoencoder %>% fit(
+  design_matrix,
+  design_matrix,
+  epochs = 50,
+  batch_size = 256,
+  shuffle = TRUE,
+  verbose = 0
+)
+```
+
+```{r}
+autoencoder %>% fit(
+  design_matrix,
+  design_matrix,
+  epochs = 50,
+  batch_size = 256,
+  shuffle = TRUE,
+  verbose = 0
+)
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(reshape2)
+
+# Compute neural reconstruction
+face_vector_flat <- as.numeric(face_vector)
+reconstruction <- predict(autoencoder, matrix(face_vector_flat, nrow = 1))
+
+# Do visual comparison
+image_height <- 62
+image_width <- 47
+image1 <- matrix(reconstructions[[4]], nrow = image_height, ncol = image_width)
+image2 <- t(matrix(reconstruction, nrow = image_width, ncol = image_height))
+
+images <- list(image1, image2)
+plot_faces(images, n_row = 1, n_col = 2, width = image_width, height = image_height)
+
+
+# Do numeric comparison
+# We also normalize the black/white gradient to take values in [0,1] (divide by 255)
+img1 <- as.numeric(reconstructions[[4]]) / 255
+img2 <- as.numeric(reconstruction) / 255
+mse <- mean((img1 - img2)^2)
+mse
+```
+
+## Neural Autoencoders
+
+Finally, let's train a nonlinear autoencoder for the same data where $F$ and $G$ are neural networks, and we restrict the dimension to be $k=64$.
+
+```{r}
+library(tensorflow)
+
+# Use a nonlinear neural network
+n_features <- 2914
+encoding_dimension <- 64
+
+input_image <- layer_input(shape = n_features)
+encoded <- input_image %>%
+  layer_dense(units = encoding_dimension, activation = "relu") %>%
+  layer_dense(units = encoding_dimension, activation = "relu")
+
+decoded <- encoded %>%
+  layer_dense(units = encoding_dimension, activation = "relu") %>%
+  layer_dense(units = n_features, activation = "relu")
+
+autoencoder <- keras_model(inputs = input_image, outputs = decoded)
+
+autoencoder %>% compile(
+  optimizer = "adam",
+  loss = "mse"
+)
+autoencoder %>% fit(
+  design_matrix,
+  design_matrix,
+  epochs = 50,
+  batch_size = 256,
+  shuffle = TRUE,
+  verbose = 0
+)
+
+# Compute neural reconstruction
+reconstruction <- predict(autoencoder, matrix(face_vector, nrow = 1))
+
+# Do visual comparison
+plot_faces(list(reconstructions[[4]], t(matrix(reconstruction, nrow = image_width, ncol = image_height))),
+           n_row = 1, n_col = 2, width = image_width, height = image_height)
+
+# Do numeric comparison
+# We also normalize the black/white gradient to take values in [0,1] (divide by 255)
+img1 <- as.numeric(reconstructions[[4]]) / 255
+img2 <- as.numeric(reconstruction) / 255
+mse <- mean((img1 - img2)^2)
+mse
+```
+

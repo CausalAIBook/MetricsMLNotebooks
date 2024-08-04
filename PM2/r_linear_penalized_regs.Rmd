@@ -1,0 +1,707 @@
+---
+title: An R Markdown document converted from "PM2/r_linear_penalized_regs.irnb"
+output: html_document
+---
+
+# Penalized Linear Regressions: A Simulation Experiment
+
+```{r}
+install.packages("xtable")
+install.packages("hdm")
+install.packages("glmnet")
+install.packages("ggplot2")
+install.packages("tidyr")
+```
+
+```{r}
+library(hdm)
+library(xtable)
+library(glmnet)
+library(ggplot2)
+```
+
+## Data Generating Process
+
+We define a simple data generating process that allows for sparse, dense, and sparse+dense coefficients
+
+```{r}
+gen_data <- function(n, p, regime = "sparse") {
+  # constants chosen to get R^2 of approximately .80
+  if (regime == "sparse") {
+    beta <- (1 / seq(1:p)^2) * 7
+  } else if (regime == "dense") {
+    beta <- rnorm(p) * 0.5
+  } else if (regime == "sparsedense") {
+    beta_1 <- (1 / seq(1:p)^2) * 6.5
+    beta_2 <- rnorm(p, 0, 0.5) * 0.7
+    beta <- beta_1 + beta_2
+  }
+
+  true_fn <- function(x) {
+    x[, seq_len(dim(x)[2])] %*% beta
+  }
+
+  X <- matrix(runif(n * p, min = -0.5, max = 0.5), n, p)
+  gX <- true_fn(X)
+  y <- gX + rnorm(n)
+
+  Xtest <- matrix(runif(n * p, min = -0.5, max = 0.5), n, p)
+  gXtest <- true_fn(Xtest)
+  ytest <- gXtest + rnorm(n)
+
+  Xpop <- matrix(runif(100000 * p, min = -0.5, max = 0.5), 100000, p)
+  gXpop <- true_fn(Xpop)
+  ypop <- gXpop + rnorm(100000)
+
+  return(list(
+    X = X, y = y, gX = gX, Xtest = Xtest, ytest = ytest, gXtest = gXtest,
+    Xpop = Xpop, ypop = ypop, gXpop = gXpop, beta = beta
+  ))
+}
+```
+
+## Data Generating Process: Approximately Sparse
+
+```{r}
+set.seed(1)
+n <- 100
+p <- 400
+res <- gen_data(n, p, regime = "sparse")
+```
+
+```{r}
+X <- res$X
+y <- res$y
+gX <- res$gX
+Xtest <- res$Xtest
+ytest <- res$ytest
+gXtest <- res$gXtest
+Xpop <- res$Xpop
+ypop <- res$ypop
+gXpop <- res$gXpop
+betas <- res$beta
+```
+
+```{r}
+plot(gX, y, xlab = "g(X)", ylab = "y") # plot V vs g(X)
+print(c("theoretical R2:", var(gX) / var(y))) # theoretical R-square in the simulation example
+```
+
+```{r}
+# Plot betas
+plot(seq_along(betas), abs(betas),
+  log = "y", pch = 20, col = "blue",
+  xlab = expression(beta), ylab = "Magnitude (log scale)",
+  main = expression(paste("Beta Magnitude"))
+)
+```
+
+## Lasso, Ridge, ElasticNet
+
+We use glmnet's penalized estimators, which choose the penalty parameter via cross-validation (by default 10-fold cross-validation). These methods search over an adaptively chosen grid of hyperparameters. The parameter `alpha` controls what penalty (or allows for a convex combination of `l1` and `l2` penalty). Set `alpha=0.5` for elastic net.
+
+Features will be standardized (by glmnet) so that penalization does not favor different features asymmetrically.
+
+```{r}
+r2_score <- function(preds, actual, ytrain = y) {
+  rss <- sum((preds - actual)^2) # residual sum of squares
+  # total sum of squares, we take mean(ytrain) as mean(actual) is an out-of-sample object
+  tss <- sum((actual - mean(ytrain))^2)
+  rsq <- 1 - rss / tss
+  return(rsq)
+}
+```
+
+```{r}
+# family gaussian means that we'll be using square loss
+fit_lasso_cv <- cv.glmnet(X, y, family = "gaussian", alpha = 1, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_ridge <- cv.glmnet(X, y, family = "gaussian", alpha = 0, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_elnet <- cv.glmnet(X, y, family = "gaussian", alpha = .5, nfolds = 5)
+```
+
+We calculate the R-squared on the small test set that we have
+
+```{r}
+cat(
+  "lassocv R2 (Test): ", r2_score(predict(fit_lasso_cv, newx = Xtest, s = "lambda.min"), ytest),
+  "\nridge R2 (Test): ", r2_score(predict(fit_ridge, newx = Xtest, s = "lambda.min"), ytest),
+  "\nelnet R2 (Test): ", r2_score(predict(fit_elnet, newx = Xtest, s = "lambda.min"), ytest)
+)
+```
+
+We also calculate what the R-squared would be in the population limit (in our case for practical purposes when we have a very very large test sample)
+
+```{r}
+r2_lasso_cv <- r2_score(predict(fit_lasso_cv, newx = Xpop, s = "lambda.min"), ypop)
+r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = "lambda.min"), ypop)
+r2_elnet <- r2_score(predict(fit_elnet, newx = Xpop, s = "lambda.min"), ypop)
+
+cat(
+  "lassocv R2 (Pop): ", r2_lasso_cv,
+  "\nridge R2 (Pop): ", r2_ridge,
+  "\nelnet R2 (Pop): ", r2_elnet
+)
+```
+
+#### glmnet failure in Ridge
+
+**Note**: Ridge regression performs worse relatively to the Ridge in the correponding [Python notebook](https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/main/PM2/python_linear_penalized_regs.ipynb). Even if one were to control for the randomness in the data and use the same data for both, R's glmnet fails.
+
+To understand why, look at the cross-validated MSE curve with different $\lambda$ ().
+
+```{r}
+plot(fit_ridge)
+```
+
+From the [glmnet documentation](https://glmnet.stanford.edu/articles/glmnet.html):
+
+
+
+> This plots the cross-validation curve (red dotted line) along with upper and lower standard deviation curves along the $\lambda$ sequence (error bars). Two special values along the $\lambda$ sequence are indicated by the vertical dotted lines. ```lambda.min``` is the value of $\lambda$ that gives minimum mean cross-validated error, while ```lambda.1se``` is the value of $\lambda$ that gives the most regularized model such that the cross-validated error is within one standard error of the minimum.
+
+Notice that the chosen ```lambda.min``` is at the boundary of the sequence. An easy way to check this instead of plotting is to extract the $\lambda$ sequence and the minimum chosen $\lambda_{min}$ from the fitted object.
+
+```{r}
+cat("lambda sequence: ", fit_ridge$lambda)
+cat("\nChosen minimum lambda: ", fit_ridge$lambda.min)
+```
+
+In general, it is good practice to examine the lambda sequence that R produces and searches over in cross-validation. When the penalty is chosen at the boundary like we see here, this indicates the generated penalty sequence is likely misspecified. Thus, we choose to supply our own sequence. In particular, we choose values that match up with those in Python's ```sklearn``` Ridge implementation.
+
+
+```glmnet``` minimizes the elastic net loss function as follows:
+$$\min_{\beta} \frac{1}{N} \| X\beta - y\|_2^2 + \lambda_{R} \left( \frac{1}{2} (1-\alpha) \|\beta\|_2^2 + \alpha \|\beta\|_1 \right) $$ 
+
+For ridge, $\alpha=0$, so $$\min_{\beta} \frac{1}{N} \| X\beta - y\|_2^2 + \frac{\lambda_{R}}{2} \|\beta\|_2^2 $$
+
+Meanwhile, ```sklearn``` minimizes $$\min_{\beta} \frac{1}{N} \|X\beta-y\|_2^2 + \frac{\lambda_{python}}{N} \|\beta\|_2^2$$ where $\lambda_{python}$ is chosen from the grid $(0.1,1,10)$.
+
+To translate this into R, we must set in glmnet $$\lambda_{R} :=\frac{2}{N} \lambda_{python}$$
+
+```{r}
+# sklearn lambdas (penalty)
+lambdas_sklearn <- c(0.1, 1, 10) # defaults
+l_seq <- 2 / nrow(X) * lambdas_sklearn
+l_seq # note how different these are to the actual lambdas generated by glmnet
+```
+
+```{r}
+fit_ridge <- cv.glmnet(X, y, family = "gaussian", alpha = 0, nfolds = 5, lambda = l_seq)
+r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = "lambda.min"), ypop)
+```
+
+```{r}
+cat(
+  "lassocv R2 (Pop): ", r2_lasso_cv,
+  "\nridge R2 (Pop): ", r2_ridge,
+  "\nelnet R2 (Pop): ", r2_elnet
+)
+```
+
+## Plug-in Hyperparameter Lasso and Post-Lasso OLS
+
+Here we compute the lasso and ols post lasso using plug-in choices for penalty levels.
+
+\We use "plug-in" tuning with a theoretically valid choice of penalty $\lambda = 2 \cdot c \hat{\sigma} \sqrt{n} \Phi^{-1}(1-\alpha/2p)$, where $c>1$ and $1-\alpha$ is a confidence level, and $\Phi^{-1}$ denotes the quantile function. Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\epsilon$ and $X$ in the regression equation decay quickly at the tails.
+
+In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks.
+
+We pull an anaue of R's rlasso. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\
+The post lasso function makes OLS with the selected ***T*** regressors.
+To select those parameters, they use $\lambda$ as variable to penalize\
+**Funny thing: the function rlasso was named like that because it is the "rigorous" Lasso.**
+
+```{r}
+fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
+fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
+```
+
+```{r}
+r2_lasso <- r2_score(predict(fit_rlasso, newdata = Xtest), ytest)
+r2_lasso_post <- r2_score(predict(fit_rlasso_post, newdata = Xtest), ytest)
+
+cat(
+  "rlasso R2 (Test): ", r2_lasso,
+  "\nrlasso-post R2 (Test): ", r2_lasso_post
+)
+```
+
+```{r}
+r2_lasso <- r2_score(predict(fit_rlasso, newdata = (Xpop)), (ypop))
+r2_lasso_post <- r2_score(predict(fit_rlasso_post, newdata = (Xpop)), (ypop))
+
+cat(
+  "rlasso R2 (Pop): ", r2_lasso,
+  "\nrlasso-post R2 (Pop): ", r2_lasso_post
+)
+```
+
+## LAVA: Dense + Sparse Coefficients
+
+Next we code up lava, which alternates the fitting of lasso and ridge
+
+```{r}
+# Define function to compute lava estimator. Doing an iterative scheme with fixed
+# number of iteration. Could iterate until a convergence criterion is met.
+lava_predict <- function(X, Y, newX, lambda1, lambda2, iter = 5) {
+
+  # Need to demean internally
+  dy <- Y - mean(Y)
+  dx <- scale(X, scale = FALSE)
+
+  sp1 <- glmnet::glmnet(dx, dy, lambda = lambda1) # lasso step fits "sparse part"
+  de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx), alpha = 0, lambda = lambda2)
+
+  i <- 1
+  while (i <= iter) {
+    sp1 <- glmnet::glmnet(dx, dy - predict(de1, newx = dx, s = "lambda.min"), lambda = lambda1)
+    de1 <- glmnet::glmnet(dx, dy - predict(sp1, newx = dx, s = "lambda.min"), alpha = 0, lambda = lambda2)
+    i <- i + 1
+  }
+
+  bhat <- sp1$beta + de1$beta
+  a0 <- mean(Y) - sum(colMeans(X) * bhat)
+
+  # Need to add intercept to output
+
+  yhat <- newX %*% bhat + a0
+
+  return(yhat)
+}
+```
+
+```{r}
+# define function to get predictions and r2 scores for lava estimator
+
+lava_yhat_r2 <- function(xtr_mod, xte_mod, ytr, yte, num_folds = 5) {
+  # 5-fold CV. glmnet does cross-validation internally and
+  # relatively efficiently. We're going to write out all the steps to make sure
+  # we're using the same CV folds across all procedures in a transparent way and
+  # to keep the overall structure clear as well.
+
+  # Setup for brute force K-Fold CV
+  n <- length(ytr)
+  Kf <- num_folds # Number of folds
+  sampleframe <- rep(1:Kf, ceiling(n / Kf))
+  cvgroup <- sample(sampleframe, size = n, replace = FALSE) # CV groups
+
+
+  ## ------------------------------------------------------------
+  # We're going to take a shortcut and use the range of lambda values that come out
+  # of the default implementation in glmnet for everything. Could do better here - maybe
+
+  ## Fit ridge on grid of lambda values (chosen by default using glmnet) using basic model.
+  ridge_mod <- glmnet::glmnet(xtr_mod, ytr, alpha = 0) # alpha = 0 gives ridge
+  ridge_lambda <- ridge_mod$lambda # values of penalty parameter
+
+  ## Fit lasso on grid of lambda values (chosen by default using glmnet) using basic model.
+  lasso_mod <- glmnet::glmnet(xtr_mod, ytr) # default is lasso (equivalent to alpha = 1)
+  lasso_lambda <- lasso_mod$lambda # values of penalty parameter
+
+  ## ------------------------------------------------------------
+
+
+  # Lava - Using a double loop over candidate penalty parameter values.
+
+  lambda1_lava_mod <- lasso_mod$lambda[seq(5, length(lasso_lambda), 10)]
+  lambda2_lava_mod <- ridge_mod$lambda[seq(5, length(ridge_lambda), 10)]
+
+  cv_mod_lava <- matrix(0, length(lambda1_lava_mod), length(lambda2_lava_mod))
+
+  for (k in 1:Kf) {
+    indk <- cvgroup == k
+
+    k_xtr_mod <- xtr_mod[!indk, ]
+    k_ytr <- ytr[!indk]
+    k_xte_mod <- xtr_mod[indk, ]
+    k_yte <- ytr[indk]
+
+    for (ii in seq_along(lambda1_lava_mod)) {
+      for (jj in seq_along(lambda2_lava_mod)) {
+        cv_mod_lava[ii, jj] <- cv_mod_lava[ii, jj] +
+          sum((k_yte - lava_predict(k_xtr_mod, k_ytr,
+                                    newX = k_xte_mod,
+                                    lambda1 = lambda1_lava_mod[ii],
+                                    lambda2 = lambda2_lava_mod[jj]))^2)
+      }
+    }
+  }
+
+  # Get CV min values of tuning parameters
+  cvmin_lava_mod <- which(cv_mod_lava == min(cv_mod_lava), arr.ind = TRUE)
+  cvlambda1_lava_mod <- lambda1_lava_mod[cvmin_lava_mod[1]]
+  cvlambda2_lava_mod <- lambda2_lava_mod[cvmin_lava_mod[2]]
+
+  cat("Min Lava Lasso CV Penalty: ", cvlambda1_lava_mod)
+  cat("\nMin Lava Ridge CV Penalty: ", cvlambda2_lava_mod)
+
+
+  #### Look at performance on test sample
+
+  # Calculate R^2 in training data and in validation data as measures
+  # Refit on entire training sample
+
+
+  #### CV-min model
+
+  # In sample fit
+  cvmin_yhat_lava_tr <- lava_predict(xtr_mod, ytr,
+    newX = xtr_mod,
+    lambda1 = cvlambda1_lava_mod,
+    lambda2 = cvlambda2_lava_mod
+  )
+  r2_lava_mod <- 1 - sum((ytr - cvmin_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)
+
+  # Out of sample fit
+  cvmin_yhat_lava_test <- lava_predict(xtr_mod, ytr,
+    newX = xte_mod,
+    lambda1 = cvlambda1_lava_mod,
+    lambda2 = cvlambda2_lava_mod
+  )
+  r2v_lava_mod <- 1 - sum((yte - cvmin_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)
+
+
+  cat("\nIn sample R2 (CV-min): ", r2_lava_mod)
+  cat("\nOut of Sample R2 (CV-min): ", r2v_lava_mod)
+
+
+  #### Use average model across cv-folds and refit model using all training data
+  ###### we won't report these results.
+  ###### Averaging is theoretically more solid, but cv-min is more practical.
+  n_tr <- length(ytr)
+  n_te <- length(yte)
+  yhat_tr_lava_mod <- matrix(0, n_tr, Kf)
+  yhat_te_lava_mod <- matrix(0, n_te, Kf)
+
+
+  for (k in 1:Kf) {
+    indk <- cvgroup == k
+
+    k_xtr_mod <- xtr_mod[!indk, ]
+    k_ytr <- ytr[!indk]
+
+    # Lava
+    yhat_tr_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,
+      newX = xtr_mod,
+      lambda1 = cvlambda1_lava_mod,
+      lambda2 = cvlambda2_lava_mod
+    ))
+    yhat_te_lava_mod[, k] <- as.vector(lava_predict(k_xtr_mod, k_ytr,
+      newX = xte_mod,
+      lambda1 = cvlambda1_lava_mod,
+      lambda2 = cvlambda2_lava_mod
+    ))
+  }
+
+  avg_yhat_lava_tr <- rowMeans(yhat_tr_lava_mod)
+  avg_yhat_lava_test <- rowMeans(yhat_te_lava_mod)
+
+  r2_cv_ave_lava_mod <- 1 - sum((ytr - avg_yhat_lava_tr)^2) / sum((ytr - mean(ytr))^2)
+  r2v_cv_ave_lava_mod <- 1 - sum((yte - avg_yhat_lava_test)^2) / sum((yte - mean(ytr))^2)
+
+  cat("\nIn sample R2 (Average Across Folds): ", r2_cv_ave_lava_mod)
+  cat("\nOut of Sample R2 (Average Across Folds): ", r2v_cv_ave_lava_mod)
+
+  return(c(
+    cvlambda1_lava_mod,
+    cvlambda2_lava_mod,
+    cvmin_yhat_lava_tr, # CV_min
+    cvmin_yhat_lava_test, # CV_min
+    r2_lava_mod, # CV_min
+    r2v_lava_mod, # CV_min
+    avg_yhat_lava_tr, # Average across Folds
+    avg_yhat_lava_test, # Average across Folds
+    r2_cv_ave_lava_mod, # Average across Folds
+    r2v_cv_ave_lava_mod # Average across Folds
+  ))
+}
+```
+
+```{r}
+# Results for Test
+cat("Test Results ...\n")
+r2_lava_traintest <- lava_yhat_r2(X, Xtest, y, ytest)
+```
+
+```{r}
+# Results for Pop
+## note we don't have to re-train the entire model
+## this is just due to the way the function is defined above
+cat("Population Results ...\n")
+r2_lava_pop <- lava_yhat_r2(X, Xpop, y, ypop)
+```
+
+```{r}
+# report R2 using CV min
+cat("LAVA R2 (Test): ", r2_lava_traintest[[6]])
+cat("\nLAVA R2 (Pop) ", r2_lava_pop[[6]])
+```
+
+## Summarizing Results
+
+```{r}
+table <- matrix(0, 6, 1)
+table[1, 1] <- r2_lasso_cv
+table[2, 1] <- r2_ridge
+table[3, 1] <- r2_elnet
+table[4, 1] <- r2_lasso
+table[5, 1] <- r2_lasso_post
+table[6, 1] <- r2_lava_pop[[6]]
+
+colnames(table) <- c("R2 (Population)")
+rownames(table) <- c(
+  "Cross-Validated Lasso", "Cross-Validated ridge", "Cross-Validated elnet",
+  "Lasso", "Post-Lasso", "Lava"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
+tab
+```
+
+```{r}
+# Creating a data frame with the predicted values for test
+data <- data.frame(
+  gXtest = gXtest,
+  Ridge = predict(fit_ridge, newx = Xtest, s = "lambda.min"),
+  ENet = predict(fit_elnet, newx = Xtest, s = "lambda.min"),
+  RLasso = predict(fit_rlasso, newdata = Xtest),
+  RLassoPost = predict(fit_rlasso_post, newdata = Xtest),
+  LassoCV = predict(fit_lasso_cv, newx = Xtest, s = "lambda.min"),
+  Lava = as.vector(r2_lava_traintest[[4]])
+)
+colnames(data) <- c("gXtest", "Ridge", "ENet", "RLasso", "RlassoPost", "LassoCV", "Lava")
+
+# Reshaping data into longer format for ggplot
+data_long <- tidyr::gather(data, Model, Predicted, -gXtest)
+
+# Plotting
+ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +
+  geom_point(aes(shape = Model)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") + # gX by gX
+  scale_color_manual(values = c("brown", "yellow", "red", "green", "blue", "magenta"),
+                     guide = guide_legend(title = "Model")) +
+  theme_minimal() +
+  labs(
+    title = "Comparison of Methods on Predicting gX",
+    x = "gXtest",
+    y = "Predictions"
+  ) +
+  guides(shape = "none") # Remove the shape legend
+```
+
+## Data Generating Process: Dense Coefficients
+
+```{r}
+set.seed(1)
+n <- 100
+p <- 400
+res <- gen_data(n, p, regime = "dense")
+
+X <- res$X
+y <- res$y
+gX <- res$gX
+Xtest <- res$Xtest
+ytest <- res$ytest
+gXtest <- res$gXtest
+Xpop <- res$Xpop
+ypop <- res$ypop
+gXpop <- res$gXpop
+betas <- res$beta
+```
+
+```{r}
+plot(gX, y, xlab = "g(X)", ylab = "y") # plot V vs g(X)
+print(c("theoretical R2:", var(gX) / var(y))) # theoretical R-square in the simulation example
+```
+
+```{r}
+# plot betas
+plot(seq_along(betas), abs(betas),
+  log = "y", pch = 20, col = "blue",
+  xlab = expression(beta), ylab = "Magnitude (log scale)",
+  main = expression(paste("Beta Magnitude"))
+)
+```
+
+```{r}
+# family gaussian means that we'll be using square loss
+fit_lasso_cv <- cv.glmnet(X, y, family = "gaussian", alpha = 1, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_ridge <- cv.glmnet(X, y, family = "gaussian", alpha = 0, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_elnet <- cv.glmnet(X, y, family = "gaussian", alpha = .5, nfolds = 5)
+fit_rlasso <- hdm::rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
+fit_rlasso_post <- hdm::rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
+
+r2_lasso_cv <- r2_score(predict(fit_lasso_cv, newx = Xpop, s = "lambda.min"), ypop)
+r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = "lambda.min"), ypop)
+r2_elnet <- r2_score(predict(fit_elnet, newx = Xpop, s = "lambda.min"), ypop)
+r2_rlasso <- r2_score(predict(fit_rlasso, newdata = Xpop), ypop)
+r2_rlasso_post <- r2_score(predict(fit_rlasso_post, newdata = Xpop), ypop)
+r2_lava <- lava_yhat_r2(X, Xpop, y, ypop)[[6]]
+```
+
+```{r}
+table <- matrix(0, 6, 1)
+table[1, 1] <- r2_lasso_cv
+table[2, 1] <- r2_ridge
+table[3, 1] <- r2_elnet
+table[4, 1] <- r2_rlasso
+table[5, 1] <- r2_rlasso_post
+table[6, 1] <- r2_lava
+
+colnames(table) <- c("R2")
+rownames(table) <- c(
+  "Cross-Validated Lasso", "Cross-Validated ridge", "Cross-Validated elnet",
+  "Lasso", "Post-Lasso", "Lava"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
+tab
+```
+
+```{r}
+# get lava prediction on test set for plot below
+lava_yhat <- lava_yhat_r2(X, Xtest, y, ytest)[[4]]
+```
+
+```{r}
+# Creating a data frame with the predicted values for test
+data <- data.frame(
+  gXtest = gXtest,
+  Ridge = predict(fit_ridge, newx = Xtest, s = "lambda.min"),
+  ENet = predict(fit_elnet, newx = Xtest, s = "lambda.min"),
+  RLasso = predict(fit_rlasso, newdata = Xtest),
+  RLassoPost = predict(fit_rlasso_post, newdata = Xtest),
+  LassoCV = predict(fit_lasso_cv, newx = Xtest, s = "lambda.min"),
+  Lava = as.vector(lava_yhat)
+)
+colnames(data) <- c("gXtest", "Ridge", "ENet", "RLasso", "RlassoPost", "LassoCV", "Lava")
+
+# Reshaping data into longer format for ggplot
+data_long <- tidyr::gather(data, Model, Predicted, -gXtest)
+
+# Plotting
+ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +
+  geom_point(aes(shape = Model)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") + # gX by gX
+  scale_color_manual(values = c("brown", "yellow", "red", "green", "blue", "magenta"),
+                     guide = guide_legend(title = "Model")) +
+  theme_minimal() +
+  labs(
+    title = "Comparison of Methods on Predicting gX",
+    x = "gXtest",
+    y = "Predictions"
+  ) +
+  guides(shape = "none") # Remove the shape legend
+```
+
+## Data Generating Process: Approximately Sparse + Small Dense Part
+
+```{r}
+set.seed(1)
+n <- 100
+p <- 400
+res <- gen_data(n, p, regime = "sparsedense")
+
+X <- res$X
+y <- res$y
+gX <- res$gX
+Xtest <- res$Xtest
+ytest <- res$ytest
+gXtest <- res$gXtest
+Xpop <- res$Xpop
+ypop <- res$ypop
+gXpop <- res$gXpop
+betas <- res$beta
+```
+
+```{r}
+plot(gX, y, xlab = "g(X)", ylab = "y") # plot V vs g(X)
+print(c("theoretical R2:", var(gX) / var(y))) # theoretical R-square in the simulation example
+```
+
+```{r}
+# plot betas
+plot(seq_along(betas), abs(betas),
+  log = "y", pch = 20, col = "blue",
+  xlab = expression(beta), ylab = "Magnitude (log scale)",
+  main = expression(paste("Beta Magnitude"))
+)
+```
+
+```{r}
+# family gaussian means that we'll be using square loss
+fit_lasso_cv <- cv.glmnet(X, y, family = "gaussian", alpha = 1, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_ridge <- cv.glmnet(X, y, family = "gaussian", alpha = 0, nfolds = 5)
+# family gaussian means that we'll be using square loss
+fit_elnet <- cv.glmnet(X, y, family = "gaussian", alpha = .5, nfolds = 5)
+fit_rlasso <- rlasso(y ~ X, post = FALSE) # lasso with plug-in penalty level
+fit_rlasso_post <- rlasso(y ~ X, post = TRUE) # post-lasso with plug-in penalty level
+
+r2_lasso_cv <- r2_score(predict(fit_lasso_cv, newx = Xpop, s = "lambda.min"), ypop)
+r2_ridge <- r2_score(predict(fit_ridge, newx = Xpop, s = "lambda.min"), ypop)
+r2_elnet <- r2_score(predict(fit_elnet, newx = Xpop, s = "lambda.min"), ypop)
+r2_rlasso <- r2_score(predict(fit_rlasso, newdata = Xpop), ypop)
+r2_rlasso_post <- r2_score(predict(fit_rlasso_post, newdata = Xpop), ypop)
+r2_lava <- lava_yhat_r2(X, Xpop, y, ypop)[[6]]
+```
+
+```{r}
+table <- matrix(0, 6, 1)
+table[1, 1] <- r2_lasso_cv
+table[2, 1] <- r2_ridge
+table[3, 1] <- r2_elnet
+table[4, 1] <- r2_rlasso
+table[5, 1] <- r2_rlasso_post
+table[6, 1] <- r2_lava
+
+colnames(table) <- c("R2")
+rownames(table) <- c(
+  "Cross-Validated Lasso", "Cross-Validated ridge", "Cross-Validated elnet",
+  "Lasso", "Post-Lasso", "Lava"
+)
+tab <- xtable(table, digits = 3)
+print(tab, type = "latex") # set type="latex" for printing table in LaTeX
+tab
+```
+
+```{r}
+# get lava prediction on test set for plot below
+lava_yhat <- lava_yhat_r2(X, Xtest, y, ytest)[[4]]
+```
+
+```{r}
+# Creating a data frame with the predicted values for test
+data <- data.frame(
+  gXtest = gXtest,
+  Ridge = predict(fit_ridge, newx = Xtest, s = "lambda.min"),
+  ENet = predict(fit_elnet, newx = Xtest, s = "lambda.min"),
+  RLasso = predict(fit_rlasso, newdata = Xtest),
+  RLassoPost = predict(fit_rlasso_post, newdata = Xtest),
+  LassoCV = predict(fit_lasso_cv, newx = Xtest, s = "lambda.min"),
+  Lava = as.vector(lava_yhat)
+)
+colnames(data) <- c("gXtest", "Ridge", "ENet", "RLasso", "RlassoPost", "LassoCV", "Lava")
+
+# Reshaping data into longer format for ggplot
+data_long <- tidyr::gather(data, Model, Predicted, -gXtest)
+
+# Plotting
+ggplot(data_long, aes(x = gXtest, y = Predicted, color = Model)) +
+  geom_point(aes(shape = Model)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") + # gX by gX
+  scale_color_manual(values = c("brown", "yellow", "red", "green", "blue", "magenta"),
+                     guide = guide_legend(title = "Model")) +
+  theme_minimal() +
+  labs(
+    title = "Comparison of Methods on Predicting gX",
+    x = "gXtest",
+    y = "Predictions"
+  ) +
+  guides(shape = "none") # Remove the shape legend
+```
+

@@ -1,0 +1,290 @@
+---
+title: An R Markdown document converted from "AC1/r-sensitivity-analysis-with-sensmakr-and-debiased-ml.irnb"
+output: html_document
+---
+
+# Sensitivity Analysis for Unobserved Confounder with DML and Sensmakr
+
+Here we experiment with using package "sensemakr" in conjunction with debiased ML.
+
+## Partially Linear SEM
+
+Consider the SEM
+\begin{align}
+Y :=~& \alpha D + \delta A + f_Y(X) + \epsilon_Y,  \\
+D :=~& \gamma A + f_D(X) + \epsilon_D, \\
+A :=~& f_A(X) + \epsilon_A, \\
+X :=~&  \epsilon_X,
+\end{align}
+where, conditional on $X$, $\epsilon_Y, \epsilon_D, \epsilon_A$ are mean zero
+and mutually uncorrelated. We further normalize
+$$
+E[\epsilon_A^2] =1.
+$$
+The key structural
+parameter is $\alpha$: $$\alpha = \partial_d Y(d)$$
+where $$Y(d) := (Y: do (D=d)).$$
+
+To give context to our example, we can interpret $Y$ as earnings,
+$D$ as education, $A$ as ability, and $X$ as a set of observed background variables. In this example, we can interpret $\alpha$ as the returns to schooling.
+
+We start by applying the partialling out operator to get rid of the $X$'s in all of the equations. Define the partialling out operation of any random vector $V$ with respect to another random vector $X$ as the residual that is left after subtracting the best predictor of $V$ given $X$:
+$$\tilde V = V - E [V \mid X].$$  
+If $f$'s are linear, we can replace $E [V \mid X]$
+by linear projection.  After partialling out, we have a simplified system:
+\begin{align}
+\tilde Y :=~& \alpha \tilde D + \delta \tilde A + \epsilon_Y,  \\
+\tilde D :=~& \gamma \tilde A + \epsilon_D, \\
+\tilde A :=~& \epsilon_A,
+\end{align}
+where $\epsilon_Y$, $\epsilon_D$, and $\epsilon_A$ are uncorrelated.
+
+Then the projection of $\tilde Y$ on $\tilde D$ recovers
+$$
+\beta = E [\tilde Y \tilde D]/ E [\tilde D^2] = \alpha +  \phi,
+$$
+where
+$$
+\phi =  \delta \gamma/ E \left[(\gamma^2 + \epsilon^2_D)\right],
+$$
+is the omitted confounder bias or omitted variable bias.
+
+The formula follows from inserting the expression for $\tilde D$ into the definition of $\beta$ and then simplifying the resulting expression using the assumptions on the $\epsilon$'s.
+
+We can use this formula to bound $\phi$ directly by making assumptions on the size of $\delta$
+and $\gamma$.  An alternative approach can be based on the following characterization,
+based on partial $R^2$'s.  This characterization essentially follows
+from Cinelli and Hazlett, with the slight difference that we have adapted
+the result to the partially linear model.
+
+*Theorem* [Omitted Confounder Bias in Terms of Partial $R^2$'s]
+
+In the partially linear SEM setting above,
+$$
+\phi^2 = \frac{R^2_{\tilde Y \sim \tilde A \mid \tilde D} R^2_{\tilde D \sim \tilde A} }{ (1 - R^2_{\tilde D \sim \tilde A}) } \
+\frac{E \left[ (\tilde Y - \beta \tilde D)^2 \right] }{E \left[ ( \tilde D )^2 \right]},
+$$
+where $R^2_{V \sim W \mid X}$ denotes the population $R^2$ in the linear regression of $V$ on $W$, after partialling out $X$ from $V$ and $W$ linearly.
+
+
+Therefore, if we place bounds on how much of the variation in $\tilde Y$ and in $\tilde D$
+the unobserved confounder $\tilde A$ is able to explain, we can bound the omitted confounder bias by $$\sqrt{\phi^2}.$$
+
+# Empirical Example
+
+We consider an empirical example based on data surrounding the Darfur war. Specifically, we are interested in the effect of having experienced direct war violence on attitudes towards peace. Data is described here
+https://cran.r-project.org/web/packages/sensemakr/vignettes/sensemakr.html
+
+The main outcome is attitude towards peace -- ``peacefactor``.
+The key variable of interest is whether the responders were directly harmed (``directlyharmed``).
+We want to know if being directly harmed in the conflict causes people to support peace-enforcing measures.
+The measured confounders include dummy variables ``female``, ``farmer``, ``herder``, ``pastvoted``, along with ``age`` and household size (``hhsize``).
+There is also a village indicator. We deal with village by and partialling out a full set of village dummy variables before conducting
+the analysis. The standard errors will be clustered at the village level.
+
+
+## Outline
+
+We will:
+- mimic the partialling out procedure with machine learning tools;
+- invoke Sensmakr to compute $\phi^2$ and plot sensitivity results.
+
+```{r}
+# load package
+install.packages("sensemakr")
+install.packages("lfe")
+install.packages("hdm")
+install.packages("randomForest")
+```
+
+```{r}
+library(sensemakr)
+library(lfe)
+library(hdm)
+library(randomForest)
+
+set.seed(1)
+```
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/darfur.csv"
+data <- read.csv(file)
+dim(data)
+attach(darfur)
+```
+
+## Preprocessing
+Take out village fixed effects and run basic linear analysis
+
+```{r}
+# get rid of village fixed effects
+peacefactorR <- lm(peacefactor ~ village)$res
+directlyharmedR <- lm(directlyharmed ~ village)$res
+femaleR <- lm(female ~ village)$res
+ageR <- lm(age ~ village)$res
+farmerR <- lm(farmer_dar ~ village)$res
+herderR <- lm(herder_dar ~ village)$res
+pastvotedR <- lm(pastvoted ~ village)$res
+hhsizeR <- lm(hhsize_darfur ~ village)$res
+
+
+# Preliminary linear model analysis
+summary(felm(peacefactorR ~ directlyharmedR + femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
+
+# here we are clustering standard errors at the village level
+summary(felm(peacefactorR ~ femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
+
+summary(felm(directlyharmedR ~ femaleR +
+               ageR + farmerR + herderR + pastvotedR + hhsizeR | 0 | 0 | village))
+```
+
+For benchmarking, we want to understand the "partial $R^2$" of the controls on the outcome after partialling out the variable of interest.
+
+```{r}
+# partial out variable of interest
+peacefactorR2 <- lm(peacefactorR ~ directlyharmedR)$res
+femaleR2 <- lm(femaleR ~ directlyharmedR)$res
+ageR2 <- lm(ageR ~ directlyharmedR)$res
+farmerR2 <- lm(farmerR ~ directlyharmedR)$res
+herderR2 <- lm(herderR ~ directlyharmedR)$res
+pastvotedR2 <- lm(pastvotedR ~ directlyharmedR)$res
+hhsizeR2 <- lm(hhsizeR ~ directlyharmedR)$res
+
+
+# R^2 of controls after partialling out variable of interest
+summary(lm(peacefactorR2 ~ femaleR2 +
+             ageR2 + farmerR2 + herderR2 + pastvotedR2 + hhsizeR2))
+```
+
+## Lasso for partialling out controls
+
+```{r}
+resY <- rlasso(peacefactorR ~ (femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)^3,
+               post = FALSE)$res
+
+resD <- rlasso(directlyharmedR ~ (femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)^3,
+               post = FALSE)$res
+
+print(c("Controls explain the following fraction of variance of Outcome", 1 - var(resY) / var(peacefactorR)))
+print(c("Controls explain the following fraction of variance of Treatment", 1 - var(resD) / var(directlyharmedR)))
+
+dml_darfur_model <- felm(resY ~ resD | 0 | 0 | village) # cluster SEs by village
+
+summary(dml_darfur_model, robust = TRUE) # cluster SE by village
+
+dml_darfur_model <- lm(resY ~ resD) # linear model to use as input in sensemakr
+```
+
+## Manual Bias Analysis
+
+```{r}
+# Main estimate
+beta <- dml_darfur_model$coef[2]
+
+# Hypothetical values of partial R2s
+r2_yc <- .13
+r2_dc <- .01
+
+# Elements of the bias equation
+kappa <- (r2_yc * r2_dc) / (1 - r2_dc)
+varianceRatio <- mean(dml_darfur_model$res^2) / mean(resD^2)
+
+# Compute square bias
+BiasSq <- kappa * varianceRatio
+
+# Compute absolute value of the bias
+print(cat("absolute value of the bias:", sqrt(BiasSq)[1]))
+
+# plotting
+gridr2_dc <- seq(0, .3, by = .001)
+gridr2_yc <- kappa * (1 - gridr2_dc) / gridr2_dc
+gridr2_yc <- ifelse(gridr2_yc > 1, 1, gridr2_yc)
+plot(gridr2_dc, gridr2_yc,
+  type = "l", col = 4, xlab = "Partial R2 of Treatment with Confounder",
+  ylab = "Partial R2 of Outcome with Confounder",
+  main = paste("Combination of R2 such that |Bias| < ", round(sqrt(BiasSq), digits = 4))
+)
+```
+
+## Bias Analysis with Sensemakr
+
+```{r}
+dml_darfur_sensitivity <- sensemakr(
+  model = dml_darfur_model,
+  treatment = "resD"
+)
+summary(dml_darfur_sensitivity)
+plot(dml_darfur_sensitivity, nlevels = 15)
+```
+
+## Random Forest for partialling out
+
+The following code does DML with clustered standard errors by village
+
+```{r}
+dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 2, clusterID) {
+  nobs <- nrow(x) # number of observations
+  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices
+  I <- split(1:nobs, foldid) # split observation indices into folds
+  ytil <- dtil <- rep(NA, nobs)
+  cat("fold: ")
+  for (b in seq_along(I)) {
+    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out
+    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out
+    dhat <- predict(dfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    yhat <- predict(yfit, x[I[[b]], ], type = "response") # predict the left-out fold
+    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold
+    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold
+    cat(b, " ")
+  }
+  rfit <- felm(ytil ~ dtil | 0 | 0 | clusterID) # get clustered standard errors using felm
+  rfitSummary <- summary(rfit)
+  coef_est <- rfitSummary$coef[2] # extract coefficient
+  se <- rfitSummary$coef[2, 2] # record robust standard error
+  cat(sprintf("\ncoef (se) = %g (%g)\n", coef_est, se)) # printing output
+  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals
+}
+```
+
+```{r}
+x <- model.matrix(~ femaleR + ageR + farmerR + herderR + pastvotedR + hhsizeR)
+dim(x)
+
+d <- directlyharmedR
+y <- peacefactorR
+# DML with Random Forest:
+dreg <- function(x, d) {
+  randomForest(x, d)
+} # ML method=Forest
+yreg <- function(x, y) {
+  randomForest(x, y)
+} # ML method=Forest
+
+dml2_rf <- dml2_for_plm(x, d, y, dreg, yreg, nfold = 10, clusterID = village)
+
+resY <- dml2_rf$ytil
+resD <- dml2_rf$dtil
+
+print(c("Controls explain the following fraction of variance of Outcome",
+        max(1 - var(resY) / var(peacefactorR), 0)))
+print(c("Controls explain the following fraction of variance of Treatment",
+        max(1 - var(resD) / var(directlyharmedR), 0)))
+
+dml_darfur_model <- lm(resY ~ resD)
+```
+
+## Bias Analysis with Sensemakr
+
+
+```{r}
+dml_darfur_sensitivity <- sensemakr(
+  model = dml_darfur_model,
+  treatment = "resD"
+)
+summary(dml_darfur_sensitivity)
+
+plot(dml_darfur_sensitivity, nlevels = 15)
+```
+

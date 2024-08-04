@@ -1,0 +1,610 @@
+---
+title: An R Markdown document converted from "T/dml-for-conditional-average-treatment-effect.irnb"
+output: html_document
+---
+
+#  DML for CATE
+
+This is a simple demonstration of Debiased Machine Learning estimator for the Conditional Average Treatment Effect.
+Goal is to estimate the effect of 401(k) eligibility on net financial assets for each value of income.
+The method is based on the following paper.
+
+* Title:  Debiased Machine Learning of Conditional Average Treatment Effect and Other Causal Functions
+
+* Authors: Semenova, Vira and Chernozhukov, Victor.
+
+* Arxiv version: https://arxiv.org/pdf/1702.06240.pdf
+
+* Published version with replication code: https://academic.oup.com/ectj/advance-article/doi/10.1093/ectj/utaa027/5899048
+
+Background
+
+The target function is Conditional Average Treatment Effect, defined as
+
+$$ g(x)=E [ Y(1) - Y(0) |X=x], $$
+
+where $Y(1)$ and $Y(0)$ are potential outcomes in treated and control group. In our case, $Y(1)$ is the potential Net Financial Assets if a subject is eligible for 401(k), and $Y(0)$ is the potential Net Financial Assets if a subject is ineligible. $X$ is a covariate of interest, in this case, income.
+$ g(x)$ shows expected effect of eligibility on NET TFA for a subject whose income level is $x$.
+
+
+
+If eligibility indicator is independent of $Y(1), Y(0)$, given pre-401-k assignment characteristics $Z$, the function can expressed in terms of observed data (as opposed to hypothetical, or potential outcomes). Observed data consists of  realized NET TFA $Y = D Y(1) + (1-D) Y(0)$, eligibility indicator $D$, and covariates $Z$ which includes $X$, income. The expression for $g(x)$ is
+
+$$ g(x) = E [ Y (\eta_0) \mid X=x], $$
+where the transformed outcome variable is
+
+$$Y (\eta) = \dfrac{D}{s(Z)} \left( Y - \mu(1,Z) \right) - \dfrac{1-D}{1-s(Z)} \left( Y - \mu(0,Z) \right) + \mu(1,Z) - \mu(0,Z),$$
+
+the probability of eligibility is
+
+$$s_0(z) = Pr (D=1 \mid Z=z),$$
+
+the expected net financial asset given $D =d \in \{1,0\}$ and $Z=z$ is
+
+$$ \mu(d,z) = E[ Y \mid Z=z, D=d]. $$
+
+Our goal is to estimate $g(x)$.
+
+
+In step 1, we estimate the unknown functions $s_0(z),  \mu(1,z),  \mu(0,z)$ and plug them into $Y (\eta)$.
+
+
+In step 2, we approximate the function $g(x)$ by a linear combination of basis functions:
+
+$$ g(x) = p(x)' \beta_0, $$
+
+
+where $p(x)$ is a vector of polynomials or splines and
+
+$$ \beta_0 = (E p(X) p(X))^{-1} E p(X) Y (\eta_0) $$
+
+is the best linear predictor. We report
+
+$$
+\widehat{g}(x) = p(x)' \widehat{\beta},
+$$
+
+where $\widehat{\beta}$ is the ordinary least squares estimate of $\beta_0$ defined on the random sample $(X_i, D_i, Y_i)_{i=1}^N$
+
+$$
+	\widehat{\beta} :=\left( \dfrac{1}{N} \sum_{i=1}^N p(X_i) p(X_i)' \right)^{-1} \dfrac{1}{N} \sum_{i=1}^N  p(X_i)Y_i(\widehat{\eta})
+$$
+
+
+
+
+
+
+
+```{r}
+## load packages
+install.packages("foreign")
+install.packages("quantreg")
+install.packages("splines")
+install.packages("lattice")
+install.packages("Hmisc")
+install.packages("fda")
+install.packages("hdm")
+install.packages("randomForest")
+install.packages("ranger")
+install.packages("sandwich")
+install.packages("ggplot2")
+```
+
+```{r}
+library(foreign)
+library(quantreg)
+library(splines)
+library(lattice)
+library(Hmisc)
+library(fda)
+library(hdm)
+library(randomForest)
+library(ranger)
+library(sandwich)
+library(ggplot2)
+```
+
+```{r}
+## 401k dataset
+data(pension)
+pension$net_tfa <- pension$net_tfa / 10000
+## covariate of interest -- log income --
+pension$inc <- log(pension$inc)
+pension <- pension[!is.na(pension$inc) & pension$inc != -Inf & pension$inc != Inf, ]
+
+
+## outcome variable -- total net financial assets
+Y <- pension$net_tfa
+## binary treatment --  indicator of 401(k) eligibility
+D <- pension$e401
+
+
+X <- pension$inc
+## target parameter is CATE = E[ Y(1) - Y(0) | X]
+
+
+## raw covariates so that Y(1) and Y(0) are independent of D given Z
+Z <- pension[, c(
+  "age", "inc", "fsize", "educ", "male", "db", "marr", "twoearn", "pira", "hown", "hval", "hequity", "hmort",
+  "nohs", "hs", "smcol"
+)]
+
+
+y_name <- "net_tfa"
+d_name <- "e401"
+form_z <- paste("(poly(age, 6) + poly(inc, 8) + poly(educ, 4) + poly(fsize,2) + as.factor(marr) + ",
+                "as.factor(twoearn) + as.factor(db) + as.factor(pira) + as.factor(hown))^2")
+cat(sprintf("\n sample size is %g \n", length(Y)))
+cat(sprintf("\n num raw covariates z is %g \n", dim(Z)[2]))
+```
+
+In Step 1, we estimate three functions:
+
+1. probability of treatment assignment $s_0(z)$
+
+2.-3. regression functions $\mu_0(1,z)$ and $\mu_0(0,z)$.  
+
+We use the cross-fitting procedure with $K=2$ holds. For definition of cross-fitting with $K$ folds, check the sample splitting in ```DML2.for.PLM``` function defined in https://www.kaggle.com/victorchernozhukov/debiased-ml-for-partially-linear-model-in-r
+
+For each function, we try random forest.
+
+First Stage: estimate $\mu_0(1,z)$ and $\mu_0(0,z)$ and $s_0(z)$ by lasso
+
+```{r}
+first_stage_lasso <- function(data, d_name, y_name, form_z, seed = 1) {
+  # Sample size
+  N <- dim(data)[1]
+  # Estimated regression function in control group
+  mu0_hat <- rep(1, N)
+  # Estimated regression function in treated group
+  mu1_hat <- rep(1, N)
+  # Propensity score
+  s_hat <- rep(1, N)
+  seed <- 1
+  ## define sample splitting
+  set.seed(seed)
+  inds_train <- sample(1:N, floor(N / 2))
+  inds_eval <- setdiff(1:N, inds_train)
+
+  print("Estimate treatment probability, first half")
+  ## conditional probability of 401 k eligibility (i.e., propensity score) based on random forest
+  fitted_lasso_pscore <- rlassologit(as.formula(paste0(d_name, "~", form_z)), data = data[inds_train, ])
+
+  s_hat[inds_eval] <- predict(fitted_lasso_pscore, data[inds_eval, ], type = "response")
+  print("Estimate treatment probability, second half")
+  fitted_lasso_pscore <- rlassologit(as.formula(paste0(d_name, "~", form_z)), data = data[inds_eval, ])
+  s_hat[inds_train] <- predict(fitted_lasso_pscore, data[inds_train, ], type = "response")
+
+
+  data1 <- data
+  data1[, d_name] <- 1
+
+  data0 <- data
+  data0[, d_name] <- 0
+
+  print("Estimate expectation function, first half")
+  fitted_lasso_mu <- rlasso(as.formula(paste0(y_name, "~", d_name, "+(", form_z, ")")), data = data[inds_train, ])
+  mu1_hat[inds_eval] <- predict(fitted_lasso_mu, data1[inds_eval, ])
+  mu0_hat[inds_eval] <- predict(fitted_lasso_mu, data0[inds_eval, ])
+
+  print("Estimate expectation function, second half")
+  fitted_lasso_mu <- rlasso(as.formula(paste0(y_name, "~", d_name, "+(", form_z, ")")), data = data[inds_eval, ])
+  mu1_hat[inds_train] <- predict(fitted_lasso_mu, data1[inds_train, ])
+  mu0_hat[inds_train] <- predict(fitted_lasso_mu, data0[inds_train, ])
+
+  return(list(
+    mu1_hat = mu1_hat,
+    mu0_hat = mu0_hat,
+    s_hat = s_hat
+  ))
+}
+```
+
+First Stage: estimate $\mu_0(1,z)$ and $\mu_0(0,z)$ and $s_0(z)$ by random forest
+
+```{r}
+first_stage_rf <- function(Y, D, Z, seed = 1) {
+  # Sample size
+  N <- length(D)
+  # Estimated regression function in control group
+  mu0_hat <- rep(1, N)
+  # Estimated regression function in treated group
+  mu1_hat <- rep(1, N)
+  # Propensity score
+  s_hat <- rep(1, N)
+
+
+  ## define sample splitting
+  set.seed(seed)
+  inds_train <- sample(1:N, floor(N / 2))
+  inds_eval <- setdiff(1:N, inds_train)
+
+  print("Estimate treatment probability, first half")
+  ## conditional probability of 401 k eligibility (i.e., propensity score) based on random forest
+  Df <- as.factor(as.character(D))
+  fitted_rf_pscore <- randomForest(Z, Df, subset = inds_train)
+  s_hat[inds_eval] <- predict(fitted_rf_pscore, Z[inds_eval, ], type = "prob")[, 2]
+  print("Estimate treatment probability, second half")
+  fitted_rf <- randomForest(Z, Df, subset = inds_eval)
+  s_hat[inds_train] <- predict(fitted_rf_pscore, Z[inds_train, ], type = "prob")[, 2]
+
+  ## conditional expected net financial assets (i.e.,  regression function) based on random forest
+
+  covariates <- cbind(Z, D)
+
+  covariates1 <- cbind(Z, D = rep(1, N))
+  covariates0 <- cbind(Z, D = rep(0, N))
+
+  print("Estimate expectation function, first half")
+  fitted_rf_mu <- randomForest(cbind(Z, D), Y, subset = inds_train)
+  mu1_hat[inds_eval] <- predict(fitted_rf_mu, covariates1[inds_eval, ])
+  mu0_hat[inds_eval] <- predict(fitted_rf_mu, covariates0[inds_eval, ])
+
+  print("Estimate expectation function, second half")
+  fitted_rf_mu <- randomForest(cbind(Z, D), Y, subset = inds_eval)
+  mu1_hat[inds_train] <- predict(fitted_rf_mu, covariates1[inds_train, ])
+  mu0_hat[inds_train] <- predict(fitted_rf_mu, covariates0[inds_train, ])
+
+  return(list(
+    mu1_hat = mu1_hat,
+    mu0_hat = mu0_hat,
+    s_hat = s_hat
+  ))
+}
+```
+
+In Step 2, we approximate $Y(\eta_0)$ by a vector of basis functions. There are two use cases:
+****
+2.A. Group Average Treatment Effect, described above
+
+
+2.B. Average Treatment Effect conditional on income value. There are three smoothing options:
+
+1. splines offered in ```least_squares_splines```
+
+2. orthogonal polynomials with the highest degree chosen by cross-validation ```least_squares_series```
+
+3. standard polynomials with the highest degree input by user ```least_squares_series_old```
+
+
+The default option is option 3.
+
+2.A. The simplest use case of Conditional Average Treatment Effect is GATE, or Group Average Treatment Effect. Partition the support of income as
+
+$$ - \infty = \ell_0 < \ell_1 < \ell_2 \dots \ell_K = \infty $$
+
+define intervals $I_k = [ \ell_{k-1}, \ell_{k})$. Let $X$ be income covariate. For $X$, define a group indicator
+
+$$ G_k(X) = 1[X \in I_k], $$
+
+and the vector of basis functions
+
+$$ p(X) = (G_1(X), G_2(X), \dots, G_K(X)) $$
+
+Then, the Best Linear Predictor $\beta_0$ vector shows the average treatment effect for each group.
+
+```{r}
+## estimate first stage functions by random forest
+## may take a while
+fs_hat_rf <- first_stage_rf(Y, D, Z)
+```
+
+```{r}
+X <- pension$inc
+fs_hat <- fs_hat_rf
+min_cutoff <- 0.01
+# regression function
+mu1_hat <- fs_hat[["mu1_hat"]]
+mu0_hat <- fs_hat[["mu0_hat"]]
+# propensity score
+s_hat <- fs_hat[["s_hat"]]
+s_hat <- sapply(s_hat, max, min_cutoff)
+
+### Construct Orthogonal Signal
+RobustSignal <- (Y - mu1_hat) * D / s_hat - (Y - mu0_hat) * (1 - D) / (1 - s_hat) + mu1_hat - mu0_hat
+```
+
+```{r}
+qtmax <- function(C, S = 10000, alpha) {
+  p <- nrow(C)
+  tmaxs <- apply(abs(matrix(rnorm(p * S), nrow = p, ncol = S)), 2, max)
+  return(quantile(tmaxs, 1 - alpha))
+}
+
+# This function computes the square root of a symmetric matrix using the spectral decomposition;
+
+group_average_treatment_effect <- function(X, Y, max_grid = 5, alpha = 0.05, B = 10000) {
+  grid <- quantile(X, probs = c((0:max_grid) / max_grid))
+  Xraw <- matrix(NA, nrow = length(Y), ncol = length(grid) - 1)
+
+  for (k in 2:((length(grid)))) {
+    Xraw[, k - 1] <- sapply(X, function(x) ifelse(x >= grid[k - 1] & x < grid[k], 1, 0))
+  }
+  k <- length(grid)
+  Xraw[, k - 1] <- sapply(X, function(x) ifelse(x >= grid[k - 1] & x <= grid[k], 1, 0))
+
+  ols_fit <- lm(Y ~ Xraw - 1)
+  coefs <- coef(ols_fit)
+  vars <- names(coefs)
+  hcv_coefs <- vcovHC(ols_fit, type = "HC")
+  coefs_se <- sqrt(diag(hcv_coefs)) # White std errors
+  ## this is an identity matrix
+  ## qtmax is simplified
+  c_coefs <- (diag(1 / sqrt(diag(hcv_coefs)))) %*% hcv_coefs %*% (diag(1 / sqrt(diag(hcv_coefs))))
+
+
+  tes <- coefs
+  tes_se <- coefs_se
+  tes_cor <- c_coefs
+  crit_val <- qtmax(tes_cor, B, alpha)
+
+  tes_ucb <- tes + crit_val * tes_se
+  tes_lcb <- tes - crit_val * tes_se
+
+  tes_uci <- tes + qnorm(1 - alpha / 2) * tes_se
+  tes_lci <- tes + qnorm(alpha / 2) * tes_se
+
+
+  return(list(
+    beta_hat = coefs, ghat_lower_point = tes_lci, ghat_upper_point = tes_uci,
+    ghat_lower = tes_lcb, ghat_upper = tes_ucb, crit_val = crit_val
+  ))
+}
+```
+
+```{r}
+res <- group_average_treatment_effect(X = X, Y = RobustSignal)
+```
+
+```{r}
+## this code is taken from L1 14.382 taught at MIT
+## author: Mert Demirer
+options(repr.plot.width = 10, repr.plot.height = 8)
+
+tes <- res$beta_hat
+tes_lci <- res$ghat_lower_point
+tes_uci <- res$ghat_upper_point
+
+tes_lcb <- res$ghat_lower
+tes_ucb <- res$ghat_upper
+tes_lev <- c("0%-20%", "20%-40%", "40%-60%", "60%-80%", "80%-100%")
+
+plot(c(1, 5), las = 2, xlim = c(0.6, 5.4), ylim = c(.05, 2.09),  type = "n", xlab = "Income group",
+     ylab = "Average Effect on NET TFA (per 10 K)",
+     main = "Group Average Treatment Effects on NET TFA",
+     xaxt = "n")
+axis(1, at = 1:5, labels = tes_lev)
+for (i in 1:5) {
+  rect(i - 0.2, tes_lci[i], i + 0.2,  tes_uci[i], col = NA,  border = "red", lwd = 3)
+  rect(i - 0.2, tes_lcb[i], i + 0.2, tes_ucb[i], col = NA,  border = 4, lwd = 3)
+  segments(i - 0.2, tes[i], i + 0.2, tes[i], lwd = 5)
+}
+abline(h = 0)
+
+legend(2.5, 2.0,
+       c("Regression Estimate", "95% Simultaneous Confidence Interval", "95% Pointwise Confidence Interval"),
+       col = c(1, 4, 2), lwd = c(4, 3, 3), horiz = FALSE, bty = "n", cex = 0.8)
+
+dev.off()
+```
+
+```{r}
+least_squares_splines <- function(X, Y, max_knot = 9, norder, nderiv, ...) {
+  ## Create technical regressors
+  cv_bsp <- rep(0, max_knot - 1)
+  for (knot in 2:max_knot) {
+    breaks <- quantile(X, c(0:knot) / knot)
+    formula.bsp <- Y ~ bsplineS(X, breaks = breaks, norder = norder, nderiv = nderiv)[, -1]
+    fit <- lm(formula.bsp)
+    cv_bsp[knot - 1] <- sum((fit$res / (1 - hatvalues(fit)))^2)
+  }
+  ## Number of knots chosen by cross-validation
+  cv_knot <- which.min(cv_bsp) + 1
+  breaks <- quantile(X, c(0:cv_knot) / cv_knot)
+  formula.bsp <- Y ~ bsplineS(X, breaks = breaks, norder = norder, nderiv = 0)[, -1]
+  fit <- lm(formula.bsp)
+
+  return(list(cv_knot = cv_knot, fit = fit))
+}
+
+
+least_squares_series <- function(X, Y, max_degree, ...) {
+  cv_pol <- rep(0, max_degree)
+  for (degree in 1:max_degree) {
+    formula.pol <- Y ~ poly(X, degree)
+    fit <- lm(formula.pol)
+    cv_pol[degree] <- sum((fit$res / (1 - hatvalues(fit)))^2)
+  }
+  ## Number of knots chosen by cross-validation
+  cv_degree <- which.min(cv_pol)
+  ## Estimate coefficients
+  formula.pol <- Y ~ poly(X, cv_degree)
+  fit <- lm(formula.pol)
+
+  return(list(fit = fit, cv_degree = cv_degree))
+}
+```
+
+```{r}
+msqrt <- function(C) {
+  Ceig <- eigen(C)
+  return(Ceig$vectors %*% diag(sqrt(Ceig$values)) %*% solve(Ceig$vectors))
+}
+
+tboot <- function(regressors_grid, omega_hat, alpha, B = 10000) {
+  numerator_grid <- regressors_grid %*% msqrt(omega_hat)
+  denominator_grid <- sqrt(diag(regressors_grid %*% omega_hat %*% t(regressors_grid)))
+
+  norm_numerator_grid <- numerator_grid
+  for (k in seq_len(dim(numerator_grid)[1])) {
+    norm_numerator_grid[k, ] <- numerator_grid[k, ] / denominator_grid[k]
+  }
+
+  tmaxs <- apply(abs(norm_numerator_grid %*% matrix(rnorm(dim(numerator_grid)[2] * B),
+                                                    nrow = dim(numerator_grid)[2], ncol = B)), 2, max)
+  return(quantile(tmaxs, 1 - alpha))
+}
+```
+
+```{r}
+second_stage <- function(fs_hat, Y, D, X, max_degree = 3, norder = 4, nderiv = 0,
+                         ss_method = "poly", min_cutoff = 0.01, alpha = 0.05, eps = 0.1, ...) {
+  x_grid <- seq(min(X), max(X), eps)
+  mu1_hat <- fs_hat[["mu1_hat"]]
+  mu0_hat <- fs_hat[["mu0_hat"]]
+  # propensity score
+  s_hat <- fs_hat[["s_hat"]]
+  s_hat <- sapply(s_hat, max, min_cutoff)
+  ### Construct Orthogonal Signal
+
+  RobustSignal <- (Y - mu1_hat) * D / s_hat - (Y - mu0_hat) * (1 - D) / (1 - s_hat) + mu1_hat - mu0_hat
+
+  # Estimate the target function using least squares series
+  if (ss_method == "ortho_poly") {
+    res <- least_squares_series(X = X, Y = RobustSignal, eps = 0.1, max_degree = max_degree)
+    fit <- res$fit
+    cv_degree <- res$cv_degree
+    regressors_grid <- cbind(rep(1, length(x_grid)), poly(x_grid, cv_degree))
+  }
+  if (ss_method == "splines") {
+    res <- least_squares_splines(X = X, Y = RobustSignal, eps = 0.1, norder = norder, nderiv = nderiv)
+    fit <- res$fit
+    cv_knot <- res$cv_knot
+    breaks <- quantile(X, c(0:cv_knot) / cv_knot)
+    regressors_grid <- cbind(rep(1, length(x_grid)),
+                             bsplineS(x_grid, breaks = breaks, norder = norder, nderiv = nderiv)[, -1])
+    degree <- cv_knot
+  }
+
+  g_hat <- regressors_grid %*% coef(fit)
+
+  hcv_coefs <- vcovHC(fit, type = "HC")
+  standard_error <- sqrt(diag(regressors_grid %*% hcv_coefs %*% t(regressors_grid)))
+
+  ### Lower Pointwise CI
+  ghat_lower_point <- g_hat + qnorm(alpha / 2) * standard_error
+  ### Upper Pointwise CI
+  ghat_upper_point <- g_hat + qnorm(1 - alpha / 2) * standard_error
+
+  max_tstat <- tboot(regressors_grid = regressors_grid, omega_hat = hcv_coefs, alpha = alpha)
+
+  ## Lower Uniform CI
+  ghat_lower <- g_hat - max_tstat * standard_error
+  ## Upper Uniform CI
+  ghat_upper <- g_hat + max_tstat * standard_error
+  return(list(
+    ghat_lower = ghat_lower, g_hat = g_hat, ghat_upper = ghat_upper, fit = fit,
+    ghat_lower_point = ghat_lower_point, ghat_upper_point = ghat_upper_point, x_grid = x_grid
+  ))
+}
+```
+
+```{r}
+make_plot <- function(res, lowy, highy, degree, ss_method = "series", uniform = TRUE, ...) {
+  title <- paste0("Effect of 401(k) on Net TFA, ", ss_method)
+  x_grid <- res$x_grid
+  len <- length(x_grid)
+
+
+  if (uniform) {
+    group <- c(rep("UCI", len), rep("PCI", len), rep("Estimate", len), rep("PCIL", len), rep("UCIL", len))
+    group_type <- c(rep("CI", len), rep("CI", len), rep("Estimate", len), rep("CI", len), rep("CI", len))
+    group_ci_type <- c(rep("Uniform", len), rep("Point", len),
+                       rep("Uniform", len), rep("Point", len), rep("Uniform", len))
+
+    df <- data.frame(income = rep(x_grid, 5),
+                     outcome = c(res$ghat_lower, res$ghat_lower_point,
+                                 res$g_hat, res$ghat_upper_point, res$ghat_upper),
+                     group = group, group_col = group_type, group_line = group_ci_type)
+    p <- ggplot(data = df) +
+      aes(x = exp(income), y = outcome, colour = group) +
+      theme_bw() +
+      xlab("Income") +
+      ylab("Net TFA, (thousand dollars)") +
+      scale_colour_manual(values = c("black", "blue", "blue", "blue", "blue")) +
+      theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 20, family = "serif")) +
+      theme(legend.title = element_blank()) +
+      theme(legend.position = "none") +
+      ylim(low = lowy, high = highy) +
+      geom_line(aes(linetype = group_line), size = 1.5) +
+      scale_linetype_manual(values = c("dashed", "solid")) +
+      ggtitle(title)
+  }
+
+  if (!uniform) {
+    group <- c(rep("PCI", len), rep("Estimate", len), rep("PCIL", len))
+    group_type <- c(rep("CI", len), rep("Estimate", len), rep("CI", len))
+    group_ci_type <- c(rep("Point", len), rep("Uniform", len), rep("Point", len))
+
+    df <- data.frame(income = rep(x_grid, 3),
+                     outcome = c(res$ghat_lower_point, res$g_hat, res$ghat_upper_point),
+                     group = group, group_col = group_type, group_line = group_ci_type)
+
+    p <- ggplot(data = df) +
+      aes(x = exp(income), y = outcome, colour = group) +
+      theme_bw() +
+      xlab("Income") +
+      ylab("Net TFA, (thousand dollars)") +
+      scale_colour_manual(values = c("black", "blue", "blue", "blue", "blue")) +
+      theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 20, family = "serif")) +
+      theme(legend.title = element_blank()) +
+      theme(legend.position = "none") +
+      ylim(low = lowy, high = highy) +
+      geom_line(aes(linetype = group_line), size = 1.5) +
+      scale_linetype_manual(values = c("dashed", "solid")) +
+      ggtitle(title)
+  }
+
+  return(p)
+}
+```
+
+```{r}
+res_ortho_rf_splines <- second_stage(fs_hat = fs_hat_rf, X = X, D = D, Y = Y,
+                                     ss_method = "splines", max_degree = 3)
+```
+
+```{r}
+res_ortho_rf_ortho_poly <- second_stage(fs_hat = fs_hat_rf, X = X, D = D, Y = Y,
+                                        ss_method = "ortho_poly", max_degree = 3)
+```
+
+plot findings
+
+-- black solid line shows estimated function $p(x)' \widehat{\beta}$
+
+-- blue dashed lines show pointwise confidence bands for this function
+
+```{r}
+p <- make_plot(res_ortho_rf_ortho_poly, ss_method = "ortho_poly", uniform = FALSE, lowy = -10, highy = 20)
+options(repr.plot.width = 15, repr.plot.height = 10)
+print(p)
+```
+
+plot findings:
+
+-- black solid line shows estimated function $p(x)' \widehat{\beta}$
+
+-- blue dashed lines show pointwise confidence bands for this function. I.e., for each fixed point $x_0$, i.e., $x_0=1$, they cover $p(x_0)'\beta_0$ with probability 0.95
+
+-- blue solid lines show  uniform confidence bands for this function. I.e.,  they cover the whole function $x \rightarrow p(x)'\beta_0$ with probability 0.95 on some compact range
+
+```{r}
+p <- make_plot(res_ortho_rf_ortho_poly, ss_method = "ortho polynomials", uniform = TRUE, lowy = -10, highy = 25)
+options(repr.plot.width = 15, repr.plot.height = 10)
+print(p)
+```
+
+```{r}
+p <- make_plot(res_ortho_rf_splines, ss_method = "splines", uniform = FALSE, lowy = -15, highy = 10)
+options(repr.plot.width = 15, repr.plot.height = 10)
+print(p)
+```
+
+```{r}
+p <- make_plot(res_ortho_rf_splines, ss_method = "splines", uniform = TRUE, lowy = -20, highy = 20)
+options(repr.plot.width = 15, repr.plot.height = 10)
+print(p)
+```
+

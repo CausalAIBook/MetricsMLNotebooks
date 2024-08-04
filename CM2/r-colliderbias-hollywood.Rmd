@@ -1,0 +1,59 @@
+---
+title: An R Markdown document converted from "CM2/r-colliderbias-hollywood.irnb"
+output: html_document
+---
+
+# Collider Bias
+
+Here is a simple mnemonic example to illustate the collider or M-bias.
+
+Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that "talent and beauty are negatively correlated" for celebrities.  
+
+```{r}
+install.packages("dagitty")
+```
+
+```{r}
+library(dagitty)
+```
+
+```{r}
+causal_graph <- dagitty("dag{ Talent -> Congen <- Beauty }")
+plot(causal_graph)
+```
+
+```{r}
+# collider bias
+n <- 1000000
+Talent <- rnorm(n) # talent
+Beauty <- rnorm(n) # beauty
+Congen <- Talent + Beauty + rnorm(n) # congeniality
+TalentH <- subset(Talent, Congen > 0) # condition on Congen>0
+BeautyH <- subset(Beauty, Congen > 0) # condition on Congen>0
+
+summary(lm(Talent ~ Beauty)) # regression of Talent on Beauty
+summary(lm(Talent ~ Beauty + Congen)) # regression of Talent on Beauty and Congen
+summary(lm(TalentH ~ BeautyH)) # regression of Talent on Beauty, conditional on Congen>0.
+```
+
+We can also use package Dagitty to illustrate collider bias, also known as M-bias.
+
+```{r}
+## If we want to infer causal effect of Beauty on Talent,
+## we can apply the command to figure out
+## variables we should condition on:
+
+adjustmentSets(causal_graph, "Talent", "Beauty")
+
+## empty set -- we should not condition on the additional
+## variable Congen.
+```
+
+```{r}
+## Generate data where Congen = .5*Talent + .5*Beauty
+set.seed(123)
+data <- simulateSEM(causal_graph, .5)
+confint(lm(Talent ~ Beauty, data))["Beauty", ]
+confint(lm(Talent ~ Beauty + Congen, data))["Beauty", ]
+```
+

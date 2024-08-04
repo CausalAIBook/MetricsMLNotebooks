@@ -1,0 +1,102 @@
+---
+title: An R Markdown document converted from "PM2/r_heterogenous_wage_effects.irnb"
+output: html_document
+---
+
+# Application: Heterogeneous Effect of Sex on Wage Using Double Lasso
+
+ We use US census data from the year 2015 to analyse the effect of gender and interaction effects of other variables with gender on wage jointly. The dependent variable is the logarithm of the wage, the target variable is *female* (in combination with other variables). All other variables denote some other socio-economic characteristics, e.g. marital status, education, and experience.  
+
+
+
+This analysis allows a closer look how the gender wage gap is related to other socio-economic variables.
+
+
+```{r}
+install.packages("hdm")
+install.packages("xtable")
+```
+
+```{r}
+library(hdm)
+library(xtable)
+```
+
+```{r}
+file <- "https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv"
+data <- read.csv(file)
+str(data)
+data
+```
+
+```{r}
+y <- data$lwage
+Z <- subset(data, select = -c(lwage, wage))
+```
+
+```{r}
+center_colmeans <- function(x) {
+  xcenter <- colMeans(x)
+  x - rep(xcenter, rep.int(nrow(x), ncol(x)))
+}
+```
+
+```{r}
+# create the model matrix for the covariates
+controls_formula <- "~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2"
+Zcontrols <- model.matrix(as.formula(controls_formula), data = Z)
+Zcontrols <- center_colmeans(Zcontrols)
+```
+
+Construct all the variables that we will use to model heterogeneity of effect in a linear manner
+
+```{r}
+# create the model matrix for the linear heterogeneity
+linear_het_formula <- "~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)"
+Zhet <- model.matrix(as.formula(linear_het_formula), data = Z)
+Zhet <- center_colmeans(Zhet)
+```
+
+Construct all interaction variables between sex and heterogeneity variables
+
+```{r}
+# create the model matrix for the higher order heterogeneity
+Zhet <- as.data.frame(cbind(Zhet, "sex" = Z$sex))
+nonlin_het_formula <- "~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)"
+Zinteractions <- model.matrix(as.formula(nonlin_het_formula), data = Zhet)
+interaction_cols <- Zinteractions[, grepl("sex", colnames(Zinteractions))]
+```
+
+Put variables all together
+
+```{r}
+X <- cbind(Zinteractions, Zcontrols)
+```
+
+Get estimates and CIs
+
+```{r}
+# this cell takes 30 minutes to run
+index_gender <- grep("sex", colnames(Zinteractions))
+effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)
+result <- summary(effects_female)
+result$coef
+print(xtable(result$coef[, c(1, 2, 4)], type = "latex"), digits = 3)
+```
+
+Now, we estimate and plot confidence intervals, first "pointwise" and then the joint confidence intervals.
+
+```{r}
+pointwise_ci <- confint(effects_female, level = 0.95)
+pointwise_ci
+print(xtable(pointwise_ci), type = "latex")
+```
+
+Finally, we compare the pointwise confidence intervals to joint confidence intervals.
+
+```{r}
+joint_ci <- confint(effects_female, level = 0.95, joint = TRUE)
+joint_ci
+print(xtable(joint_ci), type = "latex")
+```
+
