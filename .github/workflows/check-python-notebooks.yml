@@ -159,7 +159,7 @@ jobs:
 
     - name: Upload linting logs
       if: "(env.notebooks_changed == 'true') && (! (matrix.directory == 'CM3' && (matrix.os == 'windows-latest' || matrix.os == 'macos-latest')))"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: linting-logs-${{ matrix.directory }}-${{ matrix.os }}
         path: linting_logs
