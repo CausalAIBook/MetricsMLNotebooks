@@ -198,7 +198,7 @@ jobs:
 
       - name: Upload execution log
         if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.directory }}-r-script-execution-log
           path: ${{ matrix.directory }}_r_script_execution.log
@@ -212,7 +212,7 @@ jobs:
 
       - name: Upload artifact
         if: env.notebooks_changed == 'true'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.directory }}-r-scripts
           path: ${{ matrix.directory }}_r_scripts.zip
