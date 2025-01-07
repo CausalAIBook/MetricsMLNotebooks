@@ -31,20 +31,19 @@ If all goes well, they should give you the same reconstructions!
 To make it a bit more fun, we will use the [*Labeled Faces in the Wild*](https://www.kaggle.com/jessicali9530/celeba-dataset) dataset which consists of standardized images of roughly 5,000 celebrities' faces. In this data, PCA amounts to looking for a small number of "proto-faces" such that a linear combination of them can accurately reconstruct any celebrity's face.
 
 ```{r}
-#remove.packages("keras")
-install.packages("keras")
-
+remove.packages("keras")
+#install.packages("keras")
 # Need to have a compatible version of tensorflow
 #tensorflow::install_tensorflow(version = "2.13.0")
 
 #remove.packages("keras3")
-#install.packages("keras3")
+install.packages("keras3")
 ```
 
 ```{r}
 install.packages("reticulate")
 install.packages("abind")
-#install.packages("grid")
+install.packages("grid")
 install.packages("gridExtra")
 install.packages("dplyr")
 install.packages("purrr")
@@ -162,8 +161,8 @@ plot_faces(reconstructions, height = height, width = width)
 ```
 
 ```{r}
-#library(keras3)
-library(keras)
+library(keras3)
+#library(keras)
 
 encoding_dimension <- 64
 input_image <- layer_input(shape = n_features)
