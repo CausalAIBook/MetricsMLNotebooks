@@ -31,13 +31,20 @@ If all goes well, they should give you the same reconstructions!
 To make it a bit more fun, we will use the [*Labeled Faces in the Wild*](https://www.kaggle.com/jessicali9530/celeba-dataset) dataset which consists of standardized images of roughly 5,000 celebrities' faces. In this data, PCA amounts to looking for a small number of "proto-faces" such that a linear combination of them can accurately reconstruct any celebrity's face.
 
 ```{r}
+#remove.packages("keras")
 install.packages("keras")
+
+# Need to have a compatible version of tensorflow
+#tensorflow::install_tensorflow(version = "2.13.0")
+
+#remove.packages("keras3")
+#install.packages("keras3")
 ```
 
 ```{r}
 install.packages("reticulate")
 install.packages("abind")
-install.packages("grid")
+#install.packages("grid")
 install.packages("gridExtra")
 install.packages("dplyr")
 install.packages("purrr")
@@ -49,6 +56,10 @@ install.packages("ggplot2")
 library(reticulate)
 
 # Import Python's sklearn.datasets
+# Need to have scikit-learn installed in the python environment that reticulate uses
+# py_install("scikit-learn")
+# conda_update() # Make sure python environment is up to date
+# reticulate::conda_install(envname = "r-reticulate", packages = "numpy=1.22.0", channel = "conda-forge") # get numpy version compatible with sklearn version
 sklearn <- import("sklearn.datasets")
 
 # Fetch the dataset
@@ -151,6 +162,7 @@ plot_faces(reconstructions, height = height, width = width)
 ```
 
 ```{r}
+#library(keras3)
 library(keras)
 
 encoding_dimension <- 64
@@ -162,17 +174,6 @@ autoencoder %>% compile(
   optimizer = "adam",
   loss = "mse"
 )
-autoencoder %>% fit(
-  design_matrix,
-  design_matrix,
-  epochs = 50,
-  batch_size = 256,
-  shuffle = TRUE,
-  verbose = 0
-)
-```
-
-```{r}
 autoencoder %>% fit(
   design_matrix,
   design_matrix,
@@ -215,7 +216,7 @@ mse
 Finally, let's train a nonlinear autoencoder for the same data where $F$ and $G$ are neural networks, and we restrict the dimension to be $k=64$.
 
 ```{r}
-library(tensorflow)
+#library(tensorflow)
 
 # Use a nonlinear neural network
 n_features <- 2914
