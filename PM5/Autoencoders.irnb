@@ -55,7 +55,7 @@
       },
       "outputs": [],
       "source": [
-        "install.packages(\"keras3\")"
+        "install.packages(\"keras\")"
       ]
     },
     {
@@ -263,7 +263,7 @@
       },
       "outputs": [],
       "source": [
-        "library(keras3)\n",
+        "library(keras)\n",
         "\n",
         "encoding_dimension <- 64\n",
         "input_image <- layer_input(shape = n_features)\n",
