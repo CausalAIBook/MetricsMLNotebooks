@@ -45,6 +45,18 @@
     },
     {
       "cell_type": "code",
+      "source": [
+        "install.packages(\"png\")"
+      ],
+      "metadata": {
+        "id": "EC6qK8kCznpO"
+      },
+      "id": "EC6qK8kCznpO",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
       "execution_count": null,
       "id": "2",
       "metadata": {
