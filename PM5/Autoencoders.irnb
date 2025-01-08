@@ -55,7 +55,6 @@
       },
       "outputs": [],
       "source": [
-        "remove.packages(\"keras\")\n",
         "install.packages(\"keras3\")"
       ]
     },
