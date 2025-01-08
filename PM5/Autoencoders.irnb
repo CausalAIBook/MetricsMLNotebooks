@@ -79,7 +79,7 @@
     {
       "cell_type": "code",
       "source": [
-        "install.packages(\"reticulate\")"
+        "install.packages(\"reticulate\", dependencies = FALSE)"
       ],
       "metadata": {
         "id": "AOgfKeLUMzaw"
