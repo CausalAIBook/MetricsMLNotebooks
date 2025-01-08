@@ -79,24 +79,24 @@
     {
       "cell_type": "code",
       "source": [
-        "install.packages(\"tensorflow\", dependencies = FALSE)"
+        "install.packages(\"reticulate\")"
       ],
       "metadata": {
-        "id": "oN3GtjcuMqX4"
+        "id": "AOgfKeLUMzaw"
       },
-      "id": "oN3GtjcuMqX4",
+      "id": "AOgfKeLUMzaw",
       "execution_count": null,
       "outputs": []
     },
     {
       "cell_type": "code",
       "source": [
-        "install.packages(\"reticulate\", dependencies = FALSE)"
+        "install.packages(\"tensorflow\", dependencies = FALSE)"
       ],
       "metadata": {
-        "id": "AOgfKeLUMzaw"
+        "id": "oN3GtjcuMqX4"
       },
-      "id": "AOgfKeLUMzaw",
+      "id": "oN3GtjcuMqX4",
       "execution_count": null,
       "outputs": []
     },
