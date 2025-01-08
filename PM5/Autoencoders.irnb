@@ -263,7 +263,6 @@
       },
       "outputs": [],
       "source": [
-        "#library(keras)\n",
         "library(keras3)\n",
         "\n",
         "encoding_dimension <- 64\n",
@@ -348,8 +347,6 @@
       },
       "outputs": [],
       "source": [
-        "#library(tensorflow)\n",
-        "\n",
         "# Use a nonlinear neural network\n",
         "n_features <- 2914\n",
         "encoding_dimension <- 64\n",
