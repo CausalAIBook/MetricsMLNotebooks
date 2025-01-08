@@ -44,14 +44,72 @@
       ]
     },
     {
-      "cell_type": "code",
+      "cell_type": "markdown",
       "source": [
-        "install.packages(\"png\")"
+        "It seems like the package \"png\" is causing problems with working via github (an ubuntu issue it seems). The following is trying to coerce loading without this package that doesn't seem to be used for anything."
       ],
       "metadata": {
-        "id": "EC6qK8kCznpO"
+        "id": "ydEcJI91NbgI"
       },
-      "id": "EC6qK8kCznpO",
+      "id": "ydEcJI91NbgI"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"rprojroot\")\n",
+        "install.packages(\"vctrs\")\n",
+        "install.packages(\"Rcpp\")\n",
+        "install.packages(\"RcppTOML\")\n",
+        "install.packages(\"here\")\n",
+        "install.packages(\"config\")\n",
+        "install.packages(\"rstudioapi\")\n",
+        "install.packages(\"whisker\")\n",
+        "install.packages(\"tidyselect\")\n",
+        "install.packages(\"generics\")\n",
+        "install.packages(\"magrittr\")\n",
+        "install.packages(\"zeallot\")\n"
+      ],
+      "metadata": {
+        "id": "yX4YCHqjKmeo"
+      },
+      "id": "yX4YCHqjKmeo",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"tensorflow\", dependencies = FALSE)"
+      ],
+      "metadata": {
+        "id": "oN3GtjcuMqX4"
+      },
+      "id": "oN3GtjcuMqX4",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"reticulate\", dependencies = FALSE)"
+      ],
+      "metadata": {
+        "id": "AOgfKeLUMzaw"
+      },
+      "id": "AOgfKeLUMzaw",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "install.packages(\"tfautograph\")\n",
+        "install.packages(\"tfruns\")"
+      ],
+      "metadata": {
+        "id": "MRRVhfriQbvZ"
+      },
+      "id": "MRRVhfriQbvZ",
       "execution_count": null,
       "outputs": []
     },
@@ -67,7 +125,7 @@
       },
       "outputs": [],
       "source": [
-        "install.packages(\"keras3\")"
+        "install.packages(\"keras3\", dependencies = FALSE)"
       ]
     },
     {
@@ -82,7 +140,6 @@
       },
       "outputs": [],
       "source": [
-        "install.packages(\"reticulate\")\n",
         "install.packages(\"abind\")\n",
         "install.packages(\"grid\")\n",
         "install.packages(\"gridExtra\")\n",
