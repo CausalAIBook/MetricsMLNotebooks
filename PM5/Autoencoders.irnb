@@ -44,6 +44,28 @@
       ]
     },
     {
+      "cell_type": "markdown",
+      "source": [
+        "We start by installing a fixed, old version of tensorflow so that we do not need to keep revising code as versions of software update. You could try to update the code to work with more recent releases."
+      ],
+      "metadata": {
+        "id": "iZA6ER7IvoQY"
+      },
+      "id": "iZA6ER7IvoQY"
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "system(\"pip install tensorflow==2.13.0\")"
+      ],
+      "metadata": {
+        "id": "AUSvh6AiMoSL"
+      },
+      "id": "AUSvh6AiMoSL",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
       "cell_type": "code",
       "execution_count": null,
       "id": "2",
@@ -55,7 +77,7 @@
       },
       "outputs": [],
       "source": [
-        "install.packages(\"keras3\")"
+        "install.packages(\"keras\")"
       ]
     },
     {
@@ -263,7 +285,7 @@
       },
       "outputs": [],
       "source": [
-        "library(keras3)\n",
+        "library(keras)\n",
         "\n",
         "encoding_dimension <- 64\n",
         "input_image <- layer_input(shape = n_features)\n",
@@ -274,28 +296,6 @@
         "  optimizer = \"adam\",\n",
         "  loss = \"mse\"\n",
         ")\n",
-        "autoencoder %>% fit(\n",
-        "  design_matrix,\n",
-        "  design_matrix,\n",
-        "  epochs = 50,\n",
-        "  batch_size = 256,\n",
-        "  shuffle = TRUE,\n",
-        "  verbose = 0\n",
-        ")"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "id": "11",
-      "metadata": {
-        "id": "11",
-        "vscode": {
-          "languageId": "r"
-        }
-      },
-      "outputs": [],
-      "source": [
         "autoencoder %>% fit(\n",
         "  design_matrix,\n",
         "  design_matrix,\n",
