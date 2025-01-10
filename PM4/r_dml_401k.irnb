@@ -58,6 +58,7 @@
         "install.packages(\"sandwich\")\n",
         "install.packages(\"ggplot2\")\n",
         "install.packages(\"randomForest\")\n",
+        "install.packages(\"data.table\")\n",
         "install.packages(\"glmnet\")\n",
         "install.packages(\"rpart\")\n",
         "install.packages(\"gbm\")"
