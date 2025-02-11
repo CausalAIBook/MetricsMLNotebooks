@@ -786,10 +786,10 @@
         "\n",
         "# Compute CATE as the difference\n",
         "CATE <- pred_treated - pred_control\n",
-        "n<- length(Y)\n",
+        "n <- length(Y)\n",
         "\n",
         "# adjust the SE:\n",
-        "ols_ira[2] <- sqrt((ols_ira[2])^2 +var(CATE)/length(Y))\n",
+        "ols_ira[2] <- sqrt((ols_ira[2])^2 + var(CATE) / length(Y))\n",
         "print(ols_ira)\n",
         "\n"
       ]
@@ -849,7 +849,7 @@
         "\n",
         "DX <- model.matrix(~ T4 * X)[, -1]\n",
         "\n",
-        "rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1,post = FALSE))$coef\n",
+        "rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1, post = FALSE))$coef\n",
         "print(rlasso_ira)\n",
         "\n",
         "# correct standard error for demeaning\n",
@@ -870,7 +870,7 @@
         "\n",
         "# adjust the SE for demeaning\n",
         "\n",
-        "rlasso_ira[2] <- sqrt((rlasso_ira[2])^2 +var(CATE)/length(Y))\n",
+        "rlasso_ira[2] <- sqrt((rlasso_ira[2])^2 + var(CATE) / length(Y))\n",
         "\n",
         "print(rlasso_ira)"
       ]
