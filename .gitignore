@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 *.png
 *.pdf
+/CM1/hdmpy
