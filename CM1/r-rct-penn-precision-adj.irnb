@@ -21,43 +21,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 1,
+      "execution_count": null,
       "metadata": {
         "id": "w7B1iDaqa2ZI",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "3b2e56d9-1a71-4f4d-fd53-b56b4a834105",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "also installing the dependency ‘zoo’\n",
-            "\n",
-            "\n",
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "Installing package into ‘/usr/local/lib/R/site-library’\n",
-            "(as ‘lib’ is unspecified)\n",
-            "\n",
-            "also installing the dependencies ‘iterators’, ‘foreach’, ‘shape’, ‘RcppEigen’, ‘glmnet’, ‘checkmate’, ‘Formula’\n",
-            "\n",
-            "\n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "install.packages(\"sandwich\")\n",
         "install.packages(\"lmtest\")\n",
@@ -67,36 +38,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 2,
+      "execution_count": null,
       "metadata": {
         "vscode": {
           "languageId": "r"
         },
-        "id": "x7OVGk3uqZ1a",
-        "outputId": "04b421c7-a2d5-4b05-80a8-55501c8e4b42",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
-        }
+        "id": "x7OVGk3uqZ1a"
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Loading required package: zoo\n",
-            "\n",
-            "\n",
-            "Attaching package: ‘zoo’\n",
-            "\n",
-            "\n",
-            "The following objects are masked from ‘package:base’:\n",
-            "\n",
-            "    as.Date, as.Date.numeric\n",
-            "\n",
-            "\n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "library(sandwich)\n",
         "library(lmtest)\n",
@@ -118,7 +67,7 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 3,
+      "execution_count": null,
       "metadata": {
         "id": "_whbk2z4elkY",
         "vscode": {
@@ -139,30 +88,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 4,
+      "execution_count": null,
       "metadata": {
         "id": "iTghGG4Kelkk",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "2569436a-d5ed-488f-dd4d-1ff180c0f5e3",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 53
         }
       },
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "   Mode   FALSE    TRUE \n",
-              "logical    3354    1745 "
-            ]
-          },
-          "metadata": {}
-        }
-      ],
+      "outputs": [],
       "source": [
         "T4 <- (tg == 4)\n",
         "summary(T4)"
@@ -170,61 +103,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 5,
+      "execution_count": null,
       "metadata": {
         "id": "ZbWuqKExelkl",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "a0658558-c915-4d2d-f34f-95a72fc06cbf",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 286
         }
       },
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<table class=\"dataframe\">\n",
-              "<caption>A data.frame: 6 × 23</caption>\n",
-              "<thead>\n",
-              "\t<tr><th></th><th scope=col>abdt</th><th scope=col>tg</th><th scope=col>inuidur1</th><th scope=col>inuidur2</th><th scope=col>female</th><th scope=col>black</th><th scope=col>hispanic</th><th scope=col>othrace</th><th scope=col>dep</th><th scope=col>q1</th><th scope=col>⋯</th><th scope=col>q5</th><th scope=col>q6</th><th scope=col>recall</th><th scope=col>agelt35</th><th scope=col>agegt54</th><th scope=col>durable</th><th scope=col>nondurable</th><th scope=col>lusd</th><th scope=col>husd</th><th scope=col>muld</th></tr>\n",
-              "\t<tr><th></th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>⋯</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th><th scope=col>&lt;int&gt;</th></tr>\n",
-              "</thead>\n",
-              "<tbody>\n",
-              "\t<tr><th scope=row>1</th><td>10824</td><td>0</td><td>18</td><td>18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>2</td><td>0</td><td>⋯</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>\n",
-              "\t<tr><th scope=row>4</th><td>10824</td><td>0</td><td> 1</td><td> 1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>⋯</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>\n",
-              "\t<tr><th scope=row>5</th><td>10747</td><td>0</td><td>27</td><td>27</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>⋯</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>\n",
-              "\t<tr><th scope=row>12</th><td>10607</td><td>4</td><td> 9</td><td> 9</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>⋯</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>\n",
-              "\t<tr><th scope=row>13</th><td>10831</td><td>0</td><td>27</td><td>27</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>⋯</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>\n",
-              "\t<tr><th scope=row>14</th><td>10845</td><td>0</td><td>27</td><td>27</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>⋯</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>\n",
-              "</tbody>\n",
-              "</table>\n"
-            ],
-            "text/markdown": "\nA data.frame: 6 × 23\n\n| <!--/--> | abdt &lt;int&gt; | tg &lt;int&gt; | inuidur1 &lt;int&gt; | inuidur2 &lt;int&gt; | female &lt;int&gt; | black &lt;int&gt; | hispanic &lt;int&gt; | othrace &lt;int&gt; | dep &lt;int&gt; | q1 &lt;int&gt; | ⋯ ⋯ | q5 &lt;int&gt; | q6 &lt;int&gt; | recall &lt;int&gt; | agelt35 &lt;int&gt; | agegt54 &lt;int&gt; | durable &lt;int&gt; | nondurable &lt;int&gt; | lusd &lt;int&gt; | husd &lt;int&gt; | muld &lt;int&gt; |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 1 | 10824 | 0 | 18 | 18 | 0 | 0 | 0 | 0 | 2 | 0 | ⋯ | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |\n| 4 | 10824 | 0 |  1 |  1 | 0 | 0 | 0 | 0 | 0 | 0 | ⋯ | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |\n| 5 | 10747 | 0 | 27 | 27 | 0 | 0 | 0 | 0 | 0 | 0 | ⋯ | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |\n| 12 | 10607 | 4 |  9 |  9 | 0 | 0 | 0 | 0 | 0 | 0 | ⋯ | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |\n| 13 | 10831 | 0 | 27 | 27 | 0 | 0 | 0 | 0 | 1 | 0 | ⋯ | 1 | 0 | 0 | 0 | 1 | 1 | 0 | 1 | 0 | 0 |\n| 14 | 10845 | 0 | 27 | 27 | 1 | 0 | 0 | 0 | 0 | 0 | ⋯ | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |\n\n",
-            "text/latex": "A data.frame: 6 × 23\n\\begin{tabular}{r|lllllllllllllllllllll}\n  & abdt & tg & inuidur1 & inuidur2 & female & black & hispanic & othrace & dep & q1 & ⋯ & q5 & q6 & recall & agelt35 & agegt54 & durable & nondurable & lusd & husd & muld\\\\\n  & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int> & ⋯ & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int> & <int>\\\\\n\\hline\n\t1 & 10824 & 0 & 18 & 18 & 0 & 0 & 0 & 0 & 2 & 0 & ⋯ & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0\\\\\n\t4 & 10824 & 0 &  1 &  1 & 0 & 0 & 0 & 0 & 0 & 0 & ⋯ & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0\\\\\n\t5 & 10747 & 0 & 27 & 27 & 0 & 0 & 0 & 0 & 0 & 0 & ⋯ & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0\\\\\n\t12 & 10607 & 4 &  9 &  9 & 0 & 0 & 0 & 0 & 0 & 0 & ⋯ & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 1\\\\\n\t13 & 10831 & 0 & 27 & 27 & 0 & 0 & 0 & 0 & 1 & 0 & ⋯ & 1 & 0 & 0 & 0 & 1 & 1 & 0 & 1 & 0 & 0\\\\\n\t14 & 10845 & 0 & 27 & 27 & 1 & 0 & 0 & 0 & 0 & 0 & ⋯ & 1 & 0 & 0 & 0 & 1 & 0 & 0 & 1 & 0 & 0\\\\\n\\end{tabular}\n",
-            "text/plain": [
-              "   abdt  tg inuidur1 inuidur2 female black hispanic othrace dep q1 ⋯ q5 q6\n",
-              "1  10824 0  18       18       0      0     0        0       2   0  ⋯ 1  0 \n",
-              "4  10824 0   1        1       0      0     0        0       0   0  ⋯ 1  0 \n",
-              "5  10747 0  27       27       0      0     0        0       0   0  ⋯ 0  0 \n",
-              "12 10607 4   9        9       0      0     0        0       0   0  ⋯ 0  0 \n",
-              "13 10831 0  27       27       0      0     0        0       1   0  ⋯ 1  0 \n",
-              "14 10845 0  27       27       1      0     0        0       0   0  ⋯ 1  0 \n",
-              "   recall agelt35 agegt54 durable nondurable lusd husd muld\n",
-              "1  0      0       0       0       0          0    1    0   \n",
-              "4  0      0       0       0       0          1    0    0   \n",
-              "5  0      0       0       0       0          1    0    0   \n",
-              "12 0      1       0       0       0          0    0    1   \n",
-              "13 0      0       1       1       0          1    0    0   \n",
-              "14 0      0       1       0       0          1    0    0   "
-            ]
-          },
-          "metadata": {}
-        }
-      ],
+      "outputs": [],
       "source": [
         "head(Penn)"
       ]
@@ -309,145 +195,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 74,
+      "execution_count": null,
       "metadata": {
         "id": "GYOMYN_WRNTL",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "a2a80f71-3fd8-4750-8472-8dace10739b5",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 1000
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in meatHC(x, type = type, omega = omega):\n",
-            "“HC1 covariances become (close to) singular if hat values are (close to) 1 as for observation(s) 3791”\n"
-          ]
-        },
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "\n",
-              "t test of coefficients:\n",
-              "\n",
-              "                        Estimate  Std. Error t value  Pr(>|t|)    \n",
-              "(Intercept)          -0.02076671  0.16125607 -0.1288 0.8975362    \n",
-              "female                0.10423328  0.13624779  0.7650 0.4442914    \n",
-              "black                 0.07164803  0.08288534  0.8644 0.3873969    \n",
-              "othrace               0.02801517  0.40496815  0.0692 0.9448502    \n",
-              "factor(dep)1         -0.07363340  0.20094637 -0.3664 0.7140574    \n",
-              "factor(dep)2         -0.10854072  0.15754307 -0.6890 0.4908810    \n",
-              "q2                   -0.02667937  0.16255836 -0.1641 0.8696419    \n",
-              "q3                   -0.00567387  0.16218178 -0.0350 0.9720934    \n",
-              "q4                    0.04334425  0.16233956  0.2670 0.7894821    \n",
-              "q5                    0.09386458  0.16157184  0.5809 0.5613028    \n",
-              "q6                   -0.22156423  0.15984049 -1.3862 0.1657604    \n",
-              "agelt35              -0.10923976  0.13323486 -0.8199 0.4123101    \n",
-              "agegt54              -0.43668630  0.13581268 -3.2154 0.0013111 ** \n",
-              "durable              -0.12500967  0.17083793 -0.7317 0.4643590    \n",
-              "lusd                  0.11428653  0.06824019  1.6748 0.0940422 .  \n",
-              "husd                  0.09467997  0.07364116  1.2857 0.1986096    \n",
-              "female:black          0.08886596  0.04381635  2.0281 0.0425983 *  \n",
-              "female:othrace       -0.41350947  0.16481280 -2.5090 0.0121400 *  \n",
-              "female:factor(dep)1   0.05547519  0.04647943  1.1935 0.2327135    \n",
-              "female:factor(dep)2   0.04544801  0.04053454  1.1212 0.2622494    \n",
-              "female:q2            -0.18880964  0.13587953 -1.3895 0.1647314    \n",
-              "female:q3            -0.16526367  0.13565839 -1.2182 0.2231926    \n",
-              "female:q4            -0.17632875  0.13530942 -1.3032 0.1925829    \n",
-              "female:q5            -0.20321654  0.13480991 -1.5074 0.1317636    \n",
-              "female:q6            -0.04271603  0.14234389 -0.3001 0.7641207    \n",
-              "female:agelt35        0.07342181  0.03004676  2.4436 0.0145765 *  \n",
-              "female:agegt54        0.02612867  0.05090915  0.5132 0.6078053    \n",
-              "female:durable        0.01975687  0.04372711  0.4518 0.6514168    \n",
-              "female:lusd           0.00206955  0.03395251  0.0610 0.9513982    \n",
-              "female:husd           0.01178851  0.03747209  0.3146 0.7530827    \n",
-              "black:factor(dep)1   -0.11726334  0.06797874 -1.7250 0.0845893 .  \n",
-              "black:factor(dep)2   -0.02222434  0.06342353 -0.3504 0.7260446    \n",
-              "black:q2             -0.03349395  0.08989631 -0.3726 0.7094737    \n",
-              "black:q3             -0.19656696  0.08506268 -2.3108 0.0208818 *  \n",
-              "black:q4             -0.12493576  0.08604499 -1.4520 0.1465694    \n",
-              "black:q5             -0.20988793  0.08398490 -2.4991 0.0124822 *  \n",
-              "black:agelt35         0.06226414  0.04512447  1.3798 0.1677004    \n",
-              "black:agegt54         0.05126323  0.08453009  0.6064 0.5442439    \n",
-              "black:durable         0.10475086  0.06615415  1.5834 0.1133854    \n",
-              "black:lusd           -0.02103874  0.05600033 -0.3757 0.7071637    \n",
-              "black:husd            0.24964245  0.16874707  1.4794 0.1390996    \n",
-              "othrace:factor(dep)1 -0.85807661  0.33077992 -2.5941 0.0095115 ** \n",
-              "othrace:factor(dep)2  0.24153715  0.13330391  1.8119 0.0700573 .  \n",
-              "othrace:q2            0.43717264  0.34672729  1.2609 0.2074202    \n",
-              "othrace:q3           -0.37343006  0.37701782 -0.9905 0.3219856    \n",
-              "othrace:q4            0.41589086  0.32950089  1.2622 0.2069414    \n",
-              "othrace:q5            0.00605385  0.31112921  0.0195 0.9844768    \n",
-              "othrace:agelt35       0.31647921  0.18343682  1.7253 0.0845395 .  \n",
-              "othrace:agegt54       0.30916352  0.15913988  1.9427 0.0521066 .  \n",
-              "othrace:durable      -0.19077665  0.13757582 -1.3867 0.1655946    \n",
-              "othrace:lusd         -0.09108976  0.20264053 -0.4495 0.6530804    \n",
-              "othrace:husd          0.00516356  0.20312636  0.0254 0.9797206    \n",
-              "factor(dep)1:q2       0.16575553  0.20084375  0.8253 0.4092430    \n",
-              "factor(dep)2:q2       0.08749363  0.15663627  0.5586 0.5764745    \n",
-              "factor(dep)1:q3       0.12098515  0.19967547  0.6059 0.5446028    \n",
-              "factor(dep)2:q3       0.13964196  0.15680429  0.8905 0.3732138    \n",
-              "factor(dep)1:q4       0.08476950  0.19909174  0.4258 0.6702857    \n",
-              "factor(dep)2:q4       0.09099807  0.15685510  0.5801 0.5618457    \n",
-              "factor(dep)1:q5       0.11045395  0.19829410  0.5570 0.5775381    \n",
-              "factor(dep)2:q5       0.09599502  0.15542385  0.6176 0.5368449    \n",
-              "factor(dep)1:q6       0.10069661  0.20903291  0.4817 0.6300216    \n",
-              "factor(dep)2:q6       0.04840278  0.16392190  0.2953 0.7677926    \n",
-              "factor(dep)1:agelt35 -0.07372986  0.04856221 -1.5183 0.1290132    \n",
-              "factor(dep)2:agelt35 -0.02438958  0.03750210 -0.6504 0.5154946    \n",
-              "factor(dep)1:agegt54 -0.08058890  0.06829342 -1.1800 0.2380409    \n",
-              "factor(dep)2:agegt54  0.02804903  0.12779824  0.2195 0.8262859    \n",
-              "factor(dep)1:durable -0.06027564  0.05959803 -1.0114 0.3118885    \n",
-              "factor(dep)2:durable  0.12466452  0.05025495  2.4806 0.0131473 *  \n",
-              "factor(dep)1:lusd     0.05896976  0.05246189  1.1240 0.2610461    \n",
-              "factor(dep)2:lusd     0.05157515  0.04708540  1.0954 0.2734147    \n",
-              "factor(dep)1:husd    -0.04332567  0.05587546 -0.7754 0.4381417    \n",
-              "factor(dep)2:husd    -0.08820323  0.04775494 -1.8470 0.0648067 .  \n",
-              "q2:agelt35            0.12754085  0.13321346  0.9574 0.3384031    \n",
-              "q2:agegt54            0.52955745  0.13686983  3.8691 0.0001106 ***\n",
-              "q2:durable            0.12611989  0.16953217  0.7439 0.4569544    \n",
-              "q2:lusd              -0.07617774  0.07121471 -1.0697 0.2848100    \n",
-              "q2:husd              -0.01882666  0.07542000 -0.2496 0.8028882    \n",
-              "q3:agelt35            0.13059171  0.13296592  0.9821 0.3260764    \n",
-              "q3:agegt54            0.47820240  0.13404885  3.5674 0.0003640 ***\n",
-              "q3:durable            0.05420566  0.16940199  0.3200 0.7489950    \n",
-              "q3:lusd              -0.05379374  0.06990174 -0.7696 0.4415960    \n",
-              "q3:husd              -0.06007985  0.07486872 -0.8025 0.4223197    \n",
-              "q4:agelt35            0.13100899  0.13279101  0.9866 0.3238962    \n",
-              "q4:agegt54            0.54033014  0.13143961  4.1109 4.005e-05 ***\n",
-              "q4:durable            0.09625171  0.16983764  0.5667 0.5709246    \n",
-              "q4:lusd              -0.10342038  0.07052957 -1.4663 0.1426184    \n",
-              "q4:husd              -0.17191877  0.07455451 -2.3059 0.0211543 *  \n",
-              "q5:agelt35            0.07077473  0.13203088  0.5360 0.5919501    \n",
-              "q5:agegt54            0.44377887  0.13056413  3.3989 0.0006818 ***\n",
-              "q5:durable            0.07466571  0.16765628  0.4453 0.6560862    \n",
-              "q5:lusd              -0.07611869  0.07005218 -1.0866 0.2772661    \n",
-              "q5:husd              -0.16162391  0.07301750 -2.2135 0.0269085 *  \n",
-              "q6:agelt35            0.17030213  0.13886226  1.2264 0.2201021    \n",
-              "q6:agegt54            0.56552338  0.15041890  3.7597 0.0001721 ***\n",
-              "q6:durable            0.25578701  0.17834228  1.4342 0.1515642    \n",
-              "agelt35:durable       0.00948986  0.04062983  0.2336 0.8153294    \n",
-              "agelt35:lusd         -0.02586155  0.03541632 -0.7302 0.4652926    \n",
-              "agelt35:husd          0.03548765  0.03973732  0.8931 0.3718702    \n",
-              "agegt54:durable      -0.06231416  0.06390387 -0.9751 0.3295462    \n",
-              "agegt54:lusd         -0.03662895  0.05793021 -0.6323 0.5272235    \n",
-              "agegt54:husd         -0.07421790  0.06125689 -1.2116 0.2257288    \n",
-              "durable:lusd         -0.05517360  0.04342256 -1.2706 0.2039228    \n",
-              "durable:husd         -0.00016918  0.05273588 -0.0032 0.9974404    \n",
-              "---\n",
-              "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1\n"
-            ]
-          },
-          "metadata": {}
-        }
-      ],
+      "outputs": [],
       "source": [
         "data <- model.matrix(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +\n",
         "                             agelt35 + agegt54 + durable + lusd + husd)^2)\n",
@@ -481,37 +236,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 57,
+      "execution_count": null,
       "metadata": {
         "id": "T4AmK55IiiV1",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "4ca88465-5ceb-46f5-fe4e-e18223e48092",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in meatHC(x, type = type, omega = omega):\n",
-            "“HC1 covariances become (close to) singular if hat values are (close to) 1 as for observation(s) 3791”\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "[1] \"Significant Coefficients (Indices):  84\"\n",
-            "[2] \"Significant Coefficients (Indices):  74\"\n",
-            "[3] \"Significant Coefficients (Indices):  94\"\n",
-            "[4] \"Significant Coefficients (Indices):  79\"\n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "holm_bonferroni <- function(p, alpha = 0.05) {\n",
         "  n <- length(p)\n",
@@ -544,55 +276,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 8,
+      "execution_count": null,
       "metadata": {
         "id": "iBMiaj3jAZuo",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "4915432f-98a8-49eb-d922-a81408aaae48",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 140
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in meatHC(x, type = type, omega = omega):\n",
-            "“HC1 covariances become (close to) singular if hat values are (close to) 1 as for observation(s) 3791”\n"
-          ]
-        },
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<style>\n",
-              ".list-inline {list-style: none; margin:0; padding: 0}\n",
-              ".list-inline>li {display: inline-block}\n",
-              ".list-inline>li:not(:last-child)::after {content: \"\\00b7\"; padding: 0 .5ex}\n",
-              "</style>\n",
-              "<ol class=list-inline><li>TRUE</li><li>TRUE</li><li>TRUE</li><li>TRUE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li><li>FALSE</li></ol>\n"
-            ],
-            "text/markdown": "1. TRUE\n2. TRUE\n3. TRUE\n4. TRUE\n5. FALSE\n6. FALSE\n7. FALSE\n8. FALSE\n9. FALSE\n10. FALSE\n11. FALSE\n12. FALSE\n13. FALSE\n14. FALSE\n15. FALSE\n16. FALSE\n17. FALSE\n18. FALSE\n19. FALSE\n20. FALSE\n21. FALSE\n22. FALSE\n23. FALSE\n24. FALSE\n25. FALSE\n26. FALSE\n27. FALSE\n28. FALSE\n29. FALSE\n30. FALSE\n31. FALSE\n32. FALSE\n33. FALSE\n34. FALSE\n35. FALSE\n36. FALSE\n37. FALSE\n38. FALSE\n39. FALSE\n40. FALSE\n41. FALSE\n42. FALSE\n43. FALSE\n44. FALSE\n45. FALSE\n46. FALSE\n47. FALSE\n48. FALSE\n49. FALSE\n50. FALSE\n51. FALSE\n52. FALSE\n53. FALSE\n54. FALSE\n55. FALSE\n56. FALSE\n57. FALSE\n58. FALSE\n59. FALSE\n60. FALSE\n61. FALSE\n62. FALSE\n63. FALSE\n64. FALSE\n65. FALSE\n66. FALSE\n67. FALSE\n68. FALSE\n69. FALSE\n70. FALSE\n71. FALSE\n72. FALSE\n73. FALSE\n74. FALSE\n75. FALSE\n76. FALSE\n77. FALSE\n78. FALSE\n79. FALSE\n80. FALSE\n81. FALSE\n82. FALSE\n83. FALSE\n84. FALSE\n85. FALSE\n86. FALSE\n87. FALSE\n88. FALSE\n89. FALSE\n90. FALSE\n91. FALSE\n92. FALSE\n93. FALSE\n94. FALSE\n95. FALSE\n96. FALSE\n97. FALSE\n98. FALSE\n99. FALSE\n100. FALSE\n101. FALSE\n102. FALSE\n103. FALSE\n\n\n",
-            "text/latex": "\\begin{enumerate*}\n\\item TRUE\n\\item TRUE\n\\item TRUE\n\\item TRUE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\item FALSE\n\\end{enumerate*}\n",
-            "text/plain": [
-              "  [1]  TRUE  TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [13] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [25] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [37] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [49] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [61] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [73] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [85] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE\n",
-              " [97] FALSE FALSE FALSE FALSE FALSE FALSE FALSE"
-            ]
-          },
-          "metadata": {}
-        }
-      ],
+      "outputs": [],
       "source": [
         "p_values <- as.vector(coeftest(m, vcov = vcovHC(m, type = \"HC1\"))[, 4])\n",
         "holm_reject <- p.adjust(sort(p_values), \"holm\") <= 0.05\n",
@@ -621,37 +312,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 76,
+      "execution_count": null,
       "metadata": {
         "id": "43W-vaIzelk1",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "ff510a18-0ddd-4e05-898a-909cdca39a38",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in meatHC(x, type = type, omega = omega):\n",
-            "“HC1 covariances become (close to) singular if hat values are (close to) 1 as for observation(s) 3791”\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "   Estimate  Std. Error     t value    Pr(>|t|) \n",
-            "-0.08545541  0.03585569 -2.38331509  0.01719391 \n",
-            "   Estimate  Std. Error     t value    Pr(>|t|) \n",
-            "-0.07968012  0.03559092 -2.23877661  0.02521432 \n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "# model specifications\n",
         "# no adjustment (2-sample approach)\n",
@@ -683,73 +351,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 78,
+      "execution_count": null,
       "metadata": {
         "id": "SGdP0kQ3elk2",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "71791360-430c-41de-f358-1469751c7fa3",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 213
         }
       },
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<style>\n",
-              ".list-inline {list-style: none; margin:0; padding: 0}\n",
-              ".list-inline>li {display: inline-block}\n",
-              ".list-inline>li:not(:last-child)::after {content: \"\\00b7\"; padding: 0 .5ex}\n",
-              "</style>\n",
-              "<ol class=list-inline><li>5099</li><li>119</li></ol>\n"
-            ],
-            "text/markdown": "1. 5099\n2. 119\n\n\n",
-            "text/latex": "\\begin{enumerate*}\n\\item 5099\n\\item 119\n\\end{enumerate*}\n",
-            "text/plain": [
-              "[1] 5099  119"
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in meatHC(x, type = type, omega = omega):\n",
-            "“HC1 covariances become (close to) singular if hat values are (close to) 1 as for observation(s) 2433, 2543, 3791, 4889, 5087, 5090”\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "   Estimate  Std. Error \n",
-            "-0.07550055  0.03560489 \n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in predict.lm(ols_irm, newdata = data_treated):\n",
-            "“prediction from rank-deficient fit; attr(*, \"non-estim\") has doubtful cases”\n",
-            "Warning message in predict.lm(ols_irm, newdata = data_control):\n",
-            "“prediction from rank-deficient fit; attr(*, \"non-estim\") has doubtful cases”\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "   Estimate  Std. Error \n",
-            "-0.07550055  0.03600109 \n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "# interactive regression model;\n",
         "\n",
@@ -805,45 +414,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 79,
+      "execution_count": null,
       "metadata": {
         "id": "O9AZ49XNelk3",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "ff0d0cce-e3fc-453c-8dbd-b791f9073079",
-        "colab": {
-          "base_uri": "https://localhost:8080/"
         }
       },
-      "outputs": [
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "     Estimate. Std. Error   t value   Pr(>|t|)\n",
-            "T4 -0.07976793 0.03542395 -2.251808 0.02433441\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "Warning message in colnames(mod.frame)[1] <- as.character(eval(object$call$formula)[[2]]):\n",
-            "“number of items to replace is not a multiple of replacement length”\n",
-            "Warning message in colnames(mod.frame)[1] <- as.character(eval(object$call$formula)[[2]]):\n",
-            "“number of items to replace is not a multiple of replacement length”\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "     Estimate. Std. Error   t value   Pr(>|t|)\n",
-            "T4 -0.07976793 0.03542463 -2.251808 0.02433441\n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "T4 <- demean(T4)\n",
         "\n",
@@ -886,65 +464,14 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 80,
+      "execution_count": null,
       "metadata": {
         "id": "wvxXEMUQellC",
         "vscode": {
           "languageId": "r"
-        },
-        "outputId": "6eb39aef-dcf0-4378-9ff7-aeb5edbc82fc",
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 393
         }
       },
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/html": [
-              "<table class=\"dataframe\">\n",
-              "<caption>A xtable: 2 × 4</caption>\n",
-              "<thead>\n",
-              "\t<tr><th></th><th scope=col>CL</th><th scope=col>CRA</th><th scope=col>IRA</th><th scope=col>IRA w Lasso</th></tr>\n",
-              "\t<tr><th></th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th><th scope=col>&lt;dbl&gt;</th></tr>\n",
-              "</thead>\n",
-              "<tbody>\n",
-              "\t<tr><th scope=row>estimate</th><td>-0.08545541</td><td>-0.07968012</td><td>-0.07550055</td><td>-0.07976793</td></tr>\n",
-              "\t<tr><th scope=row>standard error</th><td> 0.03585569</td><td> 0.03559092</td><td> 0.03600109</td><td> 0.03542463</td></tr>\n",
-              "</tbody>\n",
-              "</table>\n"
-            ],
-            "text/markdown": "\nA xtable: 2 × 4\n\n| <!--/--> | CL &lt;dbl&gt; | CRA &lt;dbl&gt; | IRA &lt;dbl&gt; | IRA w Lasso &lt;dbl&gt; |\n|---|---|---|---|---|\n| estimate | -0.08545541 | -0.07968012 | -0.07550055 | -0.07976793 |\n| standard error |  0.03585569 |  0.03559092 |  0.03600109 |  0.03542463 |\n\n",
-            "text/latex": "A xtable: 2 × 4\n\\begin{tabular}{r|llll}\n  & CL & CRA & IRA & IRA w Lasso\\\\\n  & <dbl> & <dbl> & <dbl> & <dbl>\\\\\n\\hline\n\testimate & -0.08545541 & -0.07968012 & -0.07550055 & -0.07976793\\\\\n\tstandard error &  0.03585569 &  0.03559092 &  0.03600109 &  0.03542463\\\\\n\\end{tabular}\n",
-            "text/plain": [
-              "               CL          CRA         IRA         IRA w Lasso\n",
-              "estimate       -0.08545541 -0.07968012 -0.07550055 -0.07976793\n",
-              "standard error  0.03585569  0.03559092  0.03600109  0.03542463"
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "% latex table generated in R 4.4.2 by xtable 1.8-4 package\n",
-            "% Tue Feb 11 21:15:38 2025\n",
-            "\\begin{table}[ht]\n",
-            "\\centering\n",
-            "\\begin{tabular}{rrrrr}\n",
-            "  \\hline\n",
-            " & CL & CRA & IRA & IRA w Lasso \\\\ \n",
-            "  \\hline\n",
-            "estimate & -0.08546 & -0.07968 & -0.07550 & -0.07977 \\\\ \n",
-            "  standard error & 0.03586 & 0.03559 & 0.03600 & 0.03542 \\\\ \n",
-            "   \\hline\n",
-            "\\end{tabular}\n",
-            "\\end{table}\n"
-          ]
-        }
-      ],
+      "outputs": [],
       "source": [
         "table <- matrix(0, 2, 4)\n",
         "table[1, 1] <- ols_cl[1]\n",
