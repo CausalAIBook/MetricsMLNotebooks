@@ -3,6 +3,8 @@ title: An R Markdown document converted from "CM1/r-rct-penn-precision-adj.irnb"
 output: html_document
 ---
 
+<a href="https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/fix_interaction_stderr/CM1/r-rct-penn-precision-adj.irnb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
 # Analyzing RCT data with Precision Adjustment
 
 ```{r}
@@ -97,9 +99,7 @@ m <- lm(T4 ~ (female + black + othrace + factor(dep) + q2 + q3 + q4 + q5 + q6 +
 coeftest(m, vcov = vcovHC(m, type = "HC1"))
 ```
 
-<!-- We could conduct a Wald test to jointly test the hypothesis that all coefficients are zero. If the resulting p-value from such a test is small, we would reject the the null hypothesis that $\beta_i=0 \ \forall i$, i.e. the balance conditions fail.
 
-However, calculating such a statistic requires computing the inverse of the covariance matrix, which in the presence of multicollinearity is singular. Python side-steps this issue in its computation of the pseudo-inverse, but it is trickier in R.  -->
 
 To test balance conditions, we employ the Holm-Bonferroni step-down method. With 100+ hypotheses, the family-wise type I error, or the probability of making at least one type I error treating all hypotheses independently, is close to 1. To control for this, we adjust p-values with the following procedure.
 
@@ -150,7 +150,6 @@ The holm method fails to reject any hypothesis. That is, we fail to reject the h
 
 ```{r}
 # model specifications
-
 # no adjustment (2-sample approach)
 formula_cl <- log(inuidur1) ~ T4
 
@@ -162,8 +161,8 @@ formula_cra <- log(inuidur1) ~ T4 + (female + black + othrace + factor(dep) + q2
 ols_cl <- lm(formula_cl)
 ols_cra <- lm(formula_cra)
 
-ols_cl <- coeftest(ols_cl, vcov = vcovHC(ols_cl, type = "HC1"))
-ols_cra <- coeftest(ols_cra, vcov = vcovHC(ols_cra, type = "HC1"))
+ols_cl <- coeftest(ols_cl, vcov = vcovHC(ols_cl, type = "HC1"))[2, ]
+ols_cra <- coeftest(ols_cra, vcov = vcovHC(ols_cra, type = "HC1"))[2, ]
 
 print(ols_cl)
 print(ols_cra)
@@ -183,10 +182,36 @@ demean <- function(x) {
 }
 
 X <- apply(X, 2, demean)
+Y <- log(inuidur1)
 
-ols_ira <- lm(log(inuidur1) ~ T4 * X)
-ols_ira <- coeftest(ols_ira, vcov = vcovHC(ols_ira, type = "HC1"))
+ols_irm <- lm(Y ~ T4 * X)
+ols_ira <- coeftest(ols_irm, vcov = vcovHC(ols_irm, type = "HC1"))[2, c(1:2)]
+
+print(ols_ira)  # print out ATE estimate and conventional standard error.
+
+# Because we de-meaned the covariates and interacted them with the treamtent
+# we need to account for the error in the means of X, which has a first-order
+# effect on the ATE estimate -- we need to add variance of CATE to
+# the standard error scaled by n. Otherwise the se errors are valid for the
+# sample average CATE.
+
+
+# Create data frames for treated and control predictions
+data_treated <- data.frame(T4 = TRUE, X)  # Simulate observations under treatment
+data_control <- data.frame(T4 = FALSE, X)  # Simulate observations under control
+
+# Compute predicted values under treatment and control
+pred_treated <- predict(ols_irm, newdata = data_treated)
+pred_control <- predict(ols_irm, newdata = data_control)
+
+# Compute CATE as the difference
+CATE <- pred_treated - pred_control
+n <- length(Y)
+
+# adjust the SE:
+ols_ira[2] <- sqrt((ols_ira[2])^2 + var(CATE) / length(Y))
 print(ols_ira)
+
 ```
 
 Next we try out partialling out with lasso
@@ -196,7 +221,28 @@ T4 <- demean(T4)
 
 DX <- model.matrix(~ T4 * X)[, -1]
 
-rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1))
+rlasso_ira <- summary(rlassoEffects(DX, log(inuidur1), index = 1, post = FALSE))$coef
+print(rlasso_ira)
+
+# correct standard error for demeaning
+
+# Fit Lasso regression with treatment interaction
+rlasso_model <- rlasso(log(inuidur1) ~ T4 * X, post = FALSE)
+
+# Create data frames for treated and control predictions
+data_treated <- data.frame(T4 = TRUE, X)  # Simulate observations under treatment
+data_control <- data.frame(T4 = FALSE, X)  # Simulate observations under control
+
+# Compute predicted values under treatment and control
+pred_treated <- predict(rlasso_model, newdata = data_treated)
+pred_control <- predict(rlasso_model, newdata = data_control)
+
+# Compute CATE as the difference
+CATE <- pred_treated - pred_control
+
+# adjust the SE for demeaning
+
+rlasso_ira[2] <- sqrt((rlasso_ira[2])^2 + var(CATE) / length(Y))
 
 print(rlasso_ira)
 ```
@@ -204,21 +250,16 @@ print(rlasso_ira)
 ### Results
 
 ```{r}
-str(ols_ira)
-ols_ira[2, 1]
-```
-
-```{r}
 table <- matrix(0, 2, 4)
-table[1, 1] <- ols_cl[2, 1]
-table[1, 2] <- ols_cra[2, 1]
-table[1, 3] <- ols_ira[2, 1]
-table[1, 4] <- rlasso_ira[[1]][1]
+table[1, 1] <- ols_cl[1]
+table[1, 2] <- ols_cra[1]
+table[1, 3] <- ols_ira[1]
+table[1, 4] <- rlasso_ira[1]
 
-table[2, 1] <- ols_cl[2, 2]
-table[2, 2] <- ols_cra[2, 2]
-table[2, 3] <- ols_ira[2, 2]
-table[2, 4] <- rlasso_ira[[1]][2]
+table[2, 1] <- ols_cl[2]
+table[2, 2] <- ols_cra[2]
+table[2, 3] <- ols_ira[2]
+table[2, 4] <- rlasso_ira[2]
 
 
 colnames(table) <- c("CL", "CRA", "IRA", "IRA w Lasso")
