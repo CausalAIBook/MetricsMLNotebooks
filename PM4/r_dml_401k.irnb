@@ -1,0 +1,1452 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "id": "0",
+      "metadata": {
+        "id": "0",
+        "papermill": {
+          "duration": 0.012988,
+          "end_time": "2022-04-19T09:06:48.772902",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:48.759914",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "# Inference on Predictive and Causal Effects in High-Dimensional Nonlinear Models"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "1",
+      "metadata": {
+        "id": "1",
+        "papermill": {
+          "duration": 0.009437,
+          "end_time": "2022-04-19T09:06:48.791895",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:48.782458",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "## Impact of 401(k) on  Financial Wealth\n",
+        "\n",
+        "As a practical illustration of the methods developed in this lecture, we consider estimation of the effect of 401(k) eligibility and participation\n",
+        "on accumulated assets. 401(k) plans are pension accounts sponsored by employers. The key problem in determining the effect of participation in 401(k) plans on accumulated assets is saver heterogeneity coupled with the fact that the decision to enroll in a 401(k) is non-random. It is generally recognized that some people have a higher preference for saving than others. It also seems likely that those individuals with high unobserved preference for saving would be most likely to choose to participate in tax-advantaged retirement savings plans and would tend to have otherwise high amounts of accumulated assets. The presence of unobserved savings preferences with these properties then implies that conventional estimates that do not account for saver heterogeneity and endogeneity of participation will be biased upward, tending to overstate the savings effects of 401(k) participation.\n",
+        "\n",
+        "One can argue that eligibility for enrolling in a 401(k) plan in this data can be taken as exogenous after conditioning on a few observables of which the most important for their argument is income. The basic idea is that, at least around the time 401(k)’s initially became available, people were unlikely to be basing their employment decisions on whether an employer offered a 401(k) but would instead focus on income and other aspects of the job."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "2",
+      "metadata": {
+        "id": "2",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "install.packages(\"xtable\")\n",
+        "install.packages(\"hdm\")\n",
+        "install.packages(\"sandwich\")\n",
+        "install.packages(\"ggplot2\")\n",
+        "install.packages(\"randomForest\")\n",
+        "install.packages(\"data.table\")\n",
+        "install.packages(\"glmnet\")\n",
+        "install.packages(\"rpart\")\n",
+        "install.packages(\"gbm\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "3",
+      "metadata": {
+        "vscode": {
+          "languageId": "r"
+        },
+        "id": "3"
+      },
+      "outputs": [],
+      "source": [
+        "library(xtable)\n",
+        "library(hdm)\n",
+        "library(sandwich)\n",
+        "library(ggplot2)\n",
+        "library(randomForest)\n",
+        "library(data.table)\n",
+        "library(glmnet)\n",
+        "library(rpart)\n",
+        "library(gbm)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "4",
+      "metadata": {
+        "id": "4",
+        "papermill": {
+          "duration": 0.009588,
+          "end_time": "2022-04-19T09:06:48.810853",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:48.801265",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "### Data\n",
+        "\n",
+        "The raw dataset can be found [here](https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/401k.csv).\n",
+        "The data set can be loaded from the `hdm` package for R directly by typing:\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "5",
+      "metadata": {
+        "id": "5",
+        "papermill": {
+          "duration": 0.46397,
+          "end_time": "2022-04-19T09:06:49.283933",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:48.819963",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "data(pension)\n",
+        "data <- pension\n",
+        "dim(data)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "6",
+      "metadata": {
+        "id": "6",
+        "papermill": {
+          "duration": 0.009462,
+          "end_time": "2022-04-19T09:06:49.302928",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:49.293466",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "See the \"Details\" section on the description of the data set, which can be accessed by\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "7",
+      "metadata": {
+        "id": "7",
+        "papermill": {
+          "duration": 0.35227,
+          "end_time": "2022-04-19T09:06:49.664810",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:49.312540",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "help(pension)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "8",
+      "metadata": {
+        "id": "8",
+        "papermill": {
+          "duration": 0.009357,
+          "end_time": "2022-04-19T09:06:49.683784",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:49.674427",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "The data consist of 9,915 observations at the household level drawn from the 1991 Survey of Income and Program Participation (SIPP).  All the variables are referred to 1990. We use net financial assets (*net\\_tfa*) as the outcome variable, $Y$,  in our analysis. The net financial assets are computed as the sum of IRA balances, 401(k) balances, checking accounts, saving bonds, other interest-earning accounts, other interest-earning assets, stocks, and mutual funds less non mortgage debts."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "9",
+      "metadata": {
+        "id": "9",
+        "papermill": {
+          "duration": 0.009242,
+          "end_time": "2022-04-19T09:06:49.702401",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:49.693159",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "Among the $9915$ individuals, $3682$ are eligible to participate in the program. The variable *e401* indicates eligibility and *p401* indicates participation, respectively."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "10",
+      "metadata": {
+        "id": "10",
+        "papermill": {
+          "duration": 0.618528,
+          "end_time": "2022-04-19T09:06:50.330218",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:49.711690",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "hist_e401 <- ggplot(data, aes(x = e401, fill = factor(e401))) +\n",
+        "  geom_bar()\n",
+        "hist_e401"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "11",
+      "metadata": {
+        "id": "11",
+        "papermill": {
+          "duration": 0.009686,
+          "end_time": "2022-04-19T09:06:50.349766",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:50.340080",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "Eligibility is highly associated with financial wealth:"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "12",
+      "metadata": {
+        "id": "12",
+        "papermill": {
+          "duration": 0.554613,
+          "end_time": "2022-04-19T09:06:50.914133",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:50.359520",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "dens_net_tfa <- ggplot(data, aes(x = net_tfa, color = factor(e401), fill = factor(e401))) +\n",
+        "  geom_density() +\n",
+        "  xlim(c(-20000, 150000)) +\n",
+        "  facet_wrap(. ~ e401)\n",
+        "\n",
+        "dens_net_tfa"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "13",
+      "metadata": {
+        "id": "13",
+        "papermill": {
+          "duration": 0.010335,
+          "end_time": "2022-04-19T09:06:50.935024",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:50.924689",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "The unconditional APE of e401 is about $19559$:"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "14",
+      "metadata": {
+        "id": "14",
+        "papermill": {
+          "duration": 0.038096,
+          "end_time": "2022-04-19T09:06:50.983602",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:50.945506",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "e1 <- data[data$e401 == 1, ]\n",
+        "e0 <- data[data$e401 == 0, ]\n",
+        "round(mean(e1$net_tfa) - mean(e0$net_tfa), 0)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "15",
+      "metadata": {
+        "id": "15",
+        "papermill": {
+          "duration": 0.01047,
+          "end_time": "2022-04-19T09:06:51.004618",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:50.994148",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "Among the $3682$ individuals that  are eligible, $2594$ decided to participate in the program. The unconditional APE of p401 is about $27372$:"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "16",
+      "metadata": {
+        "id": "16",
+        "papermill": {
+          "duration": 0.039305,
+          "end_time": "2022-04-19T09:06:51.054616",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:51.015311",
+          "status": "completed"
+        },
+        "tags": [],
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "p1 <- data[data$p401 == 1, ]\n",
+        "p0 <- data[data$p401 == 0, ]\n",
+        "round(mean(p1$net_tfa) - mean(p0$net_tfa), 0)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "17",
+      "metadata": {
+        "id": "17",
+        "papermill": {
+          "duration": 0.010831,
+          "end_time": "2022-04-19T09:06:51.076114",
+          "exception": false,
+          "start_time": "2022-04-19T09:06:51.065283",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "As discussed, these estimates are biased since they do not account for saver heterogeneity and endogeneity of participation."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "18",
+      "metadata": {
+        "id": "18",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# outcome variable\n",
+        "y <- data[, \"net_tfa\"]\n",
+        "# treatment variable\n",
+        "D <- data[, \"e401\"]\n",
+        "D2 <- data[, \"p401\"]\n",
+        "D3 <- data[, \"a401\"]\n",
+        "\n",
+        "columns_to_drop <- c(\n",
+        "  \"e401\", \"p401\", \"a401\", \"tw\", \"tfa\", \"net_tfa\", \"tfa_he\",\n",
+        "  \"hval\", \"hmort\", \"hequity\",\n",
+        "  \"nifa\", \"net_nifa\", \"net_n401\", \"ira\",\n",
+        "  \"dum91\", \"icat\", \"ecat\", \"zhat\",\n",
+        "  \"i1\", \"i2\", \"i3\", \"i4\", \"i5\", \"i6\", \"i7\",\n",
+        "  \"a1\", \"a2\", \"a3\", \"a4\", \"a5\"\n",
+        ")\n",
+        "\n",
+        "# covariates\n",
+        "X <- data[, !(names(data) %in% columns_to_drop)]"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "19",
+      "metadata": {
+        "id": "19",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Constructing the controls\n",
+        "x_formula <- paste(\"~ 0 + poly(age, 6, raw=TRUE) + poly(inc, 8, raw=TRUE) + poly(educ, 4, raw=TRUE) \",\n",
+        "                   \"+ poly(fsize, 2, raw=TRUE) + male + marr + twoearn + db + pira + hown\")\n",
+        "X <- as.data.table(model.frame(x_formula, X))\n",
+        "head(X)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "20",
+      "metadata": {
+        "id": "20"
+      },
+      "source": [
+        "## Estimating the ATE of 401(k) Eligibility on Net Financial Assets"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "21",
+      "metadata": {
+        "id": "21"
+      },
+      "source": [
+        "We are interested in valid estimators of the average treatment effect of `e401` and `p401` on `net_tfa`. We start using ML approaches to estimate the function $g_0$ and $m_0$ in the following PLR model:"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "22",
+      "metadata": {
+        "id": "22"
+      },
+      "source": [
+        "\\begin{align}\n",
+        " &  Y = D\\theta_0 + g_0(X) + \\zeta,  &  E[\\zeta \\mid D,X]= 0,\\\\\n",
+        " & D = m_0(X) +  V,   &  E[V \\mid X] = 0.\n",
+        "\\end{align}"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "23",
+      "metadata": {
+        "id": "23",
+        "papermill": {
+          "duration": 0.011129,
+          "end_time": "2022-04-19T09:07:12.117442",
+          "exception": false,
+          "start_time": "2022-04-19T09:07:12.106313",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "## Partially Linear Regression Models (PLR)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "24",
+      "metadata": {
+        "id": "24",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "dml2_for_plm <- function(x, d, y, dreg, yreg, nfold = 3, method = \"regression\") {\n",
+        "  nobs <- nrow(x) # number of observations\n",
+        "  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices\n",
+        "  I <- split(1:nobs, foldid) # split observation indices into folds\n",
+        "  ytil <- dtil <- rep(NA, nobs)\n",
+        "  cat(\"fold: \")\n",
+        "  for (b in seq_along(I)) {\n",
+        "    if (method == \"regression\") {\n",
+        "      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
+        "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out\n",
+        "      dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+        "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+        "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+        "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+        "    } else if (method == \"randomforest\") {\n",
+        "      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out\n",
+        "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+        "      dhat <- predict(dfit, x[I[[b]], ], type = \"prob\")[, 2] # predict the left-out fold\n",
+        "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+        "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+        "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+        "    } else if (method == \"decisiontrees\") {\n",
+        "      dfit <- dreg(x[-I[[b]], ], as.factor(d)[-I[[b]]]) # take a fold out\n",
+        "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+        "      dhat <- predict(dfit, x[I[[b]], ])[, 2] # predict the left-out fold\n",
+        "      yhat <- predict(yfit, x[I[[b]], ]) # predict the left-out fold\n",
+        "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+        "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+        "    } else if (method == \"boostedtrees\") {\n",
+        "      dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
+        "      yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
+        "      dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+        "      yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
+        "      dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
+        "      ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+        "    }\n",
+        "    cat(b, \" \")\n",
+        "  }\n",
+        "  rfit <- lm(ytil ~ dtil) # estimate the main parameter by regressing one residual on the other\n",
+        "  coef_est <- coef(rfit)[2] # extract coefficient\n",
+        "  se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error\n",
+        "  cat(sprintf(\"\\ncoef (se) = %g (%g)\\n\", coef_est, se)) # printing output\n",
+        "  return(list(coef_est = coef_est, se = se, dtil = dtil, ytil = ytil)) # save output and residuals\n",
+        "}"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "25",
+      "metadata": {
+        "id": "25",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "summaryPLR <- function(point, stderr, resD, resy, name) {\n",
+        "  data <- data.frame(\n",
+        "    estimate = point, # point estimate\n",
+        "    stderr = stderr, # standard error\n",
+        "    lower = point - 1.96 * stderr, # lower end of 95% confidence interval\n",
+        "    upper = point + 1.96 * stderr, # upper end of 95% confidence interval\n",
+        "    `rmse y` = sqrt(mean(resy^2)), # RMSE of model that predicts outcome y\n",
+        "    `rmse D` = sqrt(mean(resD^2)), # RMSE of model that predicts treatment D\n",
+        "    `accuracy D` = mean(abs(resD) < 0.5) # binary classification accuracy of model for D\n",
+        "  )\n",
+        "  rownames(data) <- name\n",
+        "  return(data)\n",
+        "}"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "26",
+      "metadata": {
+        "id": "26"
+      },
+      "source": [
+        "#### Double Lasso with Cross-Fitting"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "27",
+      "metadata": {
+        "id": "27",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with LassoCV\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Lasso CV \\n\"))\n",
+        "\n",
+        "dreg_lasso_cv <- function(x, d) {\n",
+        "  cv.glmnet(x, d, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+        "}\n",
+        "yreg_lasso_cv <- function(x, y) {\n",
+        "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+        "}\n",
+        "\n",
+        "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_lasso_cv, yreg_lasso_cv, nfold = 5)\n",
+        "\n",
+        "sum_lasso_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                           dml2_results$ytil, name = \"LassoCV\")\n",
+        "tableplr <- data.frame()\n",
+        "tableplr <- rbind(sum_lasso_cv)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "28",
+      "metadata": {
+        "id": "28",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat_lasso <- D - dml2_results$dtil\n",
+        "yhat_lasso <- y - dml2_results$ytil"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "29",
+      "metadata": {
+        "id": "29"
+      },
+      "source": [
+        "#### Using a $\\ell_2$ Penalized Logistic Regression for D\n",
+        "\n",
+        "Note we are using the $\\ell_2$ penalty here. You can use the $\\ell_1$ penalty as well, but computation will take longer."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "30",
+      "metadata": {
+        "id": "30",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Lasso/Logistic\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Lasso/Logistic \\n\"))\n",
+        "\n",
+        "dreg_logistic_cv <- function(x, d) {\n",
+        "  cv.glmnet(x, d, family = \"binomial\", alpha = 0, nfolds = 5)\n",
+        "}\n",
+        "yreg_lasso_cv <- function(x, y) {\n",
+        "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+        "}\n",
+        "\n",
+        "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_logistic_cv, yreg_lasso_cv, nfold = 5)\n",
+        "sum_lasso_logistic_cv <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                                    dml2_results$ytil, name = \"LassoCV/LogisticCV\")\n",
+        "tableplr <- rbind(tableplr, sum_lasso_logistic_cv)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "31",
+      "metadata": {
+        "id": "31",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat_lasso_logistic <- D - dml2_results$dtil\n",
+        "yhat_lasso_logistic <- y - dml2_results$ytil"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "32",
+      "metadata": {
+        "id": "32"
+      },
+      "source": [
+        "#### Random Forests"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "33",
+      "metadata": {
+        "id": "33",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Random Forest\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
+        "\n",
+        "dreg_rf <- function(x, d) {\n",
+        "  randomForest(x, d, ntree = 1000, nodesize = 10)\n",
+        "} # ML method=Forest\n",
+        "yreg_rf <- function(x, y) {\n",
+        "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+        "} # ML method=Forest\n",
+        "\n",
+        "dml2_results <- dml2_for_plm(as.matrix(X), D, y, dreg_rf, yreg_rf, nfold = 5, method = \"randomforest\")\n",
+        "sum_rf <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                     dml2_results$ytil, name = \"Random Forest\")\n",
+        "tableplr <- rbind(tableplr, sum_rf)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "34",
+      "metadata": {
+        "id": "34",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat_rf <- D - dml2_results$dtil\n",
+        "yhat_rf <- y - dml2_results$ytil"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "35",
+      "metadata": {
+        "id": "35"
+      },
+      "source": [
+        "#### Decision Trees"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "36",
+      "metadata": {
+        "id": "36",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Decision Trees\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Decision Trees \\n\"))\n",
+        "\n",
+        "dreg_tr <- function(x, d) {\n",
+        "  rpart(as.formula(\"D~.\"), cbind(data.frame(D = d), x), method = \"class\", minbucket = 10, cp = 0.001)\n",
+        "}\n",
+        "yreg_tr <- function(x, y) {\n",
+        "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+        "}\n",
+        "\n",
+        "# decision tree takes in X as dataframe, not matrix/array\n",
+        "dml2_results <- dml2_for_plm(X, D, y, dreg_tr, yreg_tr, nfold = 5, method = \"decisiontrees\")\n",
+        "sum_tr <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                     dml2_results$ytil, name = \"Decision Trees\")\n",
+        "tableplr <- rbind(tableplr, sum_tr)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "37",
+      "metadata": {
+        "id": "37",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat_tr <- D - dml2_results$dtil\n",
+        "yhat_tr <- y - dml2_results$ytil"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "38",
+      "metadata": {
+        "id": "38"
+      },
+      "source": [
+        "\n",
+        "Ideally, we would do (semi) cross-fitting with AutoML in order to find good first-stage models and re-run DML with these models. Unfortunately this is not easy to do in R. In the case of semi cross-fitting, we can use R's H20 AutoML trained on the entire training set $y\\sim X$, $D \\sim X$, $Z\\sim X$ to determine the best model (eg ensemble), but H20 does not allow you to extract said model so we can re-use that in DML."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "39",
+      "metadata": {
+        "id": "39"
+      },
+      "source": [
+        "#### Boosted Trees"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "40",
+      "metadata": {
+        "id": "40",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Boosted Trees\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Boosted Trees \\n\"))\n",
+        "\n",
+        "# NB: early stopping cannot easily be implemented with gbm\n",
+        "## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)\n",
+        "dreg_boost <- function(x, d) {\n",
+        "  gbm(as.formula(\"D~.\"), cbind(data.frame(D = d), x), distribution = \"bernoulli\",\n",
+        "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+        "}\n",
+        "yreg_boost <- function(x, y) {\n",
+        "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+        "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+        "}\n",
+        "\n",
+        "# passing these through regression as type=\"response\", and D should not be factor!\n",
+        "dml2_results <- dml2_for_plm(X, D, y, dreg_boost, yreg_boost, nfold = 5, method = \"boostedtrees\")\n",
+        "sum_boost <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                        dml2_results$ytil, name = \"Boosted Trees\")\n",
+        "tableplr <- rbind(tableplr, sum_boost)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "41",
+      "metadata": {
+        "id": "41",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
+        "dhat_boost <- D - dml2_results$dtil\n",
+        "yhat_boost <- y - dml2_results$ytil"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "42",
+      "metadata": {
+        "id": "42"
+      },
+      "source": [
+        "## Ensembles"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "43",
+      "metadata": {
+        "id": "43"
+      },
+      "source": [
+        "Boosted trees give the best RMSE for both Y and D, so the ensemble based on choosing the best performing prediction rule is identical to boosting in this case."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "44",
+      "metadata": {
+        "id": "44",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Best fit is boosted trees for both D and Y\n",
+        "\n",
+        "sum_best <- summaryPLR(dml2_results$coef_est, dml2_results$se, dml2_results$dtil,\n",
+        "                       dml2_results$ytil, name = \"Best\")\n",
+        "tableplr <- rbind(tableplr, sum_best)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "45",
+      "metadata": {
+        "id": "45"
+      },
+      "source": [
+        "We'll form a model average with unconstrained least squares weights."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "46",
+      "metadata": {
+        "id": "46",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Least squares model average\n",
+        "\n",
+        "ma_dtil <- lm(D ~ dhat_lasso + dhat_lasso_logistic + dhat_rf + dhat_tr + dhat_boost)$residuals\n",
+        "ma_ytil <- lm(y ~ yhat_lasso + yhat_lasso_logistic + yhat_rf + yhat_tr + yhat_boost)$residuals\n",
+        "\n",
+        "rfit <- lm(ma_ytil ~ ma_dtil) # estimate the main parameter by regressing one residual on the other\n",
+        "coef_est <- coef(rfit)[2] # extract coefficient\n",
+        "se <- sqrt(vcovHC(rfit)[2, 2]) # record robust standard error\n",
+        "\n",
+        "sum.ma <- summaryPLR(coef_est, se, ma_dtil, ma_ytil, name = \"Model Average\")\n",
+        "tableplr <- rbind(tableplr, sum.ma)\n",
+        "tableplr"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "47",
+      "metadata": {
+        "id": "47",
+        "papermill": {
+          "duration": 0.013657,
+          "end_time": "2022-04-19T09:10:00.718448",
+          "exception": false,
+          "start_time": "2022-04-19T09:10:00.704791",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "## Interactive Regression Model (IRM)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "48",
+      "metadata": {
+        "id": "48",
+        "papermill": {
+          "duration": 0.013488,
+          "end_time": "2022-04-19T09:10:00.745538",
+          "exception": false,
+          "start_time": "2022-04-19T09:10:00.732050",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "Next, we consider estimation of average treatment effects when treatment effects are fully heterogeneous:"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "49",
+      "metadata": {
+        "id": "49",
+        "papermill": {
+          "duration": 0.013695,
+          "end_time": "2022-04-19T09:10:00.772756",
+          "exception": false,
+          "start_time": "2022-04-19T09:10:00.759061",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        " \\begin{align}\n",
+        " & Y  = g_0(D, X) + U,  &  \\quad E[U \\mid X, D]= 0,\\\\\n",
+        "  & D  = m_0(X) + V,  & \\quad  E[V\\mid X] = 0.\n",
+        "\\end{align}"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "50",
+      "metadata": {
+        "id": "50",
+        "papermill": {
+          "duration": 0.013592,
+          "end_time": "2022-04-19T09:10:00.799889",
+          "exception": false,
+          "start_time": "2022-04-19T09:10:00.786297",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "To reduce the disproportionate impact of extreme propensity score weights in the interactive model\n",
+        "we trim the propensity scores which are close to the bounds."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "51",
+      "metadata": {
+        "id": "51",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "dml2_for_irm <- function(x, d, y, dreg, yreg0, yreg1, trimming = 0.01, nfold = 5, method = \"regression\") {\n",
+        "  yhat0 <- rep(0, length(y))\n",
+        "  yhat1 <- rep(0, length(y))\n",
+        "  Dhat <- rep(0, length(d))\n",
+        "\n",
+        "  nobs <- nrow(x) # number of observations\n",
+        "  foldid <- rep.int(1:nfold, times = ceiling(nobs / nfold))[sample.int(nobs)] # define folds indices\n",
+        "  I <- split(1:nobs, foldid) # split observation indices into folds\n",
+        "  ytil <- dtil <- rep(NA, nobs)\n",
+        "\n",
+        "  cat(\"fold: \")\n",
+        "  for (b in seq_along(I)) {\n",
+        "    # define helpful variables\n",
+        "    Dnotb <- d[-I[[b]]]\n",
+        "    Xb <- X[I[[b]], ]\n",
+        "    Xnotb <- X[-I[[b]], ]\n",
+        "\n",
+        "    # training dfs subsetted on the -I[[b]] fold\n",
+        "    XD0 <- X[-I[[b]], ][d[-I[[b]]] == 0]\n",
+        "    yD0 <- y[-I[[b]]][d[-I[[b]]] == 0]\n",
+        "    XD1 <- X[-I[[b]], ][d[-I[[b]]] == 1]\n",
+        "    yD1 <- y[-I[[b]]][d[-I[[b]]] == 1]\n",
+        "\n",
+        "    if (method == \"regression\") {\n",
+        "      yfit0 <- yreg0(as.matrix(XD0), yD0)\n",
+        "      yfit1 <- yreg1(as.matrix(XD1), yD1)\n",
+        "      yhat0[I[[b]]] <- predict(yfit0, as.matrix(Xb)) # default is type = \"response\" for glmnet family gaussian\n",
+        "      yhat1[I[[b]]] <- predict(yfit1, as.matrix(Xb))\n",
+        "    } else if (method == \"randomforest\") {\n",
+        "      yfit0 <- yreg0(XD0, yD0)\n",
+        "      yfit1 <- yreg1(XD1, yD1)\n",
+        "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for rf\n",
+        "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+        "    } else if (method == \"decisiontrees\") {\n",
+        "      yfit0 <- yreg0(XD0, yD0)\n",
+        "      yfit1 <- yreg1(XD1, yD1)\n",
+        "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"vector\" for decision\n",
+        "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+        "    } else if (method == \"boostedtrees\") {\n",
+        "      yfit0 <- yreg0(as.data.frame(XD0), yD0)\n",
+        "      yfit1 <- yreg1(as.data.frame(XD1), yD1)\n",
+        "      yhat0[I[[b]]] <- predict(yfit0, Xb) # default is type = \"response\" for boosted\n",
+        "      yhat1[I[[b]]] <- predict(yfit1, Xb)\n",
+        "    }\n",
+        "\n",
+        "    # propensity scores:\n",
+        "    if (method == \"regression\") {\n",
+        "      dfit_b <- dreg(as.matrix(Xnotb), Dnotb)\n",
+        "      dhat_b <- predict(dfit_b, as.matrix(Xb), type = \"response\") # default is type=\"link\" for family binomial!\n",
+        "    } else if (method == \"randomforest\") {\n",
+        "      dfit_b <- dreg(Xnotb, as.factor(Dnotb))\n",
+        "      dhat_b <- predict(dfit_b, Xb, type = \"prob\")[, 2]\n",
+        "    } else if (method == \"decisiontrees\") {\n",
+        "      dfit_b <- dreg(Xnotb, Dnotb)\n",
+        "      dhat_b <- predict(dfit_b, Xb)[, 2]\n",
+        "    } else if (method == \"boostedtrees\") {\n",
+        "      dfit_b <- dreg(as.data.frame(Xnotb), Dnotb)\n",
+        "      dhat_b <- predict(dfit_b, Xb, type = \"response\")\n",
+        "    }\n",
+        "    dhat_b <- pmax(pmin(dhat_b, 1 - trimming), trimming) # trimming so scores are between [trimming, (1-trimming)]\n",
+        "    Dhat[I[[b]]] <- dhat_b\n",
+        "\n",
+        "    cat(b, \" \")\n",
+        "  }\n",
+        "\n",
+        "  # Prediction of treatment and outcome for observed instrument\n",
+        "  yhat <- yhat0 * (1 - D) + yhat1 * D\n",
+        "  # residuals\n",
+        "  ytil <- y - yhat\n",
+        "  dtil <- D - Dhat\n",
+        "  # doubly robust quantity for every sample\n",
+        "  drhat <- yhat1 - yhat0 + (y - yhat) * (D / Dhat - (1 - D) / (1 - Dhat))\n",
+        "  coef_est <- mean(drhat)\n",
+        "  vari <- var(drhat)\n",
+        "  se <- sqrt(vari / nrow(X))\n",
+        "  cat(\"point\", coef_est)\n",
+        "  cat(\"se\", se)\n",
+        "  return(list(coef_est = coef_est, se = se, ytil = ytil, dtil = dtil, drhat = drhat,\n",
+        "              yhat0 = yhat0, yhat1 = yhat1, dhat = Dhat, yhat = yhat))\n",
+        "}"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "52",
+      "metadata": {
+        "id": "52",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "summaryIRM <- function(coef_est, se, ytil, dtil, drhat, name) {\n",
+        "  summary_data <- data.frame(\n",
+        "    estimate = coef_est, # point estimate\n",
+        "    se = se, # standard error\n",
+        "    lower = coef_est - 1.96 * se, # lower end of 95% confidence interval\n",
+        "    upper = coef_est + 1.96 * se, # upper end of 95% confidence interval\n",
+        "    rmse_y = sqrt(mean(ytil^2)), # res of model that predicts outcome y\n",
+        "    rmse_D = sqrt(mean(dtil^2)), # res of model that predicts treatment D\n",
+        "    accuracy_D = mean(abs(dtil) < 0.5) # binary classification accuracy of model for D\n",
+        "  )\n",
+        "  row.names(summary_data) <- name\n",
+        "  return(summary_data)\n",
+        "}"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "53",
+      "metadata": {
+        "id": "53"
+      },
+      "source": [
+        "#### Repeat analysis in the IRM setting."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "54",
+      "metadata": {
+        "id": "54",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Lasso/Logistic\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with LassoCV/Logistic \\n\"))\n",
+        "\n",
+        "dreg_lasso_cv <- function(x, d) {\n",
+        "  cv.glmnet(x, d, family = \"binomial\", alpha = 0, nfolds = 5)\n",
+        "}\n",
+        "yreg0_lasso_cv <- function(x, y) {\n",
+        "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+        "}\n",
+        "yreg1_lasso_cv <- function(x, y) {\n",
+        "  cv.glmnet(x, y, family = \"gaussian\", alpha = 1, nfolds = 5)\n",
+        "}\n",
+        "\n",
+        "# more folds seems to help stabilize finite sample performance\n",
+        "dml2_results <- dml2_for_irm(X, D, y, dreg_lasso_cv, yreg0_lasso_cv, yreg1_lasso_cv, nfold = 5)\n",
+        "sum_lasso_cv <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+        "                           dml2_results$drhat, name = \"LassoCVLogistic\")\n",
+        "tableirm <- data.frame()\n",
+        "tableirm <- rbind(sum_lasso_cv)\n",
+        "tableirm\n",
+        "\n",
+        "yhat0_lasso <- dml2_results$yhat0\n",
+        "yhat1_lasso <- dml2_results$yhat1\n",
+        "dhat_lasso <- dml2_results$dhat\n",
+        "yhat_lasso <- dml2_results$yhat"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "55",
+      "metadata": {
+        "id": "55",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Random Forest\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Random Forest \\n\"))\n",
+        "\n",
+        "dreg_rf <- function(x, d) {\n",
+        "  randomForest(x, d, ntree = 1000, nodesize = 10)\n",
+        "} # ML method=Forest\n",
+        "yreg0_rf <- function(x, y) {\n",
+        "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+        "} # ML method=Forest\n",
+        "yreg1_rf <- function(x, y) {\n",
+        "  randomForest(x, y, ntree = 1000, nodesize = 10)\n",
+        "} # ML method=Forest\n",
+        "\n",
+        "\n",
+        "dml2_results <- dml2_for_irm(as.matrix(X), D, y, dreg_rf, yreg0_rf, yreg1_rf, nfold = 5, method = \"randomforest\")\n",
+        "sum_rf <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+        "                     dml2_results$drhat, name = \"Random Forest\")\n",
+        "tableirm <- rbind(tableirm, sum_rf)\n",
+        "tableirm\n",
+        "\n",
+        "yhat0_rf <- dml2_results$yhat0\n",
+        "yhat1_rf <- dml2_results$yhat1\n",
+        "dhat_rf <- dml2_results$dhat\n",
+        "yhat_rf <- dml2_results$yhat"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "56",
+      "metadata": {
+        "id": "56",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Decision Trees\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Decision Trees \\n\"))\n",
+        "\n",
+        "dreg_tr <- function(x, d) {\n",
+        "  rpart(as.formula(\"D~.\"), cbind(data.frame(D = d), x), method = \"class\", minbucket = 10, cp = 0.001)\n",
+        "}\n",
+        "yreg0_tr <- function(x, y) {\n",
+        "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+        "}\n",
+        "yreg1_tr <- function(x, y) {\n",
+        "  rpart(as.formula(\"y~.\"), cbind(data.frame(y = y), x), minbucket = 10, cp = 0.001)\n",
+        "}\n",
+        "\n",
+        "dml2_results <- dml2_for_irm(X, D, y, dreg_tr, yreg0_tr, yreg1_tr, nfold = 5, method = \"decisiontrees\")\n",
+        "sum_tr <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+        "                     dml2_results$drhat, name = \"Decision Trees\")\n",
+        "tableirm <- rbind(tableirm, sum_tr)\n",
+        "tableirm\n",
+        "\n",
+        "yhat0_tr <- dml2_results$yhat0\n",
+        "yhat1_tr <- dml2_results$yhat1\n",
+        "dhat_tr <- dml2_results$dhat\n",
+        "yhat_tr <- dml2_results$yhat"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "57",
+      "metadata": {
+        "id": "57",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# DML with Boosted Trees\n",
+        "set.seed(123)\n",
+        "cat(sprintf(\"\\nDML with Boosted Trees \\n\"))\n",
+        "\n",
+        "# NB: early stopping cannot easily be implemented with gbm\n",
+        "## set n.trees = best, where best <- gbm.perf(dreg_boost, plot.it = FALSE)\n",
+        "dreg_boost <- function(x, d) {\n",
+        "  gbm(as.formula(\"D~.\"), cbind(data.frame(D = d), x), distribution = \"bernoulli\",\n",
+        "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+        "}\n",
+        "yreg0_boost <- function(x, y) {\n",
+        "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+        "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+        "}\n",
+        "yreg1_boost <- function(x, y) {\n",
+        "  gbm(as.formula(\"y~.\"), cbind(data.frame(y = y), x), distribution = \"gaussian\",\n",
+        "      interaction.depth = 2, n.trees = 100, shrinkage = .1)\n",
+        "}\n",
+        "\n",
+        "# passing these through regression as type=\"response\", and D should not be factor!\n",
+        "dml2_results <- dml2_for_irm(X, D, y, dreg_boost, yreg0_boost, yreg1_boost, nfold = 5, method = \"boostedtrees\")\n",
+        "sum_boost <- summaryIRM(dml2_results$coef_est, dml2_results$se, dml2_results$ytil, dml2_results$dtil,\n",
+        "                        dml2_results$drhat, name = \"Boosted Trees\")\n",
+        "tableirm <- rbind(tableirm, sum_boost)\n",
+        "tableirm\n",
+        "\n",
+        "yhat0_boost <- dml2_results$yhat0\n",
+        "yhat1_boost <- dml2_results$yhat1\n",
+        "dhat_boost <- dml2_results$dhat\n",
+        "yhat_boost <- dml2_results$yhat"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "58",
+      "metadata": {
+        "id": "58",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Ensembles\n",
+        "\n",
+        "# Best\n",
+        "# We'll look at model that does best for Y overall. Could also use different model for Y0 and Y1\n",
+        "# Here, the best performance for Y is the random forest and for D the boosted tree\n",
+        "\n",
+        "# residuals\n",
+        "ytil <- y - yhat_rf\n",
+        "dtil <- D - dhat_boost\n",
+        "# doubly robust quantity for every sample\n",
+        "drhat <- yhat1_rf - yhat0_rf + (y - yhat_rf) * (D / dhat_boost - (1 - D) / (1 - dhat_boost))\n",
+        "coef_est <- mean(drhat)\n",
+        "vari <- var(drhat)\n",
+        "se <- sqrt(vari / nrow(X))\n",
+        "\n",
+        "sum_best <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = \"Best\")\n",
+        "tableirm <- rbind(tableirm, sum_best)\n",
+        "tableirm"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "59",
+      "metadata": {
+        "id": "59",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Least squares model average\n",
+        "# We'll look at weights that do best job for Y overall. Could also use different weights for Y0 and Y1\n",
+        "\n",
+        "ma_dw <- lm(D ~ dhat_lasso + dhat_rf + dhat_tr + dhat_boost)$coef\n",
+        "ma_yw <- lm(y ~ yhat_lasso + yhat_rf + yhat_tr + yhat_boost)$coef\n",
+        "\n",
+        "Dhats <- cbind(as.matrix(rep(1, nrow(X))), dhat_lasso, dhat_rf, dhat_tr, dhat_boost)\n",
+        "Y0s <- cbind(as.matrix(rep(1, nrow(X))), yhat0_lasso, yhat0_rf, yhat0_tr, yhat0_boost)\n",
+        "Y1s <- cbind(as.matrix(rep(1, nrow(X))), yhat1_lasso, yhat1_rf, yhat1_tr, yhat1_boost)\n",
+        "\n",
+        "dhat <- Dhats %*% as.matrix(ma_dw)\n",
+        "yhat0 <- Y0s %*% as.matrix(ma_yw)\n",
+        "yhat1 <- Y1s %*% as.matrix(ma_yw)\n",
+        "\n",
+        "# Prediction of treatment and outcome for observed instrument\n",
+        "yhat <- yhat0 * (1 - D) + yhat1 * D\n",
+        "# residuals\n",
+        "ytil <- y - yhat\n",
+        "dtil <- D - dhat\n",
+        "# doubly robust quantity for every sample\n",
+        "drhat <- yhat1 - yhat0 + (y - yhat) * (D / dhat - (1 - D) / (1 - dhat))\n",
+        "coef_est <- mean(drhat)\n",
+        "vari <- var(drhat)\n",
+        "se <- sqrt(vari / nrow(X))\n",
+        "\n",
+        "sum.ma <- summaryIRM(coef_est, se, ytil, dtil, drhat, name = \"Model Average\")\n",
+        "tableirm <- rbind(tableirm, sum.ma)\n",
+        "tableirm"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "89",
+      "metadata": {
+        "id": "89",
+        "papermill": {
+          "duration": 0.015461,
+          "end_time": "2022-04-19T09:12:00.888702",
+          "exception": false,
+          "start_time": "2022-04-19T09:12:00.873241",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "source": [
+        "These estimates that flexibly account for confounding are\n",
+        "substantially attenuated relative to the baseline estimate (*19559*) that does not account for confounding. They suggest much smaller causal effects of 401(k) eligiblity on financial asset holdings."
+      ]
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "4.0.5"
+    },
+    "papermill": {
+      "default_parameters": {},
+      "duration": 427.936706,
+      "end_time": "2022-04-19T09:13:53.230849",
+      "environment_variables": {},
+      "exception": null,
+      "input_path": "__notebook__.ipynb",
+      "output_path": "__notebook__.ipynb",
+      "parameters": {},
+      "start_time": "2022-04-19T09:06:45.294143",
+      "version": "2.3.4"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
