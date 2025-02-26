@@ -29,7 +29,18 @@
      "languageId": "r"
     }
    },
-   "outputs": [],
+   "outputs": [
+    {
+     "ename": "",
+     "evalue": "",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[1;31mFailed to start the Kernel. \n",
+      "\u001b[1;31mThe kernel 'R (ANACONDA3)' was not started as it is located in an insecure location 'c:\\ProgramData\\anaconda3\\share\\jupyter\\kernels\\ir\\kernel.json'.  \n",
+      "\u001b[1;31mClick <a href='https://aka.ms/JupyterTrustedKernelPaths'>here</a> for further details, optionally update the setting <a href='command:workbench.action.openSettings?[\"jupyter.kernels.trusted\"]'>jupyter.kernels.trusted</a> to trust the kernel."
+     ]
+    }
+   ],
    "source": [
     "install.packages(\"hdm\")\n",
     "install.packages(\"xtable\")"
@@ -37,13 +48,23 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": 4,
    "metadata": {
     "vscode": {
      "languageId": "r"
     }
    },
-   "outputs": [],
+   "outputs": [
+    {
+     "ename": "ERROR",
+     "evalue": "Error in library(hdm): there is no package called 'hdm'\n",
+     "output_type": "error",
+     "traceback": [
+      "Error in library(hdm): there is no package called 'hdm'\nTraceback:\n",
+      "1. library(hdm)"
+     ]
+    }
+   ],
    "source": [
     "library(hdm)\n",
     "library(xtable)"
@@ -90,110 +111,18 @@
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
-    "id": "-IX2Sy1A-QCX",
     "vscode": {
      "languageId": "r"
     }
    },
    "outputs": [],
    "source": [
-    "center_colmeans <- function(x) {\n",
-    "  xcenter <- colMeans(x)\n",
-    "  x - rep(xcenter, rep.int(nrow(x), ncol(x)))\n",
-    "}"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "kaygPMYdelFI",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the covariates\n",
-    "controls_formula <- \"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2\"\n",
-    "Zcontrols <- model.matrix(as.formula(controls_formula), data = Z)\n",
-    "Zcontrols <- center_colmeans(Zcontrols)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "FYUE8DCsh6QL"
-   },
-   "source": [
-    "Construct all the variables that we will use to model heterogeneity of effect in a linear manner"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "qVF99n7dhyc-",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the linear heterogeneity\n",
-    "linear_het_formula <- \"~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
-    "Zhet <- model.matrix(as.formula(linear_het_formula), data = Z)\n",
-    "Zhet <- center_colmeans(Zhet)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "ySaY8-X0iXyP"
-   },
-   "source": [
-    "Construct all interaction variables between sex and heterogeneity variables"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "jPGR47mfhzBu",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the higher order heterogeneity\n",
-    "Zhet <- as.data.frame(cbind(Zhet, \"sex\" = Z$sex))\n",
-    "nonlin_het_formula <- \"~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
-    "Zinteractions <- model.matrix(as.formula(nonlin_het_formula), data = Zhet)\n",
-    "interaction_cols <- Zinteractions[, grepl(\"sex\", colnames(Zinteractions))]"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "mt96NtDIll5_"
-   },
-   "source": [
-    "Put variables all together"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "niEXvfVSlk3v",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "X <- cbind(Zinteractions, Zcontrols)"
+    "# create the model matrix that includes second degree polynomials of covariates as controls\n",
+    "# and a few covariates interacted with sex for heterogeneity\n",
+    "formula <- \"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2\n",
+    "    + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\n",
+    "\"\n",
+    "X <- model.matrix(as.formula(formula), data = Z)"
    ]
   },
   {
@@ -222,11 +151,18 @@
    "outputs": [],
    "source": [
     "# this cell takes 30 minutes to run\n",
-    "index_gender <- grep(\"sex\", colnames(Zinteractions))\n",
-    "effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)\n",
+    "index_sex <- grep(\"sex\", colnames(X))\n",
+    "effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_sex, post = FALSE)\n",
     "result <- summary(effects_female)\n",
     "result$coef\n",
     "print(xtable(result$coef[, c(1, 2, 4)], type = \"latex\"), digits = 3)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Note that since the covariates used in the interactions are not mean-zero, the coefficient associated with `sex` should be interpreted as the group average effect of a reference group where all the remaining variables take zero value and should not be interpreted as the average treatment effect."
    ]
   },
   {
@@ -296,10 +232,16 @@
   },
   "kernelspec": {
    "display_name": "R",
+   "language": "R",
    "name": "ir"
   },
   "language_info": {
-   "name": "R"
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "3.6.1"
   },
   "papermill": {
    "default_parameters": {},
@@ -315,5 +257,5 @@
   }
  },
  "nbformat": 4,
- "nbformat_minor": 0
+ "nbformat_minor": 4
 }
