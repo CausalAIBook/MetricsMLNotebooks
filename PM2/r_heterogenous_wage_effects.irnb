@@ -29,18 +29,7 @@
      "languageId": "r"
     }
    },
-   "outputs": [
-    {
-     "ename": "",
-     "evalue": "",
-     "output_type": "error",
-     "traceback": [
-      "\u001b[1;31mFailed to start the Kernel. \n",
-      "\u001b[1;31mThe kernel 'R (ANACONDA3)' was not started as it is located in an insecure location 'c:\\ProgramData\\anaconda3\\share\\jupyter\\kernels\\ir\\kernel.json'.  \n",
-      "\u001b[1;31mClick <a href='https://aka.ms/JupyterTrustedKernelPaths'>here</a> for further details, optionally update the setting <a href='command:workbench.action.openSettings?[\"jupyter.kernels.trusted\"]'>jupyter.kernels.trusted</a> to trust the kernel."
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "install.packages(\"hdm\")\n",
     "install.packages(\"xtable\")"
@@ -48,23 +37,13 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 4,
+   "execution_count": null,
    "metadata": {
     "vscode": {
      "languageId": "r"
     }
    },
-   "outputs": [
-    {
-     "ename": "ERROR",
-     "evalue": "Error in library(hdm): there is no package called 'hdm'\n",
-     "output_type": "error",
-     "traceback": [
-      "Error in library(hdm): there is no package called 'hdm'\nTraceback:\n",
-      "1. library(hdm)"
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "library(hdm)\n",
     "library(xtable)"
