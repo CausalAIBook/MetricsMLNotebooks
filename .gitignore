@@ -130,3 +130,5 @@ dmypy.json
 *.png
 *.pdf
 /CM1/hdmpy
+/AC1/hdmpy
+/PM2/hdmpy
