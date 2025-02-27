@@ -62,7 +62,7 @@
     "  y0 <- base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)\n",
     "  y1 <- delta + base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)\n",
     "  y <- y1 * D + y0 * (1 - D)\n",
-    "  return(list(y = y, D = D, X = X))\n",
+    "  list(y = y, D = D, X = X)\n",
     "}"
    ]
   },
@@ -112,7 +112,7 @@
     "  hat <- hat1 - hat0 # estimate of the treatment effect\n",
     "  # standard error of the estimate of the treatment effect\n",
     "  stderr <- sqrt((V0 + V1) / length(y))\n",
-    "  return(list(hat = hat, stderr = stderr))\n",
+    "  list(hat = hat, stderr = stderr)\n",
     "}"
    ]
   },
@@ -182,7 +182,7 @@
     "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
     "  stderr <- sqrt(V / length(y))\n",
     "\n",
-    "  return(list(hat = hat, stderr = stderr))\n",
+    "  list(hat = hat, stderr = stderr)\n",
     "}"
    ]
   },
@@ -241,7 +241,7 @@
     "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
     "  stderr <- sqrt(V / length(y))\n",
     "\n",
-    "  return(list(hat = hat, stderr = stderr))\n",
+    "  list(hat = hat, stderr = stderr)\n",
     "}"
    ]
   },
@@ -650,7 +650,7 @@
     "  V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2\n",
     "  stderr <- sqrt(V / length(y))\n",
     "\n",
-    "  return(list(hat = hat, stderr = stderr))\n",
+    "  list(hat = hat, stderr = stderr)\n",
     "}"
    ]
   },
@@ -857,7 +857,7 @@
     "  X <- matrix(rnorm(n * d), nrow = n, ncol = d)\n",
     "  D <- X[, 1] + rnorm(n, mean = 0, sd = 1 / 4)\n",
     "  y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)\n",
-    "  return(list(y = y, D = D, X = X))\n",
+    "  list(y = y, D = D, X = X)\n",
     "}"
    ]
   },
