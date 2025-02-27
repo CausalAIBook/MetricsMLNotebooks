@@ -91,7 +91,7 @@
         "# create the model matrix that includes second degree polynomials of covariates as controls\n",
         "# and a few covariates interacted with sex for heterogeneity\n",
         "formula <- paste(\"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2 \",\n",
-        "                 \"+ sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\", sep=\"\")\n",
+        "                 \"+ sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\", sep = \"\")\n",
         "X <- model.matrix(as.formula(formula), data = Z)"
       ]
     },
