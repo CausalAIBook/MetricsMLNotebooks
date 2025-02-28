@@ -71,6 +71,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev
+          sudo apt-get install -y libpng-dev
+          sudo apt-get install -y libfontconfig1-dev
 
       - name: Set up Python
         if: env.notebooks_changed == 'true'
