@@ -1,319 +1,229 @@
 {
- "cells": [
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "6oWBhx2m_eQ8"
-   },
-   "source": [
-    "# Application: Heterogeneous Effect of Sex on Wage Using Double Lasso\n",
-    "\n",
-    " We use US census data from the year 2015 to analyse the effect of gender and interaction effects of other variables with gender on wage jointly. The dependent variable is the logarithm of the wage, the target variable is *female* (in combination with other variables). All other variables denote some other socio-economic characteristics, e.g. marital status, education, and experience.  \n",
-    "\n",
-    "\n",
-    "\n",
-    "This analysis allows a closer look how the gender wage gap is related to other socio-economic variables.\n",
-    "\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "6oWBhx2m_eQ8"
+      },
+      "source": [
+        "# Application: Heterogeneous Effect of Sex on Wage Using Double Lasso\n",
+        "\n",
+        " We use US census data from the year 2015 to analyse the effect of gender and interaction effects of other variables with gender on wage jointly. The dependent variable is the logarithm of the wage, the target variable is *female* (in combination with other variables). All other variables denote some other socio-economic characteristics, e.g. marital status, education, and experience.  \n",
+        "\n",
+        "\n",
+        "\n",
+        "This analysis allows a closer look how the gender wage gap is related to other socio-economic variables.\n",
+        "\n"
+      ]
     },
-    "id": "3QN4EOYGQkmz",
-    "outputId": "a5a8f7f8-def7-4ca6-8c8f-973d00b7bd20",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "install.packages(\"hdm\")\n",
-    "install.packages(\"xtable\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "library(hdm)\n",
-    "library(xtable)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 1000
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "3QN4EOYGQkmz",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "install.packages(\"hdm\")\n",
+        "install.packages(\"xtable\")"
+      ]
     },
-    "id": "fLiMuKqN_eQ-",
-    "outputId": "88233975-7a27-4614-d878-c718e6dcb072",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
-    "data <- read.csv(file)\n",
-    "str(data)\n",
-    "data"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "GLjEqmK8hEU8",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "y <- data$lwage\n",
-    "Z <- subset(data, select = -c(lwage, wage))"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "-IX2Sy1A-QCX",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "center_colmeans <- function(x) {\n",
-    "  xcenter <- colMeans(x)\n",
-    "  x - rep(xcenter, rep.int(nrow(x), ncol(x)))\n",
-    "}"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "kaygPMYdelFI",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the covariates\n",
-    "controls_formula <- \"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2\"\n",
-    "Zcontrols <- model.matrix(as.formula(controls_formula), data = Z)\n",
-    "Zcontrols <- center_colmeans(Zcontrols)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "FYUE8DCsh6QL"
-   },
-   "source": [
-    "Construct all the variables that we will use to model heterogeneity of effect in a linear manner"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "qVF99n7dhyc-",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the linear heterogeneity\n",
-    "linear_het_formula <- \"~ -1 + (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
-    "Zhet <- model.matrix(as.formula(linear_het_formula), data = Z)\n",
-    "Zhet <- center_colmeans(Zhet)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "ySaY8-X0iXyP"
-   },
-   "source": [
-    "Construct all interaction variables between sex and heterogeneity variables"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "jPGR47mfhzBu",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# create the model matrix for the higher order heterogeneity\n",
-    "Zhet <- as.data.frame(cbind(Zhet, \"sex\" = Z$sex))\n",
-    "nonlin_het_formula <- \"~ -1 + sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\"\n",
-    "Zinteractions <- model.matrix(as.formula(nonlin_het_formula), data = Zhet)\n",
-    "interaction_cols <- Zinteractions[, grepl(\"sex\", colnames(Zinteractions))]"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "mt96NtDIll5_"
-   },
-   "source": [
-    "Put variables all together"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "niEXvfVSlk3v",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "X <- cbind(Zinteractions, Zcontrols)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "hWtAmml_Kf2v"
-   },
-   "source": [
-    "Get estimates and CIs"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 854
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "vscode": {
+          "languageId": "r"
+        },
+        "id": "DIlUE3LSgFAm"
+      },
+      "outputs": [],
+      "source": [
+        "library(hdm)\n",
+        "library(xtable)"
+      ]
     },
-    "id": "YO7Hmw5nllBK",
-    "outputId": "39873473-1933-4d81-d536-da42d661072e",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# this cell takes 30 minutes to run\n",
-    "index_gender <- grep(\"sex\", colnames(Zinteractions))\n",
-    "effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_gender, post = FALSE)\n",
-    "result <- summary(effects_female)\n",
-    "result$coef\n",
-    "print(xtable(result$coef[, c(1, 2, 4)], type = \"latex\"), digits = 3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "n5ZjOw5t_eRA"
-   },
-   "source": [
-    "Now, we estimate and plot confidence intervals, first \"pointwise\" and then the joint confidence intervals."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 854
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "fLiMuKqN_eQ-",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/wage2015_subsample_inference.csv\"\n",
+        "data <- read.csv(file)\n",
+        "str(data)"
+      ]
     },
-    "id": "d88JnYGG_eRA",
-    "outputId": "a9221fd0-db3b-418b-8823-be9e79ba0b77",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "pointwise_ci <- confint(effects_female, level = 0.95)\n",
-    "pointwise_ci\n",
-    "print(xtable(pointwise_ci), type = \"latex\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "I_QF5kVR_eRA"
-   },
-   "source": [
-    "Finally, we compare the pointwise confidence intervals to joint confidence intervals."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 854
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "GLjEqmK8hEU8",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "y <- data$lwage\n",
+        "Z <- subset(data, select = -c(lwage, wage))"
+      ]
     },
-    "id": "az7AJkhE_eRB",
-    "outputId": "ef8e3e87-3aac-483e-f5f5-4aacd5bf02be",
-    "vscode": {
-     "languageId": "r"
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "vscode": {
+          "languageId": "r"
+        },
+        "id": "Rfkup1g5gFAn"
+      },
+      "outputs": [],
+      "source": [
+        "# create the model matrix that includes second degree polynomials of covariates as controls\n",
+        "# and a few covariates interacted with sex for heterogeneity\n",
+        "formula <- paste(\"~ 0 + (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we + exp1 + exp2 + exp3 + exp4)**2 \",\n",
+        "                 \"+ sex + sex * (shs + hsg + scl + clg + mw + so + we + exp1 + exp2 + exp3 + exp4)\", sep = \"\")\n",
+        "X <- model.matrix(as.formula(formula), data = Z)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "hWtAmml_Kf2v"
+      },
+      "source": [
+        "Get estimates and CIs"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "YO7Hmw5nllBK",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# this cell takes 30 minutes to run\n",
+        "index_sex <- grep(\"sex\", colnames(X))\n",
+        "effects_female <- hdm::rlassoEffects(x = X, y = y, index = index_sex, post = FALSE)\n",
+        "result <- summary(effects_female)\n",
+        "result$coef\n",
+        "print(xtable(result$coef[, c(1, 2, 4)], type = \"latex\"), digits = 3)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "ZGpLAcymgFAn"
+      },
+      "source": [
+        "Note that since the covariates used in the interactions are not mean-zero, the coefficient associated with `sex` should be interpreted as the group average effect of a reference group where all the remaining variables take zero value and should not be interpreted as the average treatment effect."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "n5ZjOw5t_eRA"
+      },
+      "source": [
+        "Now, we estimate and plot confidence intervals, first \"pointwise\" and then the joint confidence intervals."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "d88JnYGG_eRA",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "pointwise_ci <- confint(effects_female, level = 0.95)\n",
+        "pointwise_ci\n",
+        "print(xtable(pointwise_ci), type = \"latex\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "I_QF5kVR_eRA"
+      },
+      "source": [
+        "Finally, we compare the pointwise confidence intervals to joint confidence intervals."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "az7AJkhE_eRB",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "joint_ci <- confint(effects_female, level = 0.95, joint = TRUE)\n",
+        "joint_ci\n",
+        "print(xtable(joint_ci), type = \"latex\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "pAPpZBivh15T"
+      },
+      "execution_count": null,
+      "outputs": []
     }
-   },
-   "outputs": [],
-   "source": [
-    "joint_ci <- confint(effects_female, level = 0.95, joint = TRUE)\n",
-    "joint_ci\n",
-    "print(xtable(joint_ci), type = \"latex\")"
-   ]
-  }
- ],
- "metadata": {
-  "colab": {
-   "provenance": []
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "machine_shape": "hm",
+      "gpuType": "A100"
+    },
+    "kernelspec": {
+      "display_name": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.6.1"
+    },
+    "papermill": {
+      "default_parameters": {},
+      "duration": 89.365707,
+      "end_time": "2021-02-28T17:18:51.003711",
+      "environment_variables": {},
+      "exception": null,
+      "input_path": "__notebook__.ipynb",
+      "output_path": "__notebook__.ipynb",
+      "parameters": {},
+      "start_time": "2021-02-28T17:17:21.638004",
+      "version": "2.2.2"
+    },
+    "accelerator": "GPU"
   },
-  "kernelspec": {
-   "display_name": "R",
-   "name": "ir"
-  },
-  "language_info": {
-   "name": "R"
-  },
-  "papermill": {
-   "default_parameters": {},
-   "duration": 89.365707,
-   "end_time": "2021-02-28T17:18:51.003711",
-   "environment_variables": {},
-   "exception": null,
-   "input_path": "__notebook__.ipynb",
-   "output_path": "__notebook__.ipynb",
-   "parameters": {},
-   "start_time": "2021-02-28T17:17:21.638004",
-   "version": "2.2.2"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 0
+  "nbformat": 4,
+  "nbformat_minor": 0
 }

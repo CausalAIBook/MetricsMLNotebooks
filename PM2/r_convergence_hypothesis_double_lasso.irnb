@@ -1,575 +1,546 @@
 {
- "cells": [
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "79U65py1grzb"
-   },
-   "source": [
-    "# Testing the Convergence Hypothesis"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "79U65py1grzb"
+      },
+      "source": [
+        "# Testing the Convergence Hypothesis"
+      ]
     },
-    "id": "GK-MMvLseA2Q",
-    "outputId": "f429014a-9f26-4030-cdb8-6d925704172d",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "install.packages(\"hdm\")\n",
-    "install.packages(\"xtable\")\n",
-    "install.packages(\"lmtest\")\n",
-    "install.packages(\"sandwich\")\n",
-    "install.packages(\"glmnet\")\n",
-    "install.packages(\"ggplot2\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "library(hdm)\n",
-    "library(xtable)\n",
-    "library(lmtest)\n",
-    "library(sandwich)\n",
-    "library(glmnet) # For LassoCV\n",
-    "library(ggplot2)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "nlpSLLV6g1pc"
-   },
-   "source": [
-    "## Introduction"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "xXkzGJWag02O"
-   },
-   "source": [
-    "We provide an additional empirical example of partialling-out with Lasso to estimate the regression coefficient $\\beta_1$ in the high-dimensional linear regression model:\n",
-    "  $$\n",
-    "  Y = \\beta_1 D +  \\beta_2'W + \\epsilon.\n",
-    "  $$\n",
-    "  \n",
-    "Specifically, we are interested in how the rates  at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).\n",
-    "  \n",
-    "The relationship is captured by $\\beta_1$, the *speed of convergence/divergence*, which measures the speed at which poor countries catch up $(\\beta_1< 0)$ or fall behind $(\\beta_1> 0)$ rich countries, after controlling for $W$. Our inference question here is: do poor countries grow faster than rich countries, controlling for educational and other characteristics? In other words, is the speed of convergence negative: $ \\beta_1 <0?$ This is the Convergence Hypothesis predicted by the Solow Growth Model. This is a structural economic model. Under some strong assumptions, that we won't state here, the predictive exercise we are doing here can be given causal interpretation.\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "a5Ul2ppLfUBQ"
-   },
-   "source": [
-    "## Data Analysis"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "9GgPNICafYuK"
-   },
-   "source": [
-    "We consider the data set GrowthData which is included in the package *hdm*. First, let us load the data set to get familiar with the data."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "_B9DWuS6fcVW",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "getdata <- function(...) {\n",
-    "  e <- new.env()\n",
-    "  name <- data(..., envir = e)[1]\n",
-    "  e[[name]]\n",
-    "}\n",
-    "\n",
-    "# now load your data calling getdata()\n",
-    "growth <- getdata(GrowthData)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "smYhqwpbffVh"
-   },
-   "source": [
-    "The sample contains $90$ countries and $63$ controls."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 1000
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "GK-MMvLseA2Q",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "install.packages(\"hdm\")\n",
+        "install.packages(\"xtable\")\n",
+        "install.packages(\"lmtest\")\n",
+        "install.packages(\"sandwich\")\n",
+        "install.packages(\"glmnet\")\n",
+        "install.packages(\"ggplot2\")"
+      ]
     },
-    "id": "1dsF7_R4j-Qv",
-    "outputId": "c77d3a1a-35e5-482f-d414-75304fc218c3",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "growth"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "-AMcbsgefhTg"
-   },
-   "source": [
-    "Thus $p \\approx 60$, $n=90$ and $p/n$ is not small. We expect the least squares method to provide a poor estimate of $\\beta_1$.  We expect the method based on partialling-out with Lasso to provide a high quality estimate of $\\beta_1$.\n",
-    "To check this hypothesis, we analyze the relation between the output variable $Y$ and the other country's characteristics by running a linear regression in the first step."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "DncWsRS9mgAp",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "## Create the outcome variable y and covariates x\n",
-    "y <- growth$Outcome\n",
-    "X <- growth[-which(colnames(growth) %in% c(\"intercept\"))]"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "vscode": {
+          "languageId": "r"
+        },
+        "id": "1_COCXxevALw"
+      },
+      "outputs": [],
+      "source": [
+        "library(hdm)\n",
+        "library(xtable)\n",
+        "library(lmtest)\n",
+        "library(sandwich)\n",
+        "library(glmnet) # For LassoCV\n",
+        "library(ggplot2)"
+      ]
     },
-    "id": "vPO08MjomqfZ",
-    "outputId": "afa89548-e9ef-4060-d5db-eb8e632e8e95",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "fit <- lm(Outcome ~ ., data = X)\n",
-    "est <- summary(fit)$coef[\"gdpsh465\", 1]\n",
-    "\n",
-    "hcv_coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
-    "se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
-    "\n",
-    "# print unconditional effect of gdpsh465 and the corresponding standard error\n",
-    "cat(\"The estimated coefficient on gdpsh465 is\", est,\n",
-    "    \" and the corresponding robust standard error is\", se)\n",
-    "\n",
-    "# Calculate the 95% confidence interval for 'gdpsh465'\n",
-    "lower_ci <- est - 1.96 * se\n",
-    "upper_ci <- est + 1.96 * se\n",
-    "\n",
-    "cat(\"95% Confidence Interval: [\", lower_ci, \",\", upper_ci, \"]\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "D7nJZzhGfjQT"
-   },
-   "source": [
-    "## Summarize OLS results"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "nlpSLLV6g1pc"
+      },
+      "source": [
+        "## Introduction"
+      ]
     },
-    "id": "EwGVcIVAfRe5",
-    "outputId": "87f41279-8907-415b-f8eb-589f736089b2",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# Create an empty data frame with column names\n",
-    "table <- data.frame(\n",
-    "  Method = character(0),\n",
-    "  Estimate = character(0),\n",
-    "  `Std. Error` = numeric(0),\n",
-    "  `Lower Bound CI` = numeric(0),\n",
-    "  `Upper Bound CI` = numeric(0)\n",
-    ")\n",
-    "\n",
-    "# Add OLS results to the table\n",
-    "table <- rbind(table, c(\"OLS\", est, se, lower_ci, upper_ci))\n",
-    "\n",
-    "# Rename the columns to match the Python table\n",
-    "colnames(table) <- c(\"Method\", \"Estimate\", \"Std. Error\", \"lower bound CI\", \"upper bound CI\")\n",
-    "\n",
-    "# Print the table\n",
-    "print(table)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "KfrhJqKhfwKB"
-   },
-   "source": [
-    "Least squares provides a rather noisy estimate (high standard error) of the\n",
-    "speed of convergence, and does not allow us to answer the question\n",
-    "about the convergence hypothesis since the confidence interval includes zero.\n",
-    "\n",
-    "In contrast, we can use the partialling-out approach based on lasso regression (\"Double Lasso\")."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "D9Y2U1Ldf1eB",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "y <- growth$Outcome\n",
-    "W <- growth[-which(colnames(growth) %in% c(\"Outcome\", \"intercept\", \"gdpsh465\"))]\n",
-    "D <- growth$gdpsh465"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "8yNU2UgefzCZ"
-   },
-   "source": [
-    "## Method 1: Lasso with Theoretical Penalty using HDM"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "tQPxdzQ2f84M"
-   },
-   "source": [
-    "While cross validation is commonly employed for choosing penalty parameters in Lasso, it can be very noisy and tends to choose relatively small penalty leading to some overfitting. For this reason, one should not use cross validation to choose tuning parameters unless sample splitting is employed. We illustrate the use of sample combined with cross validation in later chapters in the book. Since we are using the full sample here, it is much better (and theoretically valid) to use penalties that provably control overfitting, which is what we do here.\n",
-    "\n",
-    "We report the results using cross validation at the end of this notebook for comparison. There, we observe overfitting for the prediction of the outcome."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "DIzy51tZsoWp",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "double_lasso <- function(y, D, W) {\n",
-    "\n",
-    "  # residualize outcome with Lasso\n",
-    "  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)\n",
-    "  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))\n",
-    "  yres <- y - as.numeric(yhat_rlasso)\n",
-    "\n",
-    "\n",
-    "  # residualize treatment with Lasso\n",
-    "  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)\n",
-    "  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))\n",
-    "  dres <- D - as.numeric(dhat_rlasso)\n",
-    "\n",
-    "  # rest is the same as in the OLS case\n",
-    "  hat <- mean(yres * dres) / mean(dres^2)\n",
-    "  epsilon <- yres - hat * dres\n",
-    "  V <- mean(epsilon^2 * dres^2) / mean(dres^2)^2\n",
-    "  stderr <- sqrt(V / length(y))\n",
-    "\n",
-    "  return(list(hat = hat, stderr = stderr))\n",
-    "}"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "Ncz7Uqn5sqqU",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "results <- double_lasso(y, D, W)\n",
-    "hat <- results$hat\n",
-    "stderr <- results$stderr\n",
-    "# Calculate the 95% confidence interval\n",
-    "ci_lower <- hat - 1.96 * stderr\n",
-    "ci_upper <- hat + 1.96 * stderr"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "P5PEjKw9gLvC"
-   },
-   "source": [
-    "The least square method provides a rather noisy estimate of the speed of convergence. We can not answer the question if poor countries grow faster than rich countries. The least square method does not work when the ratio $p/n$ is large.\n",
-    "\n",
-    "In sharp contrast, partialling-out via Lasso provides a more precise estimate. The Lasso based point estimate is $-5\\%$ and the $95\\%$ confidence interval for the (annual) rate of convergence $[-7.8\\%,-2.2\\%]$ only includes negative numbers. This empirical evidence does support the convergence hypothesis."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "xXkzGJWag02O"
+      },
+      "source": [
+        "We provide an additional empirical example of partialling-out with Lasso to estimate the regression coefficient $\\beta_1$ in the high-dimensional linear regression model:\n",
+        "  $$\n",
+        "  Y = \\beta_1 D +  \\beta_2'W + \\epsilon.\n",
+        "  $$\n",
+        "  \n",
+        "Specifically, we are interested in how the rates  at which economies of different countries grow ($Y$) are related to the initial wealth levels in each country ($D$) controlling for country's institutional, educational, and other similar characteristics ($W$).\n",
+        "  \n",
+        "The relationship is captured by $\\beta_1$, the *speed of convergence/divergence*, which measures the speed at which poor countries catch up $(\\beta_1< 0)$ or fall behind $(\\beta_1> 0)$ rich countries, after controlling for $W$. Our inference question here is: do poor countries grow faster than rich countries, controlling for educational and other characteristics? In other words, is the speed of convergence negative: $ \\beta_1 <0?$ This is the Convergence Hypothesis predicted by the Solow Growth Model. This is a structural economic model. Under some strong assumptions, that we won't state here, the predictive exercise we are doing here can be given causal interpretation.\n"
+      ]
     },
-    "id": "tNLVM4WEgL9v",
-    "outputId": "1f2683b7-630a-43c5-e110-74c527603850",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# Add Double Lasso results to the table\n",
-    "table <- rbind(table, c(\"Double Lasso\", hat, stderr, ci_lower, ci_upper))\n",
-    "\n",
-    "# Print the table\n",
-    "print(table)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "smPkxqCpgMR8"
-   },
-   "source": [
-    "## Method 2: Lasso with Cross-Validation"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "MH-eUye8liRq"
-   },
-   "source": [
-    "This section is for illustration purposes only. Given that we are using the full sample, cross validation *should not* be used for choosing tuning parameters here. Cross validation tends to (mildly) overfit, and this overfitting can lead to substantial problems when inference about parameters is the goal."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "YhpTUkE_wQz9",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# Choose penalty based on KFold cross validation\n",
-    "set.seed(123)\n",
-    "# Given small sample size, we use an aggressive number of 20 folds\n",
-    "n_folds <- 20\n",
-    "\n",
-    "\n",
-    "# Define LassoCV models for y and D\n",
-    "model_y <- cv.glmnet(\n",
-    "  x = as.matrix(W),\n",
-    "  y = y,\n",
-    "  alpha = 1, # Lasso penalty\n",
-    "  nfolds = n_folds,\n",
-    "  family = \"gaussian\"\n",
-    ")\n",
-    "\n",
-    "model_d <- cv.glmnet(\n",
-    "  x = as.matrix(W),\n",
-    "  y = D,\n",
-    "  alpha = 1, # Lasso penalty\n",
-    "  nfolds = n_folds,\n",
-    "  family = \"gaussian\"\n",
-    ")\n",
-    "\n",
-    "# Get the best lambda values for y and D\n",
-    "best_lambda_y <- model_y$lambda.min\n",
-    "best_lambda_d <- model_d$lambda.min\n",
-    "\n",
-    "# Fit Lasso models with the best lambda values\n",
-    "lasso_model_y <- glmnet(as.matrix(W), y, alpha = 1, lambda = best_lambda_y)\n",
-    "lasso_model_d <- glmnet(as.matrix(W), D, alpha = 1, lambda = best_lambda_d)\n",
-    "\n",
-    "# Calculate the residuals\n",
-    "res_y <- y - predict(lasso_model_y, s = best_lambda_y, newx = as.matrix(W))\n",
-    "res_d <- D - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(W))"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "cbVsr86tyqTY",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "tmp_df <- as.data.frame(cbind(res_y, res_d))\n",
-    "colnames(tmp_df) <- c(\"res_y\", \"res_d\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "id": "D7SzuZ2P0P0X",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "fit_cv <- lm(res_y ~ res_d, data = tmp_df)\n",
-    "est_cv <- summary(fit_cv)$coef[\"res_d\", 1]\n",
-    "\n",
-    "hcv_cv_coefs <- vcovHC(fit_cv, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
-    "se_cv <- sqrt(diag(hcv_cv_coefs))[2] # Estimated std errors\n",
-    "\n",
-    "# Calculate the 95% confidence interval for 'gdpsh465'\n",
-    "lower_ci_cv <- est_cv - 1.96 * se_cv\n",
-    "upper_ci_cv <- est_cv + 1.96 * se_cv"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/"
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "a5Ul2ppLfUBQ"
+      },
+      "source": [
+        "## Data Analysis"
+      ]
     },
-    "id": "Ctl5T5vUygRk",
-    "outputId": "1fc3990f-10c2-4e94-b1e9-a13b7a08cbab",
-    "vscode": {
-     "languageId": "r"
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# Add LassoCV results to the table\n",
-    "table <- rbind(table, c(\"Double Lasso CV\", est_cv, se_cv, lower_ci_cv, upper_ci_cv))\n",
-    "\n",
-    "# Print the table\n",
-    "print(table)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
-    "id": "0LzDsUi8gmQM"
-   },
-   "source": [
-    "We find that the outcome model chooses too small of a penalty based on cross-validation, leading to overfitting of the outcome and tiny outcome residuals. This leads to artificially small standard errors and a zero treatment effect. Theoretically driven penalty should be preferred for such small sample sizes."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "colab": {
-     "base_uri": "https://localhost:8080/",
-     "height": 857
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "9GgPNICafYuK"
+      },
+      "source": [
+        "We consider the data set GrowthData which is included in the package *hdm*. First, let us load the data set to get familiar with the data."
+      ]
     },
-    "id": "7uzcIGhVgmei",
-    "outputId": "ecff8a3f-60da-4b92-c6f7-cb40a116ec82",
-    "vscode": {
-     "languageId": "r"
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "_B9DWuS6fcVW",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "getdata <- function(...) {\n",
+        "  e <- new.env()\n",
+        "  name <- data(..., envir = e)[1]\n",
+        "  e[[name]]\n",
+        "}\n",
+        "\n",
+        "# now load your data calling getdata()\n",
+        "growth <- getdata(GrowthData)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "smYhqwpbffVh"
+      },
+      "source": [
+        "The sample contains $90$ countries and $63$ controls."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "1dsF7_R4j-Qv",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "growth"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "-AMcbsgefhTg"
+      },
+      "source": [
+        "Thus $p \\approx 60$, $n=90$ and $p/n$ is not small. We expect the least squares method to provide a poor estimate of $\\beta_1$.  We expect the method based on partialling-out with Lasso to provide a high quality estimate of $\\beta_1$.\n",
+        "To check this hypothesis, we analyze the relation between the output variable $Y$ and the other country's characteristics by running a linear regression in the first step."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "DncWsRS9mgAp",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "## Create the outcome variable y and covariates x\n",
+        "y <- growth$Outcome\n",
+        "X <- growth[-which(colnames(growth) %in% c(\"intercept\"))]"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "vPO08MjomqfZ",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "fit <- lm(Outcome ~ ., data = X)\n",
+        "est <- summary(fit)$coef[\"gdpsh465\", 1]\n",
+        "\n",
+        "hcv_coefs <- vcovHC(fit, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
+        "se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
+        "\n",
+        "# print unconditional effect of gdpsh465 and the corresponding standard error\n",
+        "cat(\"The estimated coefficient on gdpsh465 is\", est,\n",
+        "    \" and the corresponding robust standard error is\", se)\n",
+        "\n",
+        "# Calculate the 95% confidence interval for 'gdpsh465'\n",
+        "lower_ci <- est - 1.96 * se\n",
+        "upper_ci <- est + 1.96 * se\n",
+        "\n",
+        "cat(\"95% Confidence Interval: [\", lower_ci, \",\", upper_ci, \"]\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "D7nJZzhGfjQT"
+      },
+      "source": [
+        "## Summarize OLS results"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "EwGVcIVAfRe5",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Create an empty data frame with column names\n",
+        "table <- data.frame(\n",
+        "  Method = character(0),\n",
+        "  Estimate = character(0),\n",
+        "  `Std. Error` = numeric(0),\n",
+        "  `Lower Bound CI` = numeric(0),\n",
+        "  `Upper Bound CI` = numeric(0)\n",
+        ")\n",
+        "\n",
+        "# Add OLS results to the table\n",
+        "table <- rbind(table, c(\"OLS\", est, se, lower_ci, upper_ci))\n",
+        "\n",
+        "# Rename the columns to match the Python table\n",
+        "colnames(table) <- c(\"Method\", \"Estimate\", \"Std. Error\", \"lower bound CI\", \"upper bound CI\")\n",
+        "\n",
+        "# Print the table\n",
+        "print(table)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "KfrhJqKhfwKB"
+      },
+      "source": [
+        "Least squares provides a rather noisy estimate (high standard error) of the\n",
+        "speed of convergence, and does not allow us to answer the question\n",
+        "about the convergence hypothesis since the confidence interval includes zero.\n",
+        "\n",
+        "In contrast, we can use the partialling-out approach based on lasso regression (\"Double Lasso\")."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "D9Y2U1Ldf1eB",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "y <- growth$Outcome\n",
+        "W <- growth[-which(colnames(growth) %in% c(\"Outcome\", \"intercept\", \"gdpsh465\"))]\n",
+        "D <- growth$gdpsh465"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "8yNU2UgefzCZ"
+      },
+      "source": [
+        "## Method 1: Lasso with Theoretical Penalty using HDM"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "tQPxdzQ2f84M"
+      },
+      "source": [
+        "While cross validation is commonly employed for choosing penalty parameters in Lasso, it can be very noisy and tends to choose relatively small penalty leading to some overfitting. For this reason, one should not use cross validation to choose tuning parameters unless sample splitting is employed. We illustrate the use of sample combined with cross validation in later chapters in the book. Since we are using the full sample here, it is much better (and theoretically valid) to use penalties that provably control overfitting, which is what we do here.\n",
+        "\n",
+        "We report the results using cross validation at the end of this notebook for comparison. There, we observe overfitting for the prediction of the outcome."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "DIzy51tZsoWp",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "double_lasso <- function(y, D, W) {\n",
+        "\n",
+        "  # residualize outcome with Lasso\n",
+        "  yfit_rlasso <- hdm::rlasso(W, y, post = FALSE)\n",
+        "  yhat_rlasso <- predict(yfit_rlasso, as.data.frame(W))\n",
+        "  yres <- y - as.numeric(yhat_rlasso)\n",
+        "\n",
+        "\n",
+        "  # residualize treatment with Lasso\n",
+        "  dfit_rlasso <- hdm::rlasso(W, D, post = FALSE)\n",
+        "  dhat_rlasso <- predict(dfit_rlasso, as.data.frame(W))\n",
+        "  dres <- D - as.numeric(dhat_rlasso)\n",
+        "\n",
+        "  # rest is the same as in the OLS case\n",
+        "  hat <- mean(yres * dres) / mean(dres^2)\n",
+        "  epsilon <- yres - hat * dres\n",
+        "  V <- mean(epsilon^2 * dres^2) / mean(dres^2)^2\n",
+        "  stderr <- sqrt(V / length(y))\n",
+        "\n",
+        "  list(hat = hat, stderr = stderr)\n",
+        "}"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "Ncz7Uqn5sqqU",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "results <- double_lasso(y, D, W)\n",
+        "hat <- results$hat\n",
+        "stderr <- results$stderr\n",
+        "# Calculate the 95% confidence interval\n",
+        "ci_lower <- hat - 1.96 * stderr\n",
+        "ci_upper <- hat + 1.96 * stderr"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "P5PEjKw9gLvC"
+      },
+      "source": [
+        "The least square method provides a rather noisy estimate of the speed of convergence. We can not answer the question if poor countries grow faster than rich countries. The least square method does not work when the ratio $p/n$ is large.\n",
+        "\n",
+        "In sharp contrast, partialling-out via Lasso provides a more precise estimate. The Lasso based point estimate is $-5\\%$ and the $95\\%$ confidence interval for the (annual) rate of convergence $[-7.8\\%,-2.2\\%]$ only includes negative numbers. This empirical evidence does support the convergence hypothesis."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "tNLVM4WEgL9v",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Add Double Lasso results to the table\n",
+        "table <- rbind(table, c(\"Double Lasso\", hat, stderr, ci_lower, ci_upper))\n",
+        "\n",
+        "# Print the table\n",
+        "print(table)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "smPkxqCpgMR8"
+      },
+      "source": [
+        "## Method 2: Lasso with Cross-Validation"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "MH-eUye8liRq"
+      },
+      "source": [
+        "This section is for illustration purposes only. Given that we are using the full sample, cross validation *should not* be used for choosing tuning parameters here. Cross validation tends to (mildly) overfit, and this overfitting can lead to substantial problems when inference about parameters is the goal."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "YhpTUkE_wQz9",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Choose penalty based on KFold cross validation\n",
+        "set.seed(123)\n",
+        "# Given small sample size, we use an aggressive number of 20 folds\n",
+        "n_folds <- 20\n",
+        "\n",
+        "\n",
+        "# Define LassoCV models for y and D\n",
+        "model_y <- cv.glmnet(\n",
+        "  x = as.matrix(W),\n",
+        "  y = y,\n",
+        "  alpha = 1, # Lasso penalty\n",
+        "  nfolds = n_folds,\n",
+        "  family = \"gaussian\"\n",
+        ")\n",
+        "\n",
+        "model_d <- cv.glmnet(\n",
+        "  x = as.matrix(W),\n",
+        "  y = D,\n",
+        "  alpha = 1, # Lasso penalty\n",
+        "  nfolds = n_folds,\n",
+        "  family = \"gaussian\"\n",
+        ")\n",
+        "\n",
+        "# Get the best lambda values for y and D\n",
+        "best_lambda_y <- model_y$lambda.min\n",
+        "best_lambda_d <- model_d$lambda.min\n",
+        "\n",
+        "# Fit Lasso models with the best lambda values\n",
+        "lasso_model_y <- glmnet(as.matrix(W), y, alpha = 1, lambda = best_lambda_y)\n",
+        "lasso_model_d <- glmnet(as.matrix(W), D, alpha = 1, lambda = best_lambda_d)\n",
+        "\n",
+        "# Calculate the residuals\n",
+        "res_y <- y - predict(lasso_model_y, s = best_lambda_y, newx = as.matrix(W))\n",
+        "res_d <- D - predict(lasso_model_d, s = best_lambda_d, newx = as.matrix(W))"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "cbVsr86tyqTY",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "tmp_df <- as.data.frame(cbind(res_y, res_d))\n",
+        "colnames(tmp_df) <- c(\"res_y\", \"res_d\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "D7SzuZ2P0P0X",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "fit_cv <- lm(res_y ~ res_d, data = tmp_df)\n",
+        "est_cv <- summary(fit_cv)$coef[\"res_d\", 1]\n",
+        "\n",
+        "hcv_cv_coefs <- vcovHC(fit_cv, type = \"HC1\") # HC - \"heteroskedasticity cosistent\"\n",
+        "se_cv <- sqrt(diag(hcv_cv_coefs))[2] # Estimated std errors\n",
+        "\n",
+        "# Calculate the 95% confidence interval for 'gdpsh465'\n",
+        "lower_ci_cv <- est_cv - 1.96 * se_cv\n",
+        "upper_ci_cv <- est_cv + 1.96 * se_cv"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "Ctl5T5vUygRk",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Add LassoCV results to the table\n",
+        "table <- rbind(table, c(\"Double Lasso CV\", est_cv, se_cv, lower_ci_cv, upper_ci_cv))\n",
+        "\n",
+        "# Print the table\n",
+        "print(table)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "0LzDsUi8gmQM"
+      },
+      "source": [
+        "We find that the outcome model chooses too small of a penalty based on cross-validation, leading to overfitting of the outcome and tiny outcome residuals. This leads to artificially small standard errors and a zero treatment effect. Theoretically driven penalty should be preferred for such small sample sizes."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "7uzcIGhVgmei",
+        "vscode": {
+          "languageId": "r"
+        }
+      },
+      "outputs": [],
+      "source": [
+        "# Create a data frame to store the results\n",
+        "results_y <- data.frame(\n",
+        "  Alphas = model_y$lambda,\n",
+        "  OutOfSampleR2 = 1 - model_y$cvm / var(y)\n",
+        ")\n",
+        "\n",
+        "results_d <- data.frame(\n",
+        "  Alphas = model_d$lambda,\n",
+        "  OutOfSampleR2 = 1 - model_d$cvm / var(D)\n",
+        ")\n",
+        "\n",
+        "# Plot Outcome Lasso-CV Model\n",
+        "ggplot(data = results_y, aes(x = Alphas, y = OutOfSampleR2)) +\n",
+        "  geom_line() +\n",
+        "  labs(\n",
+        "    title = \"Outcome Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
+        "    x = \"Penalty Level\",\n",
+        "    y = \"Out-of-sample R-squared\"\n",
+        "  )\n",
+        "\n",
+        "# Plot Treatment Lasso-CV Model\n",
+        "ggplot(data = results_d, aes(x = (Alphas), y = OutOfSampleR2)) +\n",
+        "  geom_line() +\n",
+        "  labs(\n",
+        "    title = \"Treatment Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
+        "    x = \"Penalty Level\",\n",
+        "    y = \"Out-of-sample R-squared\"\n",
+        "  )\n"
+      ]
     }
-   },
-   "outputs": [],
-   "source": [
-    "# Create a data frame to store the results\n",
-    "results_y <- data.frame(\n",
-    "  Alphas = model_y$lambda,\n",
-    "  OutOfSampleR2 = 1 - model_y$cvm / var(y)\n",
-    ")\n",
-    "\n",
-    "results_d <- data.frame(\n",
-    "  Alphas = model_d$lambda,\n",
-    "  OutOfSampleR2 = 1 - model_d$cvm / var(D)\n",
-    ")\n",
-    "\n",
-    "# Plot Outcome Lasso-CV Model\n",
-    "ggplot(data = results_y, aes(x = Alphas, y = OutOfSampleR2)) +\n",
-    "  geom_line() +\n",
-    "  labs(\n",
-    "    title = \"Outcome Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
-    "    x = \"Penalty Level\",\n",
-    "    y = \"Out-of-sample R-squared\"\n",
-    "  )\n",
-    "\n",
-    "# Plot Treatment Lasso-CV Model\n",
-    "ggplot(data = results_d, aes(x = (Alphas), y = OutOfSampleR2)) +\n",
-    "  geom_line() +\n",
-    "  labs(\n",
-    "    title = \"Treatment Lasso-CV Model: Out-of-sample R-squared as function of penalty level\",\n",
-    "    x = \"Penalty Level\",\n",
-    "    y = \"Out-of-sample R-squared\"\n",
-    "  )\n"
-   ]
-  }
- ],
- "metadata": {
-  "colab": {
-   "provenance": []
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "display_name": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "name": "R"
+    }
   },
-  "kernelspec": {
-   "display_name": "R",
-   "name": "ir"
-  },
-  "language_info": {
-   "name": "R"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 0
+  "nbformat": 4,
+  "nbformat_minor": 0
 }
