@@ -142,7 +142,7 @@ double_lasso <- function(y, D, W) {
   V <- mean(epsilon^2 * dres^2) / mean(dres^2)^2
   stderr <- sqrt(V / length(y))
 
-  return(list(hat = hat, stderr = stderr))
+  list(hat = hat, stderr = stderr)
 }
 ```
 

@@ -22,7 +22,7 @@ gen_data <- function(n, d, p, delta, base) {
   y0 <- base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
   y1 <- delta + base - X[, 1] + rnorm(n, mean = 0, sd = 0.1)
   y <- y1 * D + y0 * (1 - D)
-  return(list(y = y, D = D, X = X))
+  list(y = y, D = D, X = X)
 }
 ```
 
@@ -45,7 +45,7 @@ twomeans <- function(y, D) {
   hat <- hat1 - hat0 # estimate of the treatment effect
   # standard error of the estimate of the treatment effect
   stderr <- sqrt((V0 + V1) / length(y))
-  return(list(hat = hat, stderr = stderr))
+  list(hat = hat, stderr = stderr)
 }
 ```
 
@@ -88,7 +88,7 @@ partialling_out <- function(y, D, W) {
   V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
   stderr <- sqrt(V / length(y))
 
-  return(list(hat = hat, stderr = stderr))
+  list(hat = hat, stderr = stderr)
 }
 ```
 
@@ -120,7 +120,7 @@ double_lasso <- function(y, D, W) {
   V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
   stderr <- sqrt(V / length(y))
 
-  return(list(hat = hat, stderr = stderr))
+  list(hat = hat, stderr = stderr)
 }
 ```
 
@@ -314,7 +314,7 @@ double_lasso <- function(y, D, W) {
   V <- mean(epsilon^2 * Dres^2) / mean(Dres^2)^2
   stderr <- sqrt(V / length(y))
 
-  return(list(hat = hat, stderr = stderr))
+  list(hat = hat, stderr = stderr)
 }
 ```
 
@@ -417,7 +417,7 @@ gen_data_non_rct <- function(n, d, p, delta, base) {
   X <- matrix(rnorm(n * d), nrow = n, ncol = d)
   D <- X[, 1] + rnorm(n, mean = 0, sd = 1 / 4)
   y <- delta * D + base - X[, 1] + rnorm(n, mean = 0, sd = 1)
-  return(list(y = y, D = D, X = X))
+  list(y = y, D = D, X = X)
 }
 ```
 
