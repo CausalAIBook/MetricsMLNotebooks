@@ -1,6 +1,18 @@
-numpy>=1.25.2
-pandas>=2.0.3
-scikit-learn>=1.2.2,<1.3.0
+# ─────────────────────────────────────────────────────────────────────────────
+# Python 3.11 recommended for local use (3.10 also works — that is what CI uses).
+# DO NOT use Python 3.12+: tensorflow<2.16 / keras<3.0 (pinned below) have no
+# cp312 wheels, so the env cannot be built on 3.12.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Core (used across most notebooks) ────────────────────────────────────────
+numpy>=1.25.2          # keep <2: tensorflow 2.15 and econml require numpy<2 (resolves to 1.26.x)
+pandas>=2.0.3          # NOTE: resolves to pandas 3.0.x as of 2026; notebooks were written for 2.x.
+                       #       If a notebook errors on a pandas op, pin pandas>=2.0.3,<3 to revert.
+scikit-learn>=1.2.2,<1.3.0   # CHOICE: the <1.3 cap is what forces the skorch/econml pins below.
+                             #         Lift to >=1.3 to use newer skorch (skorch>=1.0 needs sklearn 1.3+).
+                             #         Windows: sklearn ships an old msvcp140.dll in sklearn/.libs that
+                             #         shadows the system one and breaks torch's c10.dll — overwrite it
+                             #         with the system C:\Windows\System32\msvcp140.dll.
 statsmodels>=0.14.2
 jupyterlab
 matplotlib>=3.7.1
@@ -8,9 +20,56 @@ scipy>=1.11.4
 torch
 torchvision
 lightgbm>=4.1.0
-xgboost~=2.0.3
+xgboost~=2.0.3         # T/CATE notebooks declare xgboost==2.0.1; ~=2.0.3 is compatible
 seaborn>=0.13.1
-tensorflow<2.16
+tensorflow<2.16        # this cap is why Python must be <=3.11 (no 3.12 wheels)
 keras>=2.15.0,<3.0
 tf_keras>=2.15.1,<3.0
 plotnine>=0.12.4
+
+# ── Additional packages the notebooks install at runtime via `!pip install` ───
+# Added here so the environment can be built once and used offline. Versions are
+# the verified-working set for Python 3.11 + the pins above; loosen if desired.
+multiprocess==0.70.19  # required by the hdmpy rlasso wrapper (see hdmpy note below)
+pyreadr==0.5.6         # read .RData / .rds   (PM1, PM2)
+wget==3.2              # data download        (AC2, PM4, T)
+doubleml==0.7.1        # notebooks declare doubleml~=0.7.0  (AC2, PM4, T)
+econml==0.15.1         # CHOICE/REVERSION: AC2 pins econml==0.14.1, but 0.14.1 has NO cp311 wheels
+                       # (won't install on Python 3.11). 0.15.1 has 3.11 wheels and works with
+                       # sklearn 1.2.2; PM4 already pins 0.15.1. APIs used are stable across 0.14->0.15.
+flaml==2.6.0           # AutoML                (AC2, PM3, PM4)
+formulaic==1.2.2       #                       (AC2, PM4, T)
+pgmpy==1.0.0           # DAGs                  (CM2, CM3, PM4)
+dowhy==0.12            #                       (CM3) — pulls in cvxpy + solvers
+skorch==0.15.0         # REVERSION: skorch>=1.0 imports sklearn.utils.metadata_routing, which does not
+                       # exist before scikit-learn 1.3, so it crashes against the 1.2.2 pin above.
+                       # 0.15.0 is the last pre-routing release (PM3). Bump it if you lift sklearn to 1.3.
+shap==0.43.0           # capped <0.44 by econml 0.15.1   (T/CATE)
+rdrobust==2.0.0        # regression discontinuity        (T/T_4)
+rdd==0.0.3             # regression discontinuity        (T/T_4)
+datasets==5.0.0        # HuggingFace datasets            (T/CATE)
+
+# ── hdmpy (rlasso) — NOT on PyPI (no setup.py), so it cannot be a line in this file ──
+# Used by PM1, PM2, PM3, PM4, AC1, AC2, CM1. Install one of:
+#   (a) in-notebook, as written: !git clone https://github.com/maxhuppertz/hdmpy.git
+#       then  sys.path.insert(1, "./hdmpy"); import hdmpy
+#   (b) once, globally: clone the repo and drop a .pth file pointing at it into site-packages
+#       (this venv: clone -> .venv/hdmpy-src, then file .venv/Lib/site-packages/hdmpy.pth).
+#   Requires the `multiprocess` package above.
+
+# ── PM5: DoubleML_and_Feature_Engineering_with_BERT.ipynb ─────────────────────
+# NOT installed by default — Colab/Linux-oriented, heavy, and partly Windows-incompatible.
+# CI also skips executing this notebook. Uncomment selectively only if working on PM5:
+#   transformers==4.37.2   # notebook pin: last transformers release before keras 3
+#   tensorflow_addons      # archived project; recent-TF wheels are limited / absent on Windows
+#   livelossplot
+#   sqldf
+#   auto-sklearn           # Linux / macOS ONLY — no Windows support at all
+# WARNING: the PM5 notebook also runs `!pip install -U scikit-learn`, which would blow past the
+#          <1.3 pin above (breaking skorch/econml here and the Windows torch DLL fix). Don't run
+#          that line in this environment.
+
+# ── CM3 extras (deferred until R is configured; revisit after R setup) ────────
+# rpy2          # needs a working R install; painful to configure on Windows  (CM3 dosearch/dagitty)
+# pygraphviz    # needs the Graphviz C library + build tools                  (CM3 python-pgmpy)
+#               # (CI installs libgraphviz-dev on Ubuntu for the CM3 folder.)
