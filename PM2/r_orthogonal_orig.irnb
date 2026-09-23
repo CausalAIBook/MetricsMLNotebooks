@@ -182,6 +182,57 @@
    ]
   },
   {
+   "cell_type": "code",
+   "source": [
+    "df <- data.frame(\n",
+    "  Method = factor(\n",
+    "    rep(c(\"Single selection\", \"Double Lasso\"),\n",
+    "        times = c(length(Naive), length(Orthogonal))),\n",
+    "    levels = c(\"Single selection\", \"Double Lasso\")\n",
+    "  ),\n",
+    "  Value = c(as.numeric(Naive) - 1, as.numeric(Orthogonal) - 1)\n",
+    ")\n",
+    "\n",
+    "hist_plot <- ggplot(df, aes(x = Value, fill = Method)) +\n",
+    "  geom_histogram(\n",
+    "    aes(y = after_stat(density)),\n",
+    "    binwidth = 0.1, boundary = 0,\n",
+    "    position = \"identity\",\n",
+    "    alpha = 0.45,\n",
+    "    colour = \"white\", linewidth = 0.2\n",
+    "  ) +\n",
+    "  geom_vline(\n",
+    "    xintercept = 0, colour = \"grey30\",\n",
+    "    linetype = \"dashed\", linewidth = 0.5\n",
+    "  ) +\n",
+    "  scale_fill_manual(values = c(\n",
+    "    \"Single selection\" = \"#D55E00\",\n",
+    "    \"Double Lasso\" = \"#0072B2\"\n",
+    "  )) +\n",
+    "  scale_x_continuous(breaks = seq(-2, 2, 0.5)) +\n",
+    "  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +\n",
+    "  labs(\n",
+    "    x = expression(\"Estimation error, \" * hat(alpha) - alpha),\n",
+    "    y = \"Density\",\n",
+    "    fill = NULL\n",
+    "  ) +\n",
+    "  theme_classic(base_size = 11) +\n",
+    "  theme(legend.position = \"top\")\n",
+    "\n",
+    "options(repr.plot.width = 5.5, repr.plot.height = 3.5)\n",
+    "print(hist_plot)\n",
+    "\n",
+    "# Optional export\n",
+    "ggsave(\"orthogonal_vs_naive.pdf\", hist_plot,\n",
+    "       width = 5.5, height = 3.5, units = \"in\")"
+   ],
+   "metadata": {
+    "id": "XA3v_xLtnHr7"
+   },
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "8hrJ3M5mrD8_"
