@@ -1,0 +1,27 @@
+[project]
+name = "adml-gasoline"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "pandas>=2.2",
+    "matplotlib>=3.9",
+    "statsmodels>=0.14",
+    "joblib>=1.4",
+    "scikit-learn>=1.5",
+    "econml>=0.15",
+    # Needed to run the notebook itself
+    "ipykernel>=6.29",
+]
+
+[dependency-groups]
+# Optional: `uv sync --group notebook` if you want the full Jupyter UI
+# rather than just a kernel for VS Code / an existing Jupyter install.
+notebook = [
+    "jupyterlab>=4.2",
+]
+
+[tool.uv]
+package = false
