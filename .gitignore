@@ -132,3 +132,7 @@ dmypy.json
 /CM1/hdmpy
 /AC1/hdmpy
 /PM2/hdmpy
+
+# Notebook updates
+/TEMP_updated_notebooks
+/tools
