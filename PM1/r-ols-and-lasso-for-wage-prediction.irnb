@@ -734,11 +734,12 @@
     "r2_adjextra <- sumextra$adj.r.squared\n",
     "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", r2_adjextra, \"\\n\")\n",
     "\n",
+    "p_use <- sumextra$df[1]\n",
     "# MSE and adjusted MSE\n",
     "mse_extra <- mean(sumextra$res^2)\n",
     "cat(\"MSE for the extra flexible model (in-sample): \", mse_extra, \"\\n\")\n",
-    "mse_adjextra <- (ntrain / (ntrain - p)) * mse_extra\n",
-    "cat(\"adjusted MSE for the basic model (in-sample): \", mse_adj1, \"\\n\")"
+    "mse_adjextra <- (ntrain / (ntrain - p_use)) * mse_extra\n",
+    "cat(\"adjusted MSE for the extra flexible model (in-sample): \", mse_adjextra, \"\\n\")"
    ]
   },
   {

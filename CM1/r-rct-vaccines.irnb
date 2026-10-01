@@ -6,7 +6,9 @@
     "id": "Di8kfLCYerNJ"
    },
    "source": [
-    "This notebook contains some RCT examples for teaching."
+    "# Vaccine RCT Examples\n",
+    "\n",
+    "We use vaccine trial counts to illustrate estimation of risk differences and vaccine efficacy, then compare several confidence interval methods. Reported risks and efficacy estimates are proportions unless explicitly expressed as percentages."
    ]
   },
   {
@@ -20,7 +22,7 @@
    },
    "outputs": [],
    "source": [
-    "install.packages(\"PropCIs\") # Exact CI exploiting Bernoulli outcome using the Cornfield Procedure"
+    "install.packages(\"PropCIs\")"
    ]
   },
   {
@@ -42,28 +44,19 @@
     "id": "Id8Df7PUerNX"
    },
    "source": [
-    "  \n",
     "# Polio RCT\n",
     "\n",
-    "One of the earliest randomized experiments were the Polio vaccination trials conducted by the Public Health Service in 1954.  The question was whether Salk vaccine prevented polio.  Children in the study were randomly assigned either a treatment (polio vaccine shot) or a placebo (saline solution shot), without knowing which one they received. The doctors in the study, making the diagnosis, did not know whether a child received a vaccine or not. In other words, the trial was a double-blind, randomized controlled trial.  The trial had to be large, because the rate at which Polio occured in the population was 50 per 100,000.  The treatment group saw 33 polio cases per 200,745; the control group saw 115 cases per 201,229. The estimated average treatment effect is about\n",
-    "$$\n",
-    "-40\n",
-    "$$\n",
-    "with the 95% confidence band (based on approximate normality of the two sample means and their differences):\n",
-    "$$[-52, -28].$$\n",
-    "As this is an RCT, the confidence band suggests that the Polio vaccine **caused** the reduction in the risk of polio.\n",
+    "In the randomized portion of the 1954 Salk polio vaccine trial, children received either the vaccine or a placebo. Participants and the doctors assessing outcomes did not know the assignments. The vaccine group had 33 polio cases among 200,745 children; the placebo group had 115 among 201,229.\n",
     "\n",
-    "The interesting thing here is that we don't need the underlying individual data to evaluate the effectivess of the vaccine. This is because the outcomes are Bernoulli random variables, and we have enough information to compute the estimate of ATE as well as the confidence intervals from the group case counts.\n",
+    "We estimate the average treatment effect as the difference in case proportions. The estimate is about $-40.7$ cases per 100,000 children, with an approximate 95% confidence interval of $[-52.6,-28.9]$. Under the RCT assumptions, the difference estimates the causal effect of vaccination on the risk of polio.\n",
     "\n",
-    "We also compute the Vaccine Efficacy metric, which refers to the following measure according to the [CDC](https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section6.html):\n",
+    "Because the outcomes are Bernoulli, the group totals and case counts suffice to calculate the difference in means and its estimated standard error. We also estimate vaccine efficacy,\n",
     "$$\n",
-    "VE = \\frac{\\text{Risk for Unvaccinated - Risk for Vaccinated}}{\\text{Risk for Unvaccinated}}.\n",
+    "\\mathsf{VE}=1-\\frac{\\text{Risk for Vaccinated}}{\\text{Risk for Unvaccinated}},\n",
     "$$\n",
-    "It describes the relative reduction in risk caused by vaccination.\n",
+    "which measures the relative reduction in risk. The point estimate is approximately 71.2%.\n",
     "\n",
-    "\n",
-    "It is staightforward to get the VE estimate by just plugging-in the numbers, but how do we get the approximate variance estimate? I am too lazy to do calculations for the delta method, so I will just use a simulation (a form of approximate bootstrap) to obtain the confidence intervals.\n",
-    "\n"
+    "For the risk difference, we use a normal confidence interval. For vaccine efficacy, we simulate independent Gaussian draws for the two estimated risks using their estimated variances, calculate efficacy for each draw, and take the 2.5th and 97.5th percentiles. This is an approximate simulation-based interval, not an exact interval."
    ]
   },
   {
@@ -143,18 +136,15 @@
     "id": "ahcRWgyEerNk"
    },
    "source": [
-    "# Pfizer/BNTX Covid-19 RCT\n",
+    "# Pfizer/BioNTech COVID-19 RCT\n",
     "\n",
-    "Here is a link to the FDA [briefing](https://www.fda.gov/media/144245/download) and an interesting [discussion](\n",
-    "https://garycornell.com/2020/12/09/statistics-in-the-pfizer-data-how-good-is-the-vaccine/?fbclid=IwAR282lS0Vl3tWmicQDDhIJAQCMO8NIsCXyWbUWwTtPuKcnuJ2v0VWXRDQac), as well as data.\n",
+    "The [FDA briefing](https://www.fda.gov/media/144245/download) reports results from a randomized trial comparing a two-dose vaccine regimen with placebo. Participants and the observers assessing outcomes were blinded to assignment. The table below reports vaccine efficacy against symptomatic, confirmed COVID-19, overall and by age group.\n",
     "\n",
-    "Pfizer/BNTX was the first vaccine approved for emergency use to reduce the risk of Covid-19 decease. In studies to assess vaccine efficacy, volunteers were randomly assigned to receive either a treatment (2-dose vaccination) or a placebo, without knowing which they received. The doctors making the diagnoses did not know now whether a given volunteer received a vaccination or not. The results of the study are given in the following table.\n",
+    "![Pfizer/BioNTech trial efficacy results](https://lh6.googleusercontent.com/oiO6gYom1UZyrOhgpFx2iq8ike979u3805JHiVygP-Efh1Yaz2ttyPcgWKlT1AqHDM4v46th3EPIkOvRLyXA0fNUloPL-mL9eOFmSAzfbNOHyCZSQ0DyzMhcFUtQuZ520R5Qd2lj)\n",
     "\n",
-    "![](https://lh6.googleusercontent.com/oiO6gYom1UZyrOhgpFx2iq8ike979u3805JHiVygP-Efh1Yaz2ttyPcgWKlT1AqHDM4v46th3EPIkOvRLyXA0fNUloPL-mL9eOFmSAzfbNOHyCZSQ0DyzMhcFUtQuZ520R5Qd2lj):\n",
+    "For a simple illustration of the two-means approach, we treat the reported case counts and group totals as binomial data, abstracting from differences in follow-up. The calculations illustrate inference methods rather than reproduce the trial analysis.\n",
     "\n",
-    "Here we see both the overall effects and the effects by age group. The confidence intervals for the overall ATE are tight and suggest high effectiveness of the vaccine. The confidence intervals for the age groups 65-74 and 75+ are much wider due to the relatively small number of people in these groups.  We could group 65-74 and >75 groups to evaluate the effectiveness of the vaccine for this broader age group and narrow the width of the confidence band.\n",
-    "\n",
-    "We use the same approach as that for the Polio example. This gives slightly different results than the FDA result, because the FDA used inversion of exact binomial tests to construct confidence intervals. We use asymptotic approches based on approximate normality, which is more crude, but delivers a rather similar result.\n"
+    "We first apply the normal and Gaussian simulation approaches used in the polio example. We then pool the 65–74 and 75-and-older groups to illustrate how interval estimates differ when there are few observed cases."
    ]
   },
   {
@@ -238,7 +228,9 @@
     "id": "kqupG5u7erNn"
    },
    "source": [
-    "In the code cell below  we calculate the effectiveness of the vaccine for the two groups that are 65 or older"
+    "## Participants Aged 65 and Older\n",
+    "\n",
+    "Pooling the two older age groups gives 1 case among 4,044 vaccinated participants and 19 among 4,067 placebo participants. Estimated efficacy is approximately 94.7%. We repeat the Gaussian simulation to construct two-sided intervals and one-sided lower confidence bounds. With so few cases, the approximation can produce negative simulated risks and efficacy values above 100%."
    ]
   },
   {
@@ -295,7 +287,9 @@
     "id": "A8wEW0sQerNq"
    },
    "source": [
-    "Let's try the parametric boostrap next, using the fact that the outcome is Bernouli."
+    "## Binomial Parametric Bootstrap\n",
+    "\n",
+    "We next simulate case counts from binomial distributions with the observed group sizes and estimated risks. The cell uses the ratio of simulated counts as an approximation to the risk ratio because the group sizes are nearly equal. The resulting percentile intervals remain approximate; simulating binomial counts does not make a bootstrap interval exact."
    ]
   },
   {
@@ -342,9 +336,9 @@
     "id": "MjenLiQAerNw"
    },
    "source": [
-    "# Exact Binomial Test Inversion\n",
+    "# Score-Based Confidence Intervals for the Risk Ratio\n",
     "\n",
-    "It is possible to use exact inference by inverting tests based on the exact binomial nature of the outcome variable. Here, we perform the Cornfield Procedure to find the exact confidence interval on the estimate of vaccine efficacy."
+    "The next cells use `PropCIs::riskscoreci` to construct an approximate score confidence interval for the risk ratio. Transforming its endpoints from $[L,U]$ to $[1-U,1-L]$ gives an interval for vaccine efficacy. This is a score-based approximation, not the exact Cornfield procedure introduced below."
    ]
   },
   {
@@ -375,7 +369,7 @@
     "id": "jQ64-QaxerN0"
    },
    "source": [
-    "Note that this exactly recovers the result in the FDA table (first row)."
+    "The overall score-based efficacy interval is approximately **[89.6%, 97.2%]**. It is close to, but does not exactly reproduce, the interval in the FDA table."
    ]
   },
   {
@@ -384,7 +378,7 @@
     "id": "iQ_lO8userN2"
    },
    "source": [
-    "Next we repeat the cornfield procedure to find the exact confidence interval on vaccine effectiveness for the two groups that are 65 or older. Here we see a big discrepancy between various asymptotic approaches and the exact finite-sample inference. This occurs because the binomial counts are too low for central limit theorems to work successfully."
+    "We repeat the score-based calculation for participants aged 65 and older. The interval is approximately **[68.9%, 99.1%]**. With only one vaccinated case and 19 placebo cases, the choice of interval method has a substantial effect on the lower endpoint."
    ]
   },
   {
@@ -407,6 +401,58 @@
     "\n",
     "1 - riskscoreci(1, NV, 19, NU, 0.95)$conf.int[2]\n",
     "1 - riskscoreci(1, NV, 19, NU, 0.95)$conf.int[1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "cornfield-method-description"
+   },
+   "source": [
+    "# Cornfield Exact Conditional Interval\n",
+    "\n",
+    "We now compute the Cornfield exact conditional confidence interval for the odds ratio; see [Cornfield (1956), *A Statistical Problem Arising from Retrospective Studies*](https://digicoll.lib.berkeley.edu/record/112867).\n",
+    "\n",
+    "For these rare outcomes, the odds ratio approximates the risk ratio. If $[L,U]$ is the odds-ratio interval, we therefore use $[1-U,1-L]$ as an approximate interval for vaccine efficacy. The conditional interval is exact for the odds ratio; its interpretation as an efficacy interval uses the rare-outcome approximation.\n",
+    "\n",
+    "The following cell calculates intervals for the full sample and for participants aged 65 and older."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "source": [
+    "cornfield_ve_ci <- function(cases_v, n_v, cases_u, n_u) {\n",
+    "  tab <- matrix(\n",
+    "    c(cases_v, n_v - cases_v,\n",
+    "      cases_u, n_u - cases_u),\n",
+    "    nrow = 2, byrow = TRUE\n",
+    "  )\n",
+    "\n",
+    "  ci_or <- fisher.test(tab, conf.level = 0.95)$conf.int\n",
+    "\n",
+    "  # Approximate VE interval: odds ratio approximates risk ratio\n",
+    "  c(lower = 1 - ci_or[2], upper = 1 - ci_or[1])\n",
+    "}\n",
+    "\n",
+    "# Overall\n",
+    "cornfield_ve_ci(9, 19965, 169, 20172)\n",
+    "\n",
+    "# Ages 65 and older\n",
+    "cornfield_ve_ci(1, 3239 + 805, 19, 3255 + 812)"
+   ],
+   "metadata": {
+    "id": "pvs4wwrbLpdF"
+   },
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "cornfield-results-description"
+   },
+   "source": [
+    "The Cornfield calculations give approximate efficacy intervals of **[89.6%, 97.6%] overall** and **[66.8%, 99.9%] for participants aged 65 and older**. The wider interval for older participants reflects the limited information in the small case counts. Differences across interval methods are particularly noticeable in that group."
    ]
   }
  ],

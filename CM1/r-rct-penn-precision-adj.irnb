@@ -3,16 +3,6 @@
   {
    "cell_type": "markdown",
    "metadata": {
-    "colab_type": "text",
-    "id": "view-in-github"
-   },
-   "source": [
-    "<a href=\"https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/fix_interaction_stderr/CM1/r-rct-penn-precision-adj.irnb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {
     "id": "hz35ETpNelkG"
    },
    "source": [

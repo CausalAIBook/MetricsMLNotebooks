@@ -328,6 +328,9 @@
    "source": [
     "# Filter data to exclude entries where income, number of cigarettes smoked,\n",
     "# race, age are not asked or not known\n",
+    "data <- data[data$wt != 999, ]\n",
+    "data <- data[data$parity != 99, ]\n",
+    "data <- data[data$parity != 9, ]\n",
     "data <- data[data$race != 99, ]\n",
     "data <- data[!(data$number %in% c(98, 99)), ]\n",
     "data <- data[!(data$inc %in% c(98, 99)), ]\n",
