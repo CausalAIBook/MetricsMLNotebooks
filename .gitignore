@@ -136,3 +136,4 @@ dmypy.json
 # Notebook updates
 /TEMP_updated_notebooks
 /tools
+.vscode/settings.json
