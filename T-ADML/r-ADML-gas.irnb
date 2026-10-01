@@ -1,0 +1,1166 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "c001",
+   "metadata": {},
+   "source": [
+    "# Empirical Example for Sensitivity Analysis: Gasoline Demand\n",
+    "\n",
+    "This is an adaptation of the replication package for Chernozhukov, Cinelli, Newey, Sharma and Syrgkanis,\n",
+    "*Long Story Short: Omitted Variable Bias in Causal Machine Learning*\n",
+    "\n",
+    "The original replication package can be found __[here](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/VH6QHQ)__.\n",
+    "\n",
+    "Note: This R notebook implements the sieve Riesz representer approach for the nonparametric estimator. The generalized random forest Riesz representer (ForestRiesz) used in the Python notebook has no direct R equivalent and is omitted here; the sieve candidates (degree-1 and degree-2 polynomial sieves) are used instead."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "c002",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "repos <- c(CRAN = \"https://cloud.r-project.org\")\n",
+    "pkgs  <- c(\"ranger\", \"glmnet\", \"ggplot2\", \"Matrix\")\n",
+    "for (p in pkgs) {\n",
+    "  if (!requireNamespace(p, quietly = TRUE))\n",
+    "    install.packages(p, repos = repos, quiet = TRUE)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "c003",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "suppressMessages({\n",
+    "  library(ranger)\n",
+    "  library(glmnet)\n",
+    "  library(ggplot2)\n",
+    "})\n",
+    "options(scipen = 99)\n",
+    "options(repr.plot.width = 5, repr.plot.height = 5, repr.plot.res = 150)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c004",
+   "metadata": {},
+   "source": [
+    "## Setting\n",
+    "\n",
+    "The data come from the 2001 National Household Travel Survey and contain household gasoline consumption, gasoline prices, income brackets, and 24 observed controls describing population density, urbanization, demographics, and Census regions. After the sample restrictions used in the earlier demand studies, the analysis contains 3,466 households.\n",
+    "\n",
+    "The outcome $Y$ is log gasoline consumption, the treatment $D$ is log gasoline price, and $X^o$ collects the observed controls. The target is the average causal derivative $\\theta_s = \\mathrm{E}\\{\\partial_d g_s(D, X^o)\\}$, the average price elasticity of gasoline demand. The moment function below encodes $m(W_s, g) = \\partial_d g(D, X^o)$, approximated by a central finite difference with $\\epsilon = 0.01$."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "c005",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "moment_fn <- function(X, test_fn, epsilon = 0.01) {\n",
+    "  t1 <- cbind(X[, 1L] + epsilon, X[, -1L, drop = FALSE])\n",
+    "  t0 <- cbind(X[, 1L] - epsilon, X[, -1L, drop = FALSE])\n",
+    "  (test_fn(t1) - test_fn(t0)) / (2 * epsilon)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c006",
+   "metadata": {},
+   "source": [
+    "## Data\n",
+    "\n",
+    "Following the earlier demand studies, households with very low prices or incomes are dropped. Besides the full sample (`q=5`), the analysis uses four income groups. The first three (`q=1,2,3`) are overlapping groups centered near annual incomes of \\$42,500, \\$57,500 and \\$72,500. The fourth (`q=4`) contains high-income households with income above roughly \\$110,000 ($\\log y \\geq 11.6$)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "c007",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "get_data_r <- function(q = 5L, synthetic = FALSE, region = TRUE,\n",
+    "                        random_seed = 123L) {\n",
+    "  data_url <- paste0(\n",
+    "    \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/\",\n",
+    "    \"update-notebooks/data/data_BHP2_with_region.csv\"\n",
+    "  )\n",
+    "  df <- read.csv(data_url, stringsAsFactors = FALSE)\n",
+    "\n",
+    "  df <- df[df$log_p > log(1.2), ]\n",
+    "  df <- df[df$log_y > log(15000), ]\n",
+    "  if (!(q %in% c(4L, 5L))) {\n",
+    "    df <- df[df$log_y >= log(42500) - 0.5 & df$log_y <= log(72500) + 0.5, ]\n",
+    "  }\n",
+    "  if (q == 1L) df <- df[df$log_y >= log(42500)-.5 & df$log_y <= log(42500)+.5, ]\n",
+    "  if (q == 2L) df <- df[df$log_y >= log(57500)-.5 & df$log_y <= log(57500)+.5, ]\n",
+    "  if (q == 3L) df <- df[df$log_y >= log(72500)-.5 & df$log_y <= log(72500)+.5, ]\n",
+    "  if (q == 4L) df <- df[df$log_y >= 11.6, ]\n",
+    "\n",
+    "  # Drop non-feature columns\n",
+    "  drop_cols <- c(\"log_q\", \"distance_oil1000\", \"share\")\n",
+    "  Xdf <- df[, !names(df) %in% drop_cols, drop = FALSE]\n",
+    "\n",
+    "  if (region) {\n",
+    "    lvls <- sort(unique(df$region))[-1L]          # drop-first encoding\n",
+    "    for (lv in lvls) {\n",
+    "      Xdf[[paste0(\"region_\", lv)]] <- as.numeric(df$region == lv)\n",
+    "    }\n",
+    "  }\n",
+    "  Xdf <- Xdf[, !names(Xdf) %in% c(\"state_fips\", \"region\"), drop = FALSE]\n",
+    "\n",
+    "  X <- as.matrix(Xdf)\n",
+    "  y <- df$log_q\n",
+    "\n",
+    "  # 5-fold state-grouped splits\n",
+    "  set.seed(random_seed)\n",
+    "  states     <- df$state_fips\n",
+    "  state_ids  <- sample(unique(states))\n",
+    "  k          <- 5L\n",
+    "  fold_label <- rep_len(seq_len(k), length(state_ids))\n",
+    "  state_fold <- setNames(fold_label, state_ids)\n",
+    "  obs_fold   <- state_fold[as.character(states)]\n",
+    "  splits <- lapply(seq_len(k), function(i) {\n",
+    "    list(train = which(obs_fold != i), test = which(obs_fold == i))\n",
+    "  })\n",
+    "\n",
+    "  list(X = X, y = y, splits = splits, col_names = colnames(Xdf))\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "c008",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Global parameters\n",
+    "q_grid    <- 1:5\n",
+    "synthetic <- FALSE\n",
+    "region    <- TRUE\n",
+    "verbose   <- 0L"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c009",
+   "metadata": {},
+   "source": [
+    "## Module Definitions\n",
+    "\n",
+    "The following cells implement helper functions used by this notebook. The nonparametric estimator uses polynomial sieve Riesz representers (degree-1 and degree-2) fitted by L2 or elastic-net penalized regression. The partially linear estimator uses random forests for first-stage nuisance estimation."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "c010",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Polynomial-treatment x covariate feature matrix (cross product)\n",
+    "# Mirrors Python's Featurizer._transform: cross_product(poly(T), X[:,1:])\n",
+    "poly_cross_feats <- function(X, degree) {\n",
+    "  n   <- nrow(X)\n",
+    "  p_x <- ncol(X) - 1L\n",
+    "  T_poly <- outer(X[, 1L], seq(0L, degree), `^`)    # n x (degree+1)\n",
+    "  feats  <- matrix(0, n, (degree + 1L) * p_x)\n",
+    "  for (j in seq_len(degree + 1L)) {\n",
+    "    idx <- ((j - 1L) * p_x + 1L):(j * p_x)\n",
+    "    feats[, idx] <- T_poly[, j] * X[, -1L, drop = FALSE]\n",
+    "  }\n",
+    "  cbind(1.0, feats)   # include intercept column\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "c011",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Linear sieve Riesz representer with L2 penalty.\n",
+    "# Returns a prediction function function(X_new) -> numeric(nrow(X_new))\n",
+    "fit_sieve_rr <- function(X_train, moment_fn, alpha = 0, degree = 1L) {\n",
+    "  Xf <- poly_cross_feats(X_train, degree)\n",
+    "  n  <- nrow(Xf)\n",
+    "  p  <- ncol(Xf)\n",
+    "\n",
+    "  # Moment features: M[i,j] = moment_fn(X, phi_j) where phi_j(x) = Xf[i,j]\n",
+    "  Mf <- matrix(0, n, p)\n",
+    "  for (j in seq_len(p)) {\n",
+    "    local({\n",
+    "      jj <- j\n",
+    "      Mf[, jj] <<- moment_fn(X_train,\n",
+    "        function(Xnew) poly_cross_feats(Xnew, degree)[, jj])\n",
+    "    })\n",
+    "  }\n",
+    "\n",
+    "  Sig    <- crossprod(Xf) / n\n",
+    "  reg    <- alpha * diag(p); reg[1L, 1L] <- 0\n",
+    "  params <- solve(Sig + reg + 1e-10 * diag(p), colMeans(Mf))\n",
+    "\n",
+    "  function(Xnew) drop(poly_cross_feats(Xnew, degree) %*% params)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "c012",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Elastic-net sieve Riesz representer via L-BFGS-B on the doubled variable.\n",
+    "# Mirrors Python's SparseSieveRR using scipy fmin_l_bfgs_b.\n",
+    "fit_sparse_sieve_rr <- function(X_train, moment_fn,\n",
+    "                                 alpha = 0.01, l1_ratio = 1.0,\n",
+    "                                 degree = 1L, tol = 1e-4) {\n",
+    "  Xf <- poly_cross_feats(X_train, degree)\n",
+    "  n  <- nrow(Xf); p <- ncol(Xf)\n",
+    "\n",
+    "  Mf <- matrix(0, n, p)\n",
+    "  for (j in seq_len(p)) {\n",
+    "    local({\n",
+    "      jj <- j\n",
+    "      Mf[, jj] <<- moment_fn(X_train,\n",
+    "        function(Xnew) poly_cross_feats(Xnew, degree)[, jj])\n",
+    "    })\n",
+    "  }\n",
+    "\n",
+    "  Sig    <- crossprod(Xf) / n\n",
+    "  mfeats <- colMeans(Mf)\n",
+    "  a_l1   <- alpha * l1_ratio\n",
+    "  a_l2   <- alpha * (1 - l1_ratio)\n",
+    "\n",
+    "  loss_gr <- function(ec) {\n",
+    "    coef <- ec[1:p] - ec[(p + 1):(2 * p)]\n",
+    "    loss <- -2 * sum(mfeats * coef) + as.numeric(t(coef) %*% Sig %*% coef)\n",
+    "    loss <- loss + a_l1 * sum(ec[2:p]) + a_l1 * sum(ec[(p + 2):(2 * p)])\n",
+    "    loss <- loss + 0.5*a_l2*sum(ec[2:p]^2) + 0.5*a_l2*sum(ec[(p+2):(2*p)]^2)\n",
+    "    gr   <- 2 * as.numeric(Sig %*% coef - mfeats)\n",
+    "    grad <- c(gr, -gr)\n",
+    "    grad[2:p]             <- grad[2:p]             + a_l1 + a_l2 * ec[2:p]\n",
+    "    grad[(p+2):(2*p)] <- grad[(p+2):(2*p)] + a_l1 + a_l2 * ec[(p+2):(2*p)]\n",
+    "    list(value = loss, gradient = grad)\n",
+    "  }\n",
+    "\n",
+    "  res <- optim(\n",
+    "    rep(0, 2 * p),\n",
+    "    fn = function(ec) loss_gr(ec)$value,\n",
+    "    gr = function(ec) loss_gr(ec)$gradient,\n",
+    "    method  = \"L-BFGS-B\",\n",
+    "    lower   = rep(0, 2 * p),\n",
+    "    control = list(factr = tol / .Machine$double.eps, maxit = 1000L)\n",
+    "  )\n",
+    "  params <- res$par[1:p] - res$par[(p + 1):(2 * p)]\n",
+    "  function(Xnew) drop(poly_cross_feats(Xnew, degree) %*% params)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "c013",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Riesz score on held-out data: E[2*m(X;g) - g(X)^2]  (higher is better)\n",
+    "riesz_score_r <- function(rr_fn, X_val, moment_fn)\n",
+    "  mean(2 * moment_fn(X_val, rr_fn) - rr_fn(X_val)^2)\n",
+    "\n",
+    "# Select best Riesz candidate via CV, return a factory function(X_train) -> rr_fn\n",
+    "rr_fn_gen <- function(X, moment_fn, splits, ...) {\n",
+    "  alpha_grid <- 10^seq(-5, 2, length.out = 8L)\n",
+    "  best_score <- -Inf\n",
+    "  best_factory <- NULL\n",
+    "\n",
+    "  for (degree in c(1L, 2L)) {\n",
+    "    for (alpha in alpha_grid) {\n",
+    "      for (sparse in c(FALSE, TRUE)) {\n",
+    "        scores <- vapply(splits, function(s) {\n",
+    "          fit_fn <- if (sparse) fit_sparse_sieve_rr else fit_sieve_rr\n",
+    "          m <- tryCatch(\n",
+    "            fit_fn(X[s$train, , drop=FALSE], moment_fn,\n",
+    "                   alpha=alpha, degree=degree),\n",
+    "            error = function(e) NULL)\n",
+    "          if (is.null(m)) return(-Inf)\n",
+    "          riesz_score_r(m, X[s$test, , drop=FALSE], moment_fn)\n",
+    "        }, numeric(1L))\n",
+    "        sc <- mean(scores[is.finite(scores)])\n",
+    "        if (is.finite(sc) && sc > best_score) {\n",
+    "          best_score <- sc\n",
+    "          best_factory <- local({\n",
+    "            d <- degree; a <- alpha; sp <- sparse\n",
+    "            function(X_tr) {\n",
+    "              if (sp) fit_sparse_sieve_rr(X_tr, moment_fn, alpha=a, degree=d)\n",
+    "              else    fit_sieve_rr(X_tr, moment_fn, alpha=a, degree=d)\n",
+    "            }\n",
+    "          })\n",
+    "        }\n",
+    "      }\n",
+    "    }\n",
+    "  }\n",
+    "  if (is.null(best_factory))\n",
+    "    best_factory <- function(X_tr)\n",
+    "      fit_sieve_rr(X_tr, moment_fn, alpha=1e-2, degree=1L)\n",
+    "  best_factory\n",
+    "}\n",
+    "\n",
+    "# Regression model selection: ranger vs. lasso (glmnet), return factory\n",
+    "reg_fn_gen <- function(X, y, splits, ...) {\n",
+    "  # Scale matrix, clamping zero-SD columns to 1 to avoid NaN\n",
+    "  safe_scale <- function(X, ctr = colMeans(X),\n",
+    "                          scl = { s <- apply(X, 2, sd); s[s < .Machine$double.eps] <- 1; s }) {\n",
+    "    scale(X, center = ctr, scale = scl)\n",
+    "  }\n",
+    "\n",
+    "  # Evaluate ranger CV MSE\n",
+    "  rf_preds <- numeric(nrow(X))\n",
+    "  for (s in splits) {\n",
+    "    df_tr <- as.data.frame(cbind(y_tr=y[s$train], X[s$train,,drop=FALSE]))\n",
+    "    rf <- ranger(y_tr~., data=df_tr, num.trees=200L, verbose=FALSE)\n",
+    "    rf_preds[s$test] <- predict(rf, data=as.data.frame(X[s$test,,drop=FALSE]))$predictions\n",
+    "  }\n",
+    "  rf_mse <- mean((y - rf_preds)^2)\n",
+    "\n",
+    "  # Evaluate lasso CV MSE; fall back to ranger if glmnet errors\n",
+    "  lasso_fit <- tryCatch(cv.glmnet(safe_scale(X), y, alpha=1, nfolds=5L),\n",
+    "                         error = function(e) NULL)\n",
+    "  lasso_mse <- if (!is.null(lasso_fit)) min(lasso_fit$cvm) else Inf\n",
+    "\n",
+    "  if (lasso_mse < rf_mse) {\n",
+    "    function(X_tr, y_tr) {\n",
+    "      ctr <- colMeans(X_tr)\n",
+    "      scl <- apply(X_tr, 2, sd); scl[scl < .Machine$double.eps] <- 1\n",
+    "      lf  <- cv.glmnet(scale(X_tr, center=ctr, scale=scl), y_tr, alpha=1, nfolds=5L)\n",
+    "      function(Xnew) as.numeric(predict(lf, newx=scale(Xnew, center=ctr, scale=scl), s=\"lambda.min\"))\n",
+    "    }\n",
+    "  } else {\n",
+    "    function(X_tr, y_tr) {\n",
+    "      df_tr <- as.data.frame(cbind(y_tr=y_tr, X_tr))\n",
+    "      rf <- ranger(y_tr~., data=df_tr, num.trees=200L, verbose=FALSE)\n",
+    "      function(Xnew) predict(rf, data=as.data.frame(Xnew))$predictions\n",
+    "    }\n",
+    "  }\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "c014",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Doubly-robust cross-fitted moment estimator.\n",
+    "# rr_factory: function(X_train) -> rr prediction function\n",
+    "# get_reg_fn: function(X_train, y_train) -> reg prediction function  (pre-built by reg_fn_gen)\n",
+    "debiased_moment_fit <- function(X, y, moment_fn, rr_factory, get_reg_fn, splits) {\n",
+    "  n   <- nrow(X)\n",
+    "  rr_pred <- reg_pred <- moment_pred <- moment_rr <- numeric(n)\n",
+    "  reg_fitter <- get_reg_fn   # already the fitter: function(X_tr, y_tr) -> pred_fn\n",
+    "\n",
+    "  for (s in splits) {\n",
+    "    tr <- s$train; te <- s$test\n",
+    "    rr_fn  <- rr_factory(X[tr, , drop=FALSE])\n",
+    "    reg_fn <- reg_fitter(X[tr, , drop=FALSE], y[tr])\n",
+    "\n",
+    "    rr_pred[te]     <- rr_fn(X[te, , drop=FALSE])\n",
+    "    reg_pred[te]    <- reg_fn(X[te, , drop=FALSE])\n",
+    "    moment_pred[te] <- moment_fn(X[te, , drop=FALSE], reg_fn)\n",
+    "    moment_rr[te]   <- moment_fn(X[te, , drop=FALSE], rr_fn)\n",
+    "  }\n",
+    "  moment <- moment_pred + rr_pred * (y - reg_pred)\n",
+    "  list(moment=moment, reg_pred=reg_pred, reisz_pred=rr_pred,\n",
+    "       moment_reisz=moment_rr, y=y)\n",
+    "}\n",
+    "\n",
+    "avg_moment_r <- function(est, alpha = 0.1) {\n",
+    "  m  <- mean(est$moment); n <- length(est$moment)\n",
+    "  se <- sd(est$moment) / sqrt(n)\n",
+    "  h  <- se * qt(1 - alpha/2, n - 1L)\n",
+    "  c(point=m, se=se, lower=m-h, upper=m+h)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "c015",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# -- Nonparametric (DebiasedMoment) sensitivity ------------------------------------\n",
+    "\n",
+    "sensitivity_bounds_single_r <- function(est, eta_ysq, eta_asq, alpha = NULL) {\n",
+    "  nusq    <- mean(2*est$moment_reisz - est$reisz_pred^2)\n",
+    "  sigmasq <- mean((est$y - est$reg_pred)^2)\n",
+    "  S       <- sqrt(sigmasq * nusq)\n",
+    "  Casq    <- eta_asq / (1 - eta_asq)\n",
+    "  theta   <- mean(est$moment)\n",
+    "  error   <- S * sqrt(Casq * eta_ysq)\n",
+    "  if (is.null(alpha)) return(c(theta - error, theta + error))\n",
+    "  psi_theta   <- est$moment - theta\n",
+    "  psi_sigmasq <- (est$y - est$reg_pred)^2 - sigmasq\n",
+    "  psi_nusq    <- 2*est$moment_reisz - est$reisz_pred^2 - nusq\n",
+    "  k <- sqrt(Casq * eta_ysq) / (2 * S)\n",
+    "  phi_p <- psi_theta + k * (sigmasq*psi_nusq + nusq*psi_sigmasq)\n",
+    "  phi_m <- psi_theta - k * (sigmasq*psi_nusq + nusq*psi_sigmasq)\n",
+    "  n <- length(psi_theta)\n",
+    "  c(theta-error, sqrt(mean(phi_m^2)/n), theta+error, sqrt(mean(phi_p^2)/n))\n",
+    "}\n",
+    "\n",
+    "sensitivity_bounds_r <- function(est_list, eta_ysq, eta_asq, alpha = NULL) {\n",
+    "  res <- lapply(est_list, sensitivity_bounds_single_r,\n",
+    "                eta_ysq=eta_ysq, eta_asq=eta_asq, alpha=alpha)\n",
+    "  if (is.null(alpha)) {\n",
+    "    return(c(mean(sapply(res, `[`, 1)), mean(sapply(res, `[`, 2))))\n",
+    "  }\n",
+    "  lower <- sapply(res,`[`,1); sl <- sapply(res,`[`,2)\n",
+    "  upper <- sapply(res,`[`,3); su <- sapply(res,`[`,4)\n",
+    "  z <- qnorm(1 - alpha)\n",
+    "  c(mean(lower) - z*sqrt(mean(sl^2)+var(lower)),\n",
+    "    mean(upper) + z*sqrt(mean(su^2)+var(upper)))\n",
+    "}\n",
+    "\n",
+    "tvalue_r <- function(est_list, value=0, leq=NULL, alpha=NULL) {\n",
+    "  t_out <- 1\n",
+    "  for (t in seq(0, 1, length.out=1000L)) {\n",
+    "    b <- sensitivity_bounds_r(est_list, t, t, alpha=alpha)\n",
+    "    if (is.null(leq) && value>=b[1] && value<=b[2]) { t_out <- t; break }\n",
+    "    if (!is.null(leq) && leq  && value>=b[1])        { t_out <- t; break }\n",
+    "    if (!is.null(leq) && !leq && value<=b[2])         { t_out <- t; break }\n",
+    "  }\n",
+    "  t_out\n",
+    "}\n",
+    "\n",
+    "# -- PLM (DML residuals) sensitivity ------------------------------------------\n",
+    "\n",
+    "dml_sensitivity_bounds_single_r <- function(est, eta_ysq, eta_asq, alpha = NULL) {\n",
+    "  nusq    <- mean(est$Dres^2)\n",
+    "  theta   <- mean(est$yres * est$Dres) / nusq\n",
+    "  sigmasq <- mean((est$yres - est$Dres * theta)^2)\n",
+    "  S       <- sqrt(sigmasq / nusq)\n",
+    "  Casq    <- eta_asq / (1 - eta_asq)\n",
+    "  error   <- S * sqrt(Casq * eta_ysq)\n",
+    "  if (is.null(alpha)) return(c(theta - error, theta + error))\n",
+    "  n           <- length(est$yres)\n",
+    "  psi_theta   <- (est$yres - est$Dres * theta) * est$Dres / nusq\n",
+    "  psi_sigmasq <- (est$yres - est$Dres * theta)^2 - sigmasq\n",
+    "  psi_nusq    <- est$Dres^2 - nusq\n",
+    "  k <- sqrt(Casq * eta_ysq) / (2 * S)\n",
+    "  phi_p <- psi_theta + k*(-(sigmasq/nusq^2)*psi_nusq + (1/nusq)*psi_sigmasq)\n",
+    "  phi_m <- psi_theta - k*(-(sigmasq/nusq^2)*psi_nusq + (1/nusq)*psi_sigmasq)\n",
+    "  c(theta-error, sqrt(mean(phi_m^2)/n), theta+error, sqrt(mean(phi_p^2)/n))\n",
+    "}\n",
+    "\n",
+    "dml_sensitivity_bounds_r <- function(est_list, eta_ysq, eta_asq, alpha = NULL) {\n",
+    "  res <- lapply(est_list, dml_sensitivity_bounds_single_r,\n",
+    "                eta_ysq=eta_ysq, eta_asq=eta_asq, alpha=alpha)\n",
+    "  if (is.null(alpha)) {\n",
+    "    return(c(mean(sapply(res,`[`,1)), mean(sapply(res,`[`,2))))\n",
+    "  }\n",
+    "  lower <- sapply(res,`[`,1); sl <- sapply(res,`[`,2)\n",
+    "  upper <- sapply(res,`[`,3); su <- sapply(res,`[`,4)\n",
+    "  z <- qnorm(1 - alpha)\n",
+    "  c(mean(lower) - z*sqrt(mean(sl^2)+var(lower)),\n",
+    "    mean(upper) + z*sqrt(mean(su^2)+var(upper)))\n",
+    "}\n",
+    "\n",
+    "dml_tvalue_r <- function(est_list, value=0, leq=NULL, alpha=NULL) {\n",
+    "  t_out <- 1\n",
+    "  for (t in seq(0, 1, length.out=1000L)) {\n",
+    "    b <- dml_sensitivity_bounds_r(est_list, t, t, alpha=alpha)\n",
+    "    if (is.null(leq) && value>=b[1] && value<=b[2]) { t_out <- t; break }\n",
+    "    if (!is.null(leq) && leq  && value>=b[1])        { t_out <- t; break }\n",
+    "    if (!is.null(leq) && !leq && value<=b[2])         { t_out <- t; break }\n",
+    "  }\n",
+    "  t_out\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c016",
+   "metadata": {},
+   "source": [
+    "## Short Estimates Under Conditional Ignorability"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "c017",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Main estimation loop matching the Python notebook structure.\n",
+    "# estimator_fn(X, y, splits) returns list(estimates=c(point,se,lower,upper), model=...)\n",
+    "generic_pipeline_r <- function(estimator_fn, q_grid, name, n_seeds = 5L) {\n",
+    "  all_res  <- list()\n",
+    "  all_ests <- list()\n",
+    "  for (q in q_grid) {\n",
+    "    cat(sprintf(\"q=%d\\n\", q))\n",
+    "    est_mat   <- matrix(NA, n_seeds, 4L)\n",
+    "    seed_ests <- list()\n",
+    "    for (i in seq_len(n_seeds)) {\n",
+    "      seed <- 122L + i\n",
+    "      dat  <- get_data_r(q, region=region, synthetic=synthetic, random_seed=seed)\n",
+    "      out  <- estimator_fn(dat$X, dat$y, dat$splits)\n",
+    "      est_mat[i, ] <- out$estimates\n",
+    "      seed_ests[[i]] <- out$model\n",
+    "      cat(sprintf(\"  seed=%d: %.3f\\n\", seed, out$estimates[1]))\n",
+    "    }\n",
+    "    key <- sprintf(\"q=%d\", q)\n",
+    "    all_res[[key]]  <- data.frame(\n",
+    "      method = name,\n",
+    "      point  = mean(est_mat[, 1]),\n",
+    "      stderr = sqrt(mean(est_mat[, 2]^2) + var(est_mat[, 1]))\n",
+    "    )\n",
+    "    all_ests[[key]] <- seed_ests\n",
+    "  }\n",
+    "  list(res=all_res, ests=all_ests)\n",
+    "}\n",
+    "\n",
+    "transform_res_to_df_r <- function(res_list, q_grid, alpha = NULL) {\n",
+    "  rows <- list()\n",
+    "  for (q in q_grid) {\n",
+    "    key <- sprintf(\"q=%d\", q)\n",
+    "    r   <- res_list[[key]]\n",
+    "    if (!is.null(alpha)) {\n",
+    "      z <- qnorm(1 - alpha)\n",
+    "      lo <- r$point - z * r$stderr\n",
+    "      hi <- r$point + z * r$stderr\n",
+    "      rows[[key]] <- sprintf(\"%.2f (%.2f) [%.2f, %.2f]\", r$point, r$stderr, lo, hi)\n",
+    "    } else {\n",
+    "      rows[[key]] <- sprintf(\"%.2f\", r$point)\n",
+    "    }\n",
+    "  }\n",
+    "  as.data.frame(rows, check.names=FALSE)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c018",
+   "metadata": {},
+   "source": [
+    "### Nonparametric Model\n",
+    "\n",
+    "The first specification leaves the short regression $g_s(D, X^o)$ unrestricted. The Riesz representer is estimated from the Riesz loss using sieve candidates (degree-1 and degree-2 polynomial features crossed with covariates), selected by cross-validated Riesz score. Random forests are used for the regression model. Note: the Python notebook additionally considers a generalized random forest Riesz representer (ForestRiesz); that candidate is omitted here as it has no direct R equivalent."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "c019",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "nonlinrr_r <- function(X, y, splits) {\n",
+    "  rr_factory <- rr_fn_gen(X, moment_fn, splits)\n",
+    "  get_reg    <- reg_fn_gen(X, y, splits)\n",
+    "\n",
+    "  fit <- debiased_moment_fit(X, y, moment_fn, rr_factory, get_reg, splits)\n",
+    "  list(estimates = avg_moment_r(fit, alpha = 0.1), model = fit)\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "c020",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "q=1\n",
+      "  seed=123: -0.607\n",
+      "  seed=124: -0.611\n",
+      "  seed=125: -0.628\n",
+      "  seed=126: 0.050\n",
+      "  seed=127: -0.830\n",
+      "q=2\n",
+      "  seed=123: -0.521\n",
+      "  seed=124: -0.565\n",
+      "  seed=125: -0.657\n",
+      "  seed=126: 0.028\n",
+      "  seed=127: -0.843\n",
+      "q=3\n",
+      "  seed=123: -0.492\n",
+      "  seed=124: -0.583\n",
+      "  seed=125: -0.729\n",
+      "  seed=126: 0.056\n",
+      "  seed=127: -0.738\n",
+      "q=4\n",
+      "  seed=123: -0.498\n",
+      "  seed=124: -0.694\n",
+      "  seed=125: -0.696\n",
+      "  seed=126: -1.316\n",
+      "  seed=127: -3.188\n",
+      "q=5\n",
+      "  seed=123: -0.179\n",
+      "  seed=124: -0.381\n",
+      "  seed=125: -0.586\n",
+      "  seed=126: 0.225\n",
+      "  seed=127: -0.675\n"
+     ]
+    }
+   ],
+   "source": [
+    "rr_results <- generic_pipeline_r(nonlinrr_r, q_grid, \"dr\", n_seeds = 5L)\n",
+    "res_rr <- rr_results$res\n",
+    "ests_rr <- rr_results$ests"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "c021",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A data.frame: 1 × 5</caption>\n",
+       "<thead>\n",
+       "\t<tr><th scope=col>q=1</th><th scope=col>q=2</th><th scope=col>q=3</th><th scope=col>q=4</th><th scope=col>q=5</th></tr>\n",
+       "\t<tr><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><td>-0.53 (0.45) [-1.26, 0.21]</td><td>-0.51 (0.41) [-1.18, 0.16]</td><td>-0.50 (0.42) [-1.18, 0.19]</td><td>-1.28 (1.22) [-3.28, 0.72]</td><td>-0.32 (0.41) [-0.99, 0.36]</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A data.frame: 1 × 5\n",
+       "\\begin{tabular}{lllll}\n",
+       " q=1 & q=2 & q=3 & q=4 & q=5\\\\\n",
+       " <chr> & <chr> & <chr> & <chr> & <chr>\\\\\n",
+       "\\hline\n",
+       "\t -0.53 (0.45) {[}-1.26, 0.21{]} & -0.51 (0.41) {[}-1.18, 0.16{]} & -0.50 (0.42) {[}-1.18, 0.19{]} & -1.28 (1.22) {[}-3.28, 0.72{]} & -0.32 (0.41) {[}-0.99, 0.36{]}\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A data.frame: 1 × 5\n",
+       "\n",
+       "| q=1 &lt;chr&gt; | q=2 &lt;chr&gt; | q=3 &lt;chr&gt; | q=4 &lt;chr&gt; | q=5 &lt;chr&gt; |\n",
+       "|---|---|---|---|---|\n",
+       "| -0.53 (0.45) [-1.26, 0.21] | -0.51 (0.41) [-1.18, 0.16] | -0.50 (0.42) [-1.18, 0.19] | -1.28 (1.22) [-3.28, 0.72] | -0.32 (0.41) [-0.99, 0.36] |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "  q=1                        q=2                       \n",
+       "1 -0.53 (0.45) [-1.26, 0.21] -0.51 (0.41) [-1.18, 0.16]\n",
+       "  q=3                        q=4                       \n",
+       "1 -0.50 (0.42) [-1.18, 0.19] -1.28 (1.22) [-3.28, 0.72]\n",
+       "  q=5                       \n",
+       "1 -0.32 (0.41) [-0.99, 0.36]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "transform_res_to_df_r(res_rr, q_grid, alpha = 0.05)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c022",
+   "metadata": {},
+   "source": [
+    "### Partially Linear Model\n",
+    "\n",
+    "The second specification is the partially linear model $Y = \\theta_s D + f_s(X^o) + \\varepsilon$, estimated by partialling out with random forests."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "c023",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "dml_estimator_r <- function(X, y, splits) {\n",
+    "  n    <- nrow(X)\n",
+    "  D    <- X[, 1L]\n",
+    "  Xcov <- X[, -1L, drop = FALSE]\n",
+    "  yres <- Dres <- numeric(n)\n",
+    "\n",
+    "  for (s in splits) {\n",
+    "    tr <- s$train; te <- s$test\n",
+    "    df_y <- as.data.frame(cbind(y_tr = y[tr], Xcov[tr, ]))\n",
+    "    df_d <- as.data.frame(cbind(D_tr = D[tr], Xcov[tr, ]))\n",
+    "    rf_y <- ranger(y_tr ~ ., data = df_y, num.trees = 200L, verbose = FALSE)\n",
+    "    rf_d <- ranger(D_tr ~ ., data = df_d, num.trees = 200L, verbose = FALSE)\n",
+    "    yres[te] <- y[te] - predict(rf_y, data=as.data.frame(Xcov[te,]))$predictions\n",
+    "    Dres[te] <- D[te] - predict(rf_d, data=as.data.frame(Xcov[te,]))$predictions\n",
+    "  }\n",
+    "\n",
+    "  nusq  <- mean(Dres^2)\n",
+    "  theta <- mean(yres * Dres) / nusq\n",
+    "  psi   <- (yres - Dres * theta) * Dres / nusq\n",
+    "  se    <- sqrt(mean(psi^2) / n)\n",
+    "  list(\n",
+    "    estimates = c(point=theta, se=se, lower=theta-1.645*se, upper=theta+1.645*se),\n",
+    "    model     = list(yres=yres, Dres=Dres)\n",
+    "  )\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "c024",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "q=1\n",
+      "  seed=123: -0.401\n",
+      "  seed=124: -0.070\n",
+      "  seed=125: -0.252\n",
+      "  seed=126: 0.132\n",
+      "  seed=127: -0.782\n",
+      "q=2\n",
+      "  seed=123: -0.555\n",
+      "  seed=124: -0.516\n",
+      "  seed=125: -0.684\n",
+      "  seed=126: -0.102\n",
+      "  seed=127: -0.911\n",
+      "q=3\n",
+      "  seed=123: -0.575\n",
+      "  seed=124: -0.726\n",
+      "  seed=125: -1.030\n",
+      "  seed=126: -0.209\n",
+      "  seed=127: -1.048\n",
+      "q=4\n",
+      "  seed=123: -0.905\n",
+      "  seed=124: -1.333\n",
+      "  seed=125: -1.214\n",
+      "  seed=126: -1.359\n",
+      "  seed=127: -1.424\n",
+      "q=5\n",
+      "  seed=123: -0.230\n",
+      "  seed=124: -0.422\n",
+      "  seed=125: -0.589\n",
+      "  seed=126: 0.136\n",
+      "  seed=127: -0.928\n"
+     ]
+    }
+   ],
+   "source": [
+    "dml_results <- generic_pipeline_r(dml_estimator_r, q_grid, \"dml\", n_seeds = 5L)\n",
+    "res_dml <- dml_results$res\n",
+    "ests_dml <- dml_results$ests"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "c025",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A data.frame: 1 × 5</caption>\n",
+       "<thead>\n",
+       "\t<tr><th scope=col>q=1</th><th scope=col>q=2</th><th scope=col>q=3</th><th scope=col>q=4</th><th scope=col>q=5</th></tr>\n",
+       "\t<tr><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><td>-0.27 (0.50) [-1.10, 0.55]</td><td>-0.55 (0.42) [-1.24, 0.14]</td><td>-0.72 (0.47) [-1.50, 0.06]</td><td>-1.25 (0.55) [-2.16, -0.34]</td><td>-0.41 (0.47) [-1.17, 0.36]</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A data.frame: 1 × 5\n",
+       "\\begin{tabular}{lllll}\n",
+       " q=1 & q=2 & q=3 & q=4 & q=5\\\\\n",
+       " <chr> & <chr> & <chr> & <chr> & <chr>\\\\\n",
+       "\\hline\n",
+       "\t -0.27 (0.50) {[}-1.10, 0.55{]} & -0.55 (0.42) {[}-1.24, 0.14{]} & -0.72 (0.47) {[}-1.50, 0.06{]} & -1.25 (0.55) {[}-2.16, -0.34{]} & -0.41 (0.47) {[}-1.17, 0.36{]}\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A data.frame: 1 × 5\n",
+       "\n",
+       "| q=1 &lt;chr&gt; | q=2 &lt;chr&gt; | q=3 &lt;chr&gt; | q=4 &lt;chr&gt; | q=5 &lt;chr&gt; |\n",
+       "|---|---|---|---|---|\n",
+       "| -0.27 (0.50) [-1.10, 0.55] | -0.55 (0.42) [-1.24, 0.14] | -0.72 (0.47) [-1.50, 0.06] | -1.25 (0.55) [-2.16, -0.34] | -0.41 (0.47) [-1.17, 0.36] |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "  q=1                        q=2                       \n",
+       "1 -0.27 (0.50) [-1.10, 0.55] -0.55 (0.42) [-1.24, 0.14]\n",
+       "  q=3                        q=4                        \n",
+       "1 -0.72 (0.47) [-1.50, 0.06] -1.25 (0.55) [-2.16, -0.34]\n",
+       "  q=5                       \n",
+       "1 -0.41 (0.47) [-1.17, 0.36]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "transform_res_to_df_r(res_dml, q_grid, alpha = 0.05)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c026",
+   "metadata": {},
+   "source": [
+    "## Sensitivity Results for the Full Sample\n",
+    "\n",
+    "For the full sample we report the short elasticity, the sensitivity bounds and their confidence bounds under the scenario $C_Y^2 = 0.03$, $C_D^2 \\approx 0.03$ and $|\\rho| = 1$, together with robustness values."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "c027",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "table_rr <- list()\n",
+    "q5_ests  <- ests_rr[[\"q=5\"]]\n",
+    "\n",
+    "table_rr[[\"point\"]] <- sprintf(\"%.3f (%.3f)\",\n",
+    "  res_rr[[\"q=5\"]]$point, res_rr[[\"q=5\"]]$stderr)\n",
+    "table_rr[[\"Bounds\"]] <- sprintf(\"[%.3f, %.3f]\",\n",
+    "  sensitivity_bounds_r(q5_ests, .03, .03, alpha=NULL)[1],\n",
+    "  sensitivity_bounds_r(q5_ests, .03, .03, alpha=NULL)[2])\n",
+    "table_rr[[\"CIBounds\"]] <- sprintf(\"[%.3f, %.3f]\",\n",
+    "  sensitivity_bounds_r(q5_ests, .03, .03, alpha=.05)[1],\n",
+    "  sensitivity_bounds_r(q5_ests, .03, .03, alpha=.05)[2])\n",
+    "table_rr[[\"RV(v=-1.5)\"]]    <- sprintf(\"%.3f\", tvalue_r(q5_ests, value=-1.5, leq=TRUE))\n",
+    "table_rr[[\"RV(v=-1.5,a=.05)\"]] <- sprintf(\"%.3f\", tvalue_r(q5_ests, value=-1.5, leq=TRUE, alpha=.05))\n",
+    "table_rr[[\"RV(v=0)\"]]       <- sprintf(\"%.3f\", tvalue_r(q5_ests, value=0, leq=FALSE))\n",
+    "table_rr[[\"RV(v=0,a=.05)\"]] <- sprintf(\"%.3f\", tvalue_r(q5_ests, value=0, leq=FALSE, alpha=.05))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "c028",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "table_dml <- list()\n",
+    "q5_dml   <- ests_dml[[\"q=5\"]]\n",
+    "\n",
+    "table_dml[[\"point\"]] <- sprintf(\"%.3f (%.3f)\",\n",
+    "  res_dml[[\"q=5\"]]$point, res_dml[[\"q=5\"]]$stderr)\n",
+    "table_dml[[\"Bounds\"]] <- sprintf(\"[%.3f, %.3f]\",\n",
+    "  dml_sensitivity_bounds_r(q5_dml, .03, .03, alpha=NULL)[1],\n",
+    "  dml_sensitivity_bounds_r(q5_dml, .03, .03, alpha=NULL)[2])\n",
+    "table_dml[[\"CIBounds\"]] <- sprintf(\"[%.3f, %.3f]\",\n",
+    "  dml_sensitivity_bounds_r(q5_dml, .03, .03, alpha=.05)[1],\n",
+    "  dml_sensitivity_bounds_r(q5_dml, .03, .03, alpha=.05)[2])\n",
+    "table_dml[[\"RV(v=-1.5)\"]]    <- sprintf(\"%.3f\", dml_tvalue_r(q5_dml, value=-1.5, leq=TRUE))\n",
+    "table_dml[[\"RV(v=-1.5,a=.05)\"]] <- sprintf(\"%.3f\", dml_tvalue_r(q5_dml, value=-1.5, leq=TRUE, alpha=.05))\n",
+    "table_dml[[\"RV(v=0)\"]]       <- sprintf(\"%.3f\", dml_tvalue_r(q5_dml, value=0, leq=FALSE))\n",
+    "table_dml[[\"RV(v=0,a=.05)\"]] <- sprintf(\"%.3f\", dml_tvalue_r(q5_dml, value=0, leq=FALSE, alpha=.05))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "c029",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table class=\"dataframe\">\n",
+       "<caption>A data.frame: 2 × 7</caption>\n",
+       "<thead>\n",
+       "\t<tr><th></th><th scope=col>point</th><th scope=col>Bounds</th><th scope=col>CIBounds</th><th scope=col>RV(v=-1.5)</th><th scope=col>RV(v=-1.5,a=.05)</th><th scope=col>RV(v=0)</th><th scope=col>RV(v=0,a=.05)</th></tr>\n",
+       "\t<tr><th></th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th></tr>\n",
+       "</thead>\n",
+       "<tbody>\n",
+       "\t<tr><th scope=row>Non-parametric</th><td>-0.319 (0.410)</td><td>[-0.718, 0.080]</td><td>[-1.408, 0.740]</td><td>0.087</td><td>0.037</td><td>0.025</td><td>0.000</td></tr>\n",
+       "\t<tr><th scope=row>Partially linear</th><td>-0.406 (0.465)</td><td>[-0.848, 0.035]</td><td>[-1.647, 0.769]</td><td>0.073</td><td>0.021</td><td>0.028</td><td>0.000</td></tr>\n",
+       "</tbody>\n",
+       "</table>\n"
+      ],
+      "text/latex": [
+       "A data.frame: 2 × 7\n",
+       "\\begin{tabular}{r|lllllll}\n",
+       "  & point & Bounds & CIBounds & RV(v=-1.5) & RV(v=-1.5,a=.05) & RV(v=0) & RV(v=0,a=.05)\\\\\n",
+       "  & <chr> & <chr> & <chr> & <chr> & <chr> & <chr> & <chr>\\\\\n",
+       "\\hline\n",
+       "\tNon-parametric & -0.319 (0.410) & {[}-0.718, 0.080{]} & {[}-1.408, 0.740{]} & 0.087 & 0.037 & 0.025 & 0.000\\\\\n",
+       "\tPartially linear & -0.406 (0.465) & {[}-0.848, 0.035{]} & {[}-1.647, 0.769{]} & 0.073 & 0.021 & 0.028 & 0.000\\\\\n",
+       "\\end{tabular}\n"
+      ],
+      "text/markdown": [
+       "\n",
+       "A data.frame: 2 × 7\n",
+       "\n",
+       "| <!--/--> | point &lt;chr&gt; | Bounds &lt;chr&gt; | CIBounds &lt;chr&gt; | RV(v=-1.5) &lt;chr&gt; | RV(v=-1.5,a=.05) &lt;chr&gt; | RV(v=0) &lt;chr&gt; | RV(v=0,a=.05) &lt;chr&gt; |\n",
+       "|---|---|---|---|---|---|---|---|\n",
+       "| Non-parametric | -0.319 (0.410) | [-0.718, 0.080] | [-1.408, 0.740] | 0.087 | 0.037 | 0.025 | 0.000 |\n",
+       "| Partially linear | -0.406 (0.465) | [-0.848, 0.035] | [-1.647, 0.769] | 0.073 | 0.021 | 0.028 | 0.000 |\n",
+       "\n"
+      ],
+      "text/plain": [
+       "                 point          Bounds          CIBounds        RV(v=-1.5)\n",
+       "Non-parametric   -0.319 (0.410) [-0.718, 0.080] [-1.408, 0.740] 0.087     \n",
+       "Partially linear -0.406 (0.465) [-0.848, 0.035] [-1.647, 0.769] 0.073     \n",
+       "                 RV(v=-1.5,a=.05) RV(v=0) RV(v=0,a=.05)\n",
+       "Non-parametric   0.037            0.025   0.000        \n",
+       "Partially linear 0.021            0.028   0.000        "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "tabledf <- data.frame(\n",
+    "  rbind(unlist(table_rr), unlist(table_dml)),\n",
+    "  row.names = c(\"Non-parametric\", \"Partially linear\"),\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "tabledf"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "c030",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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",
+      "text/plain": [
+       "plot without title"
+      ]
+     },
+     "metadata": {
+      "image/png": {
+       "height": 375,
+       "width": 375
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "qgr  <- 1:4\n",
+    "point <- sapply(qgr, function(q) res_rr[[sprintf(\"q=%d\",q)]]$point)\n",
+    "se    <- sapply(qgr, function(q) res_rr[[sprintf(\"q=%d\",q)]]$stderr)\n",
+    "lower <- point - 1.645 * se\n",
+    "upper <- point + 1.645 * se\n",
+    "sens_lo <- sapply(qgr, function(q)\n",
+    "  sensitivity_bounds_r(ests_rr[[sprintf(\"q=%d\",q)]], .03, .03, alpha=NULL)[1])\n",
+    "sens_hi <- sapply(qgr, function(q)\n",
+    "  sensitivity_bounds_r(ests_rr[[sprintf(\"q=%d\",q)]], .03, .03, alpha=NULL)[2])\n",
+    "sens_lo95 <- sapply(qgr, function(q)\n",
+    "  sensitivity_bounds_r(ests_rr[[sprintf(\"q=%d\",q)]], .03, .03, alpha=.05)[1])\n",
+    "sens_hi95 <- sapply(qgr, function(q)\n",
+    "  sensitivity_bounds_r(ests_rr[[sprintf(\"q=%d\",q)]], .03, .03, alpha=.05)[2])\n",
+    "\n",
+    "df_rr <- data.frame(q=qgr, point, lower, upper, sens_lo, sens_hi, sens_lo95, sens_hi95)\n",
+    "\n",
+    "ggplot(df_rr, aes(x=q)) +\n",
+    "  geom_line(aes(y=point)) +\n",
+    "  geom_ribbon(aes(ymin=lower, ymax=upper), alpha=.4, fill=\"steelblue\") +\n",
+    "  geom_ribbon(aes(ymin=sens_lo, ymax=sens_hi), alpha=.6, fill=\"orange\") +\n",
+    "  geom_ribbon(aes(ymin=sens_lo95, ymax=sens_hi95), alpha=.2, fill=\"orange\") +\n",
+    "  scale_x_continuous(breaks=qgr) +\n",
+    "  xlab(\"Income group\") + ylab(\"Average price elasticity\") +\n",
+    "  ggtitle(\"Non-parametric\") +\n",
+    "  theme_bw()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "c031",
+   "metadata": {
+    "vscode": {
+     "languageId": "r"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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",
+      "text/plain": [
+       "plot without title"
+      ]
+     },
+     "metadata": {
+      "image/png": {
+       "height": 375,
+       "width": 375
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "point_d <- sapply(qgr, function(q) res_dml[[sprintf(\"q=%d\",q)]]$point)\n",
+    "se_d    <- sapply(qgr, function(q) res_dml[[sprintf(\"q=%d\",q)]]$stderr)\n",
+    "lower_d <- point_d - 1.645 * se_d\n",
+    "upper_d <- point_d + 1.645 * se_d\n",
+    "sens_lo_d <- sapply(qgr, function(q)\n",
+    "  dml_sensitivity_bounds_r(ests_dml[[sprintf(\"q=%d\",q)]], .03, .03, alpha=NULL)[1])\n",
+    "sens_hi_d <- sapply(qgr, function(q)\n",
+    "  dml_sensitivity_bounds_r(ests_dml[[sprintf(\"q=%d\",q)]], .03, .03, alpha=NULL)[2])\n",
+    "sens_lo95_d <- sapply(qgr, function(q)\n",
+    "  dml_sensitivity_bounds_r(ests_dml[[sprintf(\"q=%d\",q)]], .03, .03, alpha=.05)[1])\n",
+    "sens_hi95_d <- sapply(qgr, function(q)\n",
+    "  dml_sensitivity_bounds_r(ests_dml[[sprintf(\"q=%d\",q)]], .03, .03, alpha=.05)[2])\n",
+    "\n",
+    "df_dml <- data.frame(q=qgr, point=point_d, lower=lower_d, upper=upper_d,\n",
+    "                     sens_lo=sens_lo_d, sens_hi=sens_hi_d,\n",
+    "                     sens_lo95=sens_lo95_d, sens_hi95=sens_hi95_d)\n",
+    "\n",
+    "ggplot(df_dml, aes(x=q)) +\n",
+    "  geom_line(aes(y=point)) +\n",
+    "  geom_ribbon(aes(ymin=lower, ymax=upper), alpha=.4, fill=\"steelblue\") +\n",
+    "  geom_ribbon(aes(ymin=sens_lo, ymax=sens_hi), alpha=.6, fill=\"orange\") +\n",
+    "  geom_ribbon(aes(ymin=sens_lo95, ymax=sens_hi95), alpha=.2, fill=\"orange\") +\n",
+    "  scale_x_continuous(breaks=qgr) +\n",
+    "  xlab(\"Income group\") + ylab(\"Average price elasticity\") +\n",
+    "  ggtitle(\"Partially linear\") +\n",
+    "  theme_bw()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.6.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
