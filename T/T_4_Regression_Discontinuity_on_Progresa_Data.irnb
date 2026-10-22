@@ -28,7 +28,10 @@
    "outputs": [],
    "source": [
     "dependencies <- c(\"rdrobust\", \"fastDummies\", \"randomForest\", \"hdm\", \"gbm\", \"rdd\")\n",
-    "install.packages(dependencies)"
+    "install.packages(setdiff(dependencies, \"rdd\"))\n",
+    "# rdd was archived on CRAN; install its last release from the CRAN archive\n",
+    "if (!requireNamespace(\"remotes\", quietly = TRUE)) install.packages(\"remotes\")\n",
+    "remotes::install_version(\"rdd\", version = \"0.57\")"
    ]
   },
   {
