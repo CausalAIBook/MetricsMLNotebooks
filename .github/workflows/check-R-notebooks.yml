@@ -15,8 +15,9 @@ jobs:
   test-R-notebooks:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T']
+        directory: ['PM1', 'PM2', 'PM3', 'PM4', 'PM5', 'CM1', 'CM2', 'CM3', 'AC1', 'AC2', 'T', 'T-ADML']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -37,21 +38,21 @@ jobs:
             grep -E '^${{ matrix.directory }}/[^/]+\.Rmd$' changed_files.txt
             exit 1
           fi
-          grep -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+          grep -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Find changed notebooks in Push
         if: github.event_name == 'push'
         id: find_notebooks_push
         run: |
           git diff --name-only ${{ github.event.before }} ${{ github.event.after }} > changed_files.txt
-          grep  -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
+          grep  -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-R-notebooks.yml$' changed_files.txt > changed_notebooks.txt || echo "No notebooks changed" > changed_notebooks.txt
 
       - name: Check if any notebooks changed in PR or Push
         if: (github.event_name == 'push') || (github.event_name == 'pull_request')
         id: check_notebooks
         run: |
           cat changed_notebooks.txt
-          if grep -q -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-and-transform-R-notebooks.yml$' changed_notebooks.txt; then
+          if grep -q -E '^${{ matrix.directory }}/[^/]+\.irnb$|^${{ matrix.directory }}/.*\.R|\.github/workflows/check-R-notebooks.yml$' changed_notebooks.txt; then
             echo "notebooks_changed=true" >> $GITHUB_ENV
           else
             echo "notebooks_changed=false" >> $GITHUB_ENV
@@ -70,7 +71,7 @@ jobs:
         if: env.notebooks_changed == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev
+          sudo apt-get install -y libcurl4-openssl-dev libuv1-dev libglpk-dev
 
       - name: Set up Python
         if: env.notebooks_changed == 'true'
@@ -125,7 +126,9 @@ jobs:
             library(lintr)
             linters <- linters_with_defaults(line_length_linter = line_length_linter(120),
                                              object_name_linter = object_name_linter(styles = c("snake_case", "CamelCase", "camelCase")),
-                                             object_usage_linter = NULL)
+                                             object_usage_linter = NULL,
+                                             pipe_consistency_linter = NULL,
+                                             return_linter = NULL)
             rmd_files <- list.files(path = "${{ matrix.directory }}", pattern = "\\.Rmd$", full.names = TRUE)
             linting_error <- FALSE
             for (rfile in rmd_files) {
@@ -195,6 +198,8 @@ jobs:
           ' 2>/dev/null
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+          # let R (reticulate/keras) use the Python with TensorFlow installed above
+          RETICULATE_PYTHON: ${{ env.pythonLocation }}/bin/python
 
       - name: Upload execution log
         if: "((env.notebooks_changed == 'true') && (env.linting_errors_found == 'false'))"
