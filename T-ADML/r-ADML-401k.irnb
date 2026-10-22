@@ -33,10 +33,10 @@
     "# Install packages if needed\n",
     "repos <- c(CRAN = \"https://cloud.r-project.org\")\n",
     "\n",
-    "if (!requireNamespace(\"remotes\", quietly = TRUE))   install.packages(\"remotes\", repos = repos)\n",
+    "if (!requireNamespace(\"remotes\", quietly = TRUE)) install.packages(\"remotes\", repos = repos)\n",
     "if (!requireNamespace(\"sensemakr\", quietly = TRUE)) install.packages(\"sensemakr\", repos = repos)\n",
-    "if (!requireNamespace(\"ggplot2\", quietly = TRUE))   install.packages(\"ggplot2\", repos = repos)\n",
-    "if (!requireNamespace(\"ranger\", quietly = TRUE))    install.packages(\"ranger\", repos = repos)\n",
+    "if (!requireNamespace(\"ggplot2\", quietly = TRUE)) install.packages(\"ggplot2\", repos = repos)\n",
+    "if (!requireNamespace(\"ranger\", quietly = TRUE)) install.packages(\"ranger\", repos = repos)\n",
     "if (!requireNamespace(\"dml.sensemakr\", quietly = TRUE)) {\n",
     "  remotes::install_github(\"carloscinelli/dml.sensemakr\", upgrade = \"never\")\n",
     "}"
@@ -69,12 +69,12 @@
    ],
    "source": [
     "suppressMessages({\n",
-    "  library(sensemakr)       # attached first: we only need add_bound_to_contour()\n",
-    "  library(dml.sensemakr)   # attached last:  keeps its methods for class \"dml\" unmasked\n",
+    "  library(sensemakr) # attached first: we only need add_bound_to_contour()\n",
+    "  library(dml.sensemakr) # attached last:  keeps its methods for class \"dml\" unmasked\n",
     "  library(ggplot2)\n",
     "})\n",
     "\n",
-    "options(scipen = 99)  \n",
+    "options(scipen = 99)\n",
     "\n",
     "# figure sizing inside the notebook\n",
     "options(repr.plot.width = 7, repr.plot.height = 6, repr.plot.res = 150)\n",
@@ -125,15 +125,18 @@
    "source": [
     "data(\"pension\")\n",
     "\n",
-    "y <- pension$net_tfa   # Y: net total financial assets\n",
-    "d <- pension$e401      # D: 401(k) eligibility\n",
+    "y <- pension$net_tfa # Y: net total financial assets\n",
+    "d <- pension$e401 # D: 401(k) eligibility\n",
     "\n",
     "# X^o: the observed worker characteristics\n",
     "x <- model.matrix(~ -1 + age + inc + educ + fsize + marr + twoearn + pira + hown,\n",
-    "                  data = pension)\n",
+    "  data = pension\n",
+    ")\n",
     "\n",
-    "cat(\"households:\", nrow(x), \"  covariates:\", ncol(x),\n",
-    "    \"  eligible:\", sprintf(\"%.1f%%\", 100 * mean(d)), \"\\n\")"
+    "cat(\n",
+    "  \"households:\", nrow(x), \"  covariates:\", ncol(x),\n",
+    "  \"  eligible:\", sprintf(\"%.1f%%\", 100 * mean(d)), \"\\n\"\n",
+    ")"
    ]
   },
   {
@@ -198,9 +201,9 @@
    ],
    "source": [
     "set.seed(1)\n",
-    "dml.401k.plm <- dml(y, d, x, model = \"plm\", cf.folds = 5, cf.reps = 5, verbose = FALSE)\n",
+    "dml_401k_plm <- dml(y, d, x, model = \"plm\", cf.folds = 5, cf.reps = 5, verbose = FALSE)\n",
     "\n",
-    "summary(dml.401k.plm)"
+    "summary(dml_401k_plm)"
    ]
   },
   {
@@ -237,8 +240,9 @@
    "source": [
     "# income quartiles\n",
     "g1 <- cut(x[, \"inc\"],\n",
-    "          quantile(x[, \"inc\"], c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE),\n",
-    "          labels = c(\"q1\", \"q2\", \"q3\", \"q4\"), include.lowest = TRUE)"
+    "  quantile(x[, \"inc\"], c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE),\n",
+    "  labels = c(\"q1\", \"q2\", \"q3\", \"q4\"), include.lowest = TRUE\n",
+    ")"
    ]
   },
   {
@@ -298,10 +302,12 @@
    ],
    "source": [
     "set.seed(1)\n",
-    "dml.401k.npm <- dml(y, d, x, groups = g1, model = \"npm\",\n",
-    "                    cf.folds = 5, cf.reps = 5, verbose = FALSE)\n",
+    "dml_401k_npm <- dml(y, d, x,\n",
+    "  groups = g1, model = \"npm\",\n",
+    "  cf.folds = 5, cf.reps = 5, verbose = FALSE\n",
+    ")\n",
     "\n",
-    "summary(dml.401k.npm)"
+    "summary(dml_401k_npm)"
    ]
   },
   {
@@ -332,11 +338,11 @@
    },
    "outputs": [],
    "source": [
-    "group.names <- setdiff(names(coef(dml.401k.npm)), \"ate\")\n",
+    "group_names <- setdiff(names(coef(dml_401k_npm)), \"ate\")\n",
     "\n",
-    "df  <- data.frame(groups = 1:4, estimate = coef(dml.401k.npm)[group.names])\n",
-    "cis <- setNames(as.data.frame(confint(dml.401k.npm)[group.names, ]), c(\"lwr.ci\", \"upr.ci\"))\n",
-    "df  <- cbind(df, cis)"
+    "df <- data.frame(groups = 1:4, estimate = coef(dml_401k_npm)[group_names])\n",
+    "cis <- setNames(as.data.frame(confint(dml_401k_npm)[group_names, ]), c(\"lwr.ci\", \"upr.ci\"))\n",
+    "df <- cbind(df, cis)"
    ]
   },
   {
@@ -411,11 +417,13 @@
     }
    ],
    "source": [
-    "rv.plm <- robustness_value(dml.401k.plm)\n",
-    "rv.npm <- robustness_value(dml.401k.npm)\n",
+    "rv_plm <- robustness_value(dml_401k_plm)\n",
+    "rv_npm <- robustness_value(dml_401k_npm)\n",
     "\n",
-    "cat(sprintf(\"RV_alpha  (alpha = 0.05, threshold theta = 0)\\n  partially linear : %.1f%%\\n  nonparametric    : %.1f%%\\n\",\n",
-    "            100 * rv.plm[\"ate\"], 100 * rv.npm[\"ate\"]))\n"
+    "cat(sprintf(\n",
+    "  \"RV_alpha  (alpha = 0.05, threshold theta = 0)\\n  partially linear : %.1f%%\\n  nonparametric    : %.1f%%\\n\",\n",
+    "  100 * rv_plm[\"ate\"], 100 * rv_npm[\"ate\"]\n",
+    "))"
    ]
   },
   {
@@ -453,11 +461,11 @@
    },
    "outputs": [],
    "source": [
-    "cf.y <- 0.04   # C_Y^2\n",
-    "cf.d <- 0.03   # q_alpha\n",
-    "rho2 <- 1      # |rho| = 1\n",
+    "cf_y <- 0.04 # C_Y squared\n",
+    "cf_d <- 0.03 # q_alpha\n",
+    "rho2 <- 1 # |rho| = 1\n",
     "\n",
-    "bounds.plm <- dml_bounds(dml.401k.plm, cf.y = cf.y, cf.d = cf.d, rho2 = rho2)"
+    "bounds_plm <- dml_bounds(dml_401k_plm, cf.y = cf_y, cf.d = cf_d, rho2 = rho2)"
    ]
   },
   {
@@ -477,7 +485,7 @@
    },
    "outputs": [],
    "source": [
-    "bounds.npm <- dml_bounds(dml.401k.npm, cf.y = cf.y, cf.d = cf.d, rho2 = rho2)"
+    "bounds_npm <- dml_bounds(dml_401k_npm, cf.y = cf_y, cf.d = cf_d, rho2 = rho2)"
    ]
   },
   {
@@ -497,8 +505,8 @@
    },
    "outputs": [],
    "source": [
-    "cb.plm <- confidence_bounds(dml.401k.plm, cf.y = cf.y, cf.d = cf.d, rho2 = rho2)\n",
-    "cb.npm <- confidence_bounds(dml.401k.npm, cf.y = cf.y, cf.d = cf.d, rho2 = rho2)"
+    "cb_plm <- confidence_bounds(dml_401k_plm, cf.y = cf_y, cf.d = cf_d, rho2 = rho2)\n",
+    "cb_npm <- confidence_bounds(dml_401k_npm, cf.y = cf_y, cf.d = cf_d, rho2 = rho2)"
    ]
   },
   {
@@ -568,20 +576,22 @@
     "row <- function(bounds, cb, label) {\n",
     "  b <- coef(bounds)[, \"ate\"]\n",
     "  data.frame(\n",
-    "    Model              = label,\n",
-    "    `Short ATE`        = dollars(b[\"theta.s\"]),\n",
-    "    `Bias bound`       = dollars(b[\"bias.bound\"]),\n",
-    "    `ATE bounds`       = sprintf(\"[%s, %s]\", dollars(b[\"theta.m\"]), dollars(b[\"theta.p\"])),\n",
+    "    Model = label,\n",
+    "    `Short ATE` = dollars(b[\"theta.s\"]),\n",
+    "    `Bias bound` = dollars(b[\"bias.bound\"]),\n",
+    "    `ATE bounds` = sprintf(\"[%s, %s]\", dollars(b[\"theta.m\"]), dollars(b[\"theta.p\"])),\n",
     "    `95% conf. bounds` = sprintf(\"[%s, %s]\", dollars(cb[\"ate\", 1]), dollars(cb[\"ate\", 2])),\n",
     "    row.names = NULL,\n",
     "    check.names = FALSE\n",
     "  )\n",
     "}\n",
     "\n",
-    "table2.3 <- rbind(row(bounds.plm, cb.plm, \"Partially linear\"),\n",
-    "                  row(bounds.npm, cb.npm, \"Nonparametric\"))\n",
+    "table2_3 <- rbind(\n",
+    "  row(bounds_plm, cb_plm, \"Partially linear\"),\n",
+    "  row(bounds_npm, cb_npm, \"Nonparametric\")\n",
+    ")\n",
     "\n",
-    "table2.3\n"
+    "table2_3"
    ]
   },
   {
@@ -637,16 +647,20 @@
     }
    ],
    "source": [
-    "bds  <- setNames(as.data.frame(confidence_bounds(dml.401k.npm, cf.y = cf.y, cf.d = cf.d, level = 0)),\n",
-    "                 c(\"lwr.bound\", \"upr.bound\"))\n",
-    "cbds <- setNames(as.data.frame(confidence_bounds(dml.401k.npm, cf.y = cf.y, cf.d = cf.d, level = 0.95)),\n",
-    "                 c(\"lwr.cbound\", \"upr.cbound\"))\n",
+    "bds <- setNames(\n",
+    "  as.data.frame(confidence_bounds(dml_401k_npm, cf.y = cf_y, cf.d = cf_d, level = 0)),\n",
+    "  c(\"lwr.bound\", \"upr.bound\")\n",
+    ")\n",
+    "cbds <- setNames(\n",
+    "  as.data.frame(confidence_bounds(dml_401k_npm, cf.y = cf_y, cf.d = cf_d, level = 0.95)),\n",
+    "  c(\"lwr.cbound\", \"upr.cbound\")\n",
+    ")\n",
     "\n",
     "df2 <- cbind(df, bds[-1, ], cbds[-1, ])\n",
     "\n",
     "p2 <- ggplot(df2, aes(x = groups, y = estimate)) +\n",
     "  geom_line() +\n",
-    "  geom_ribbon(aes(ymin = lwr.bound,  ymax = upr.bound),  alpha = 0.1, col = \"red\",  fill = \"red\") +\n",
+    "  geom_ribbon(aes(ymin = lwr.bound, ymax = upr.bound), alpha = 0.1, col = \"red\", fill = \"red\") +\n",
     "  geom_ribbon(aes(ymin = lwr.cbound, ymax = upr.cbound), alpha = 0.1, col = \"blue\", fill = \"blue\") +\n",
     "  theme_bw() +\n",
     "  xlab(\"Income Groups by Quartiles\") +\n",
@@ -694,10 +708,10 @@
    "source": [
     "p_combined <- ggplot(df2, aes(x = groups, y = estimate)) +\n",
     "  geom_ribbon(aes(ymin = lwr.cbound, ymax = upr.cbound), fill = \"blue\", alpha = 0.03, color = NA) +\n",
-    "  geom_ribbon(aes(ymin = lwr.bound,  ymax = upr.bound),  fill = \"blue\", alpha = 0.12, color = NA) +\n",
+    "  geom_ribbon(aes(ymin = lwr.bound, ymax = upr.bound), fill = \"blue\", alpha = 0.12, color = NA) +\n",
     "  geom_line(color = \"black\") +\n",
-    "  geom_line(aes(y = lwr.ci),    color = \"black\", linetype = \"dashed\") +\n",
-    "  geom_line(aes(y = upr.ci),    color = \"black\", linetype = \"dashed\") +\n",
+    "  geom_line(aes(y = lwr.ci), color = \"black\", linetype = \"dashed\") +\n",
+    "  geom_line(aes(y = upr.ci), color = \"black\", linetype = \"dashed\") +\n",
     "  geom_line(aes(y = lwr.bound), color = \"blue\") +\n",
     "  geom_line(aes(y = upr.bound), color = \"blue\") +\n",
     "  geom_line(aes(y = lwr.cbound), color = \"blue\", linetype = \"dashed\") +\n",
@@ -709,7 +723,7 @@
     "  ggtitle(\"Confidence and Sensitivity Bounds\")\n",
     "\n",
     "ggsave(\"figures/401k-groups-sensitivity-combined.pdf\", p_combined, width = 4.5, height = 4.5)\n",
-    "p_combined\n"
+    "p_combined"
    ]
   },
   {
@@ -741,9 +755,10 @@
    "source": [
     "set.seed(2)\n",
     "invisible(capture.output(\n",
-    "  bench.plm <- dml_benchmark(dml.401k.plm,\n",
-    "                             benchmark_covariates = c(\"inc\", \"pira\", \"twoearn\"))\n",
-    "))\n"
+    "  bench_plm <- dml_benchmark(dml_401k_plm,\n",
+    "    benchmark_covariates = c(\"inc\", \"pira\", \"twoearn\")\n",
+    "  )\n",
+    "))"
    ]
   },
   {
@@ -820,7 +835,7 @@
     }
    ],
    "source": [
-    "out <- summary(bench.plm)$benchmarks\n",
+    "out <- summary(bench_plm)$benchmarks\n",
     "round(out[, c(\"gain.Y\", \"gain.D\", \"rho\")], 4)"
    ]
   },
@@ -843,10 +858,10 @@
    },
    "outputs": [],
    "source": [
-    "ovb_contour_without_origin_label <-\n",
+    "ovb_contour_no_origin_label <-\n",
     "  getS3method(\"ovb_contour_plot\", \"dml\")\n",
     "\n",
-    "plot_body <- as.list(body(ovb_contour_without_origin_label))\n",
+    "plot_body <- as.list(body(ovb_contour_no_origin_label))\n",
     "\n",
     "is_origin_label <- vapply(\n",
     "  plot_body,\n",
@@ -863,7 +878,7 @@
     "\n",
     "plot_body[is_origin_label] <- list(quote(invisible(NULL)))\n",
     "\n",
-    "body(ovb_contour_without_origin_label) <- as.call(plot_body)"
+    "body(ovb_contour_no_origin_label) <- as.call(plot_body)"
    ]
   },
   {
@@ -883,18 +898,22 @@
    },
    "outputs": [],
    "source": [
-    "bumps.plm <- list(pira    = c(0.010,  0.009),\n",
-    "                  twoearn = c(0.020, -0.002),\n",
-    "                  inc     = c(0.010,  0.009),\n",
-    "                  inc4    = c(0.015, -0.005))\n",
+    "bumps_plm <- list(\n",
+    "  pira = c(0.010, 0.009),\n",
+    "  twoearn = c(0.020, -0.002),\n",
+    "  inc = c(0.010, 0.009),\n",
+    "  inc4 = c(0.015, -0.005)\n",
+    ")\n",
     "\n",
-    "bumps.npm <- list(pira    = c(0.005,  0.009),\n",
-    "                  twoearn = c(0.020,  0.005),\n",
-    "                  inc     = c(-0.010, 0.009),\n",
-    "                  inc4    = c(0.015,  0.000))\n",
+    "bumps_npm <- list(\n",
+    "  pira = c(0.005, 0.009),\n",
+    "  twoearn = c(0.020, 0.005),\n",
+    "  inc = c(-0.010, 0.009),\n",
+    "  inc4 = c(0.015, 0.000)\n",
+    ")\n",
     "\n",
-    "contour_panel <- function(fit, bench, rho2, title, bumps = bumps.plm) {\n",
-    "  ovb_contour_without_origin_label(\n",
+    "contour_panel <- function(fit, bench, rho2, title, bumps = bumps_plm) {\n",
+    "  ovb_contour_no_origin_label(\n",
     "    fit,\n",
     "    which.bound = \"lwr\",\n",
     "    level = 0.95,\n",
@@ -908,33 +927,43 @@
     "\n",
     "  title(main = title)\n",
     "\n",
-    "  add_bound <- function(cfd, cfy, label, bump.x, bump.y, ...) {\n",
+    "  add_bound <- function(cfd, cfy, label, bump_x, bump_y, ...) {\n",
     "    sensemakr::add_bound_to_contour(\n",
     "      r2dz.x = cfd, r2yz.dx = cfy,\n",
     "      bound_label = label,\n",
     "      bound_value = confidence_bounds(\n",
-    "        fit, cf.y = cfy, cf.d = cfd, rho2 = rho2,\n",
+    "        fit,\n",
+    "        cf.y = cfy, cf.d = cfd, rho2 = rho2,\n",
     "        level = 0.95, combine.method = \"median\"\n",
     "      )[\"ate\", \"lwr\"],\n",
-    "      label.bump.x = bump.x, label.bump.y = bump.y, ...)\n",
+    "      label.bump.x = bump_x, label.bump.y = bump_y, ...\n",
+    "    )\n",
     "  }\n",
     "\n",
     "  add_bound(0.03, 0.04, \"Max Match\", 0.015, 0.003, point.pch = 25, point.bg = \"red\")\n",
     "\n",
     "  # one-times each observed benchmark\n",
-    "  add_bound(bench[\"pira\",    \"gain.D\"], bench[\"pira\",    \"gain.Y\"], \"1 x Part. in IRA\",\n",
-    "            bumps$pira[1], bumps$pira[2])\n",
-    "  add_bound(bench[\"twoearn\", \"gain.D\"], bench[\"twoearn\", \"gain.Y\"], \"1 x Two Earners\",\n",
-    "            bumps$twoearn[1], bumps$twoearn[2])\n",
-    "  add_bound(bench[\"inc\",     \"gain.D\"], bench[\"inc\",     \"gain.Y\"], \"1 x Income\",\n",
-    "            bumps$inc[1], bumps$inc[2])\n",
+    "  add_bound(\n",
+    "    bench[\"pira\", \"gain.D\"], bench[\"pira\", \"gain.Y\"], \"1 x Part. in IRA\",\n",
+    "    bumps$pira[1], bumps$pira[2]\n",
+    "  )\n",
+    "  add_bound(\n",
+    "    bench[\"twoearn\", \"gain.D\"], bench[\"twoearn\", \"gain.Y\"], \"1 x Two Earners\",\n",
+    "    bumps$twoearn[1], bumps$twoearn[2]\n",
+    "  )\n",
+    "  add_bound(\n",
+    "    bench[\"inc\", \"gain.D\"], bench[\"inc\", \"gain.Y\"], \"1 x Income\",\n",
+    "    bumps$inc[1], bumps$inc[2]\n",
+    "  )\n",
     "\n",
     "  # a quarter as strong as income\n",
-    "  add_bound(bench[\"inc\", \"gain.D\"] * 0.25, bench[\"inc\", \"gain.Y\"] * 0.25, \"1/4 x Income\",\n",
-    "            bumps$inc4[1], bumps$inc4[2])\n",
+    "  add_bound(\n",
+    "    bench[\"inc\", \"gain.D\"] * 0.25, bench[\"inc\", \"gain.Y\"] * 0.25, \"1/4 x Income\",\n",
+    "    bumps$inc4[1], bumps$inc4[2]\n",
+    "  )\n",
     "\n",
     "  # unadjusted\n",
-    "  add_bound(0, 0, \"Unadjusted\", bump.x = 0.015, bump.y = 0.003, point.pch = NA)            \n",
+    "  add_bound(0, 0, \"Unadjusted\", bump_x = 0.015, bump_y = 0.003, point.pch = NA)\n",
     "\n",
     "  invisible(NULL)\n",
     "}"
@@ -984,10 +1013,10 @@
     "options(repr.plot.width = 7, repr.plot.height = 7)\n",
     "\n",
     "pdf(\"figures/401K-contour-plm-lower.pdf\", width = 6, height = 6)\n",
-    "contour_panel(dml.401k.plm, out, rho2 = 1, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1\")))\n",
+    "contour_panel(dml_401k_plm, out, rho2 = 1, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1\")))\n",
     "invisible(dev.off())\n",
     "\n",
-    "contour_panel(dml.401k.plm, out, rho2 = 1, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1\")))"
+    "contour_panel(dml_401k_plm, out, rho2 = 1, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1\")))"
    ]
   },
   {
@@ -1023,13 +1052,15 @@
     }
    ],
    "source": [
-    "rho2.half <- (1/2)^2\n",
+    "rho2_half <- (1 / 2)^2\n",
     "\n",
     "pdf(\"figures/401K-contour-plm-lower-rho2.pdf\", width = 6, height = 6)\n",
-    "contour_panel(dml.401k.plm, out, rho2 = rho2.half, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1/2\")))\n",
+    "contour_panel(dml_401k_plm, out, rho2 = rho2_half,\n",
+    "              title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1/2\")))\n",
     "invisible(dev.off())\n",
     "\n",
-    "contour_panel(dml.401k.plm, out, rho2 = rho2.half, title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1/2\")))"
+    "contour_panel(dml_401k_plm, out, rho2 = rho2_half,\n",
+    "              title = expression(paste(\"Partially Linear Model,  |\", rho, \"| = 1/2\")))"
    ]
   },
   {
@@ -1118,12 +1149,13 @@
    "source": [
     "set.seed(2)\n",
     "invisible(capture.output(\n",
-    "  bench.npm <- dml_benchmark(dml.401k.npm,\n",
-    "                             benchmark_covariates = c(\"inc\", \"pira\", \"twoearn\"))\n",
+    "  bench_npm <- dml_benchmark(dml_401k_npm,\n",
+    "    benchmark_covariates = c(\"inc\", \"pira\", \"twoearn\")\n",
+    "  )\n",
     "))\n",
     "\n",
-    "out.npm <- summary(bench.npm)$benchmarks\n",
-    "round(out.npm[, c(\"gain.Y\", \"gain.D\", \"rho\")], 4)"
+    "out_npm <- summary(bench_npm)$benchmarks\n",
+    "round(out_npm[, c(\"gain.Y\", \"gain.D\", \"rho\")], 4)"
    ]
   },
   {
@@ -1160,10 +1192,12 @@
    ],
    "source": [
     "pdf(\"figures/401K-contour-npm-lower.pdf\", width = 6, height = 6)\n",
-    "contour_panel(dml.401k.npm, out.npm, rho2 = 1, title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1\")), bumps = bumps.npm)\n",
+    "contour_panel(dml_401k_npm, out_npm, rho2 = 1,\n",
+    "              title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1\")), bumps = bumps_npm)\n",
     "invisible(dev.off())\n",
     "\n",
-    "contour_panel(dml.401k.npm, out.npm, rho2 = 1, title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1\")), bumps = bumps.npm)"
+    "contour_panel(dml_401k_npm, out_npm, rho2 = 1,\n",
+    "              title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1\")), bumps = bumps_npm)"
    ]
   },
   {
@@ -1200,10 +1234,12 @@
    ],
    "source": [
     "pdf(\"figures/401K-contour-npm-lower-rho2.pdf\", width = 6, height = 6)\n",
-    "contour_panel(dml.401k.npm, out.npm, rho2 = rho2.half, title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1/2\")), bumps = bumps.npm)\n",
+    "contour_panel(dml_401k_npm, out_npm, rho2 = rho2_half,\n",
+    "              title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1/2\")), bumps = bumps_npm)\n",
     "invisible(dev.off())\n",
     "\n",
-    "contour_panel(dml.401k.npm, out.npm, rho2 = rho2.half, title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1/2\")), bumps = bumps.npm)"
+    "contour_panel(dml_401k_npm, out_npm, rho2 = rho2_half,\n",
+    "              title = expression(paste(\"Nonparametric Model,  |\", rho, \"| = 1/2\")), bumps = bumps_npm)"
    ]
   },
   {
