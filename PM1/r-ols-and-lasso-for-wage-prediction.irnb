@@ -453,7 +453,7 @@
     "r2_adj_l <- 1 -\n",
     "  (sum((yhat_lasso_cv - train$lwage)^2) / (ntrain - p_l - 1)) /\n",
     "    (sum((train$lwage - mean(train$lwage))^2) / (ntrain - 1))\n",
-    "cat(\"adjusted R-squared for the flexible model: \", r2_adj_l, \"\\n\")\n",
+    "cat(\"adjusted R-squared for the lasso with flexible model: \", r2_adj_l, \"\\n\")\n",
     "\n",
     "# MSE and adjusted MSE\n",
     "mse1 <- mean(sumbasic$res^2)\n",
@@ -466,7 +466,7 @@
     "cat(\"MSE for the flexible model: \", mse2, \"\\n\")\n",
     "p2 <- sumflex$df[1]\n",
     "mse_adj2 <- (ntrain / (ntrain - p2)) * mse2\n",
-    "cat(\"adjusted MSE for the lasso flexible model: \", mse_adj2, \"\\n\")\n",
+    "cat(\"adjusted MSE for the flexible model: \", mse_adj2, \"\\n\")\n",
     "\n",
     "lasso_res <- train$lwage - yhat_lasso_cv\n",
     "mse_l <- mean(lasso_res^2)\n",
@@ -759,8 +759,8 @@
     "mse_test_ex <- sum((y_test_ex - yhat_ex)^2) / length(y_test_ex)\n",
     "r2_test_ex <- 1 - mse_test_ex / mean((y_test_ex - mean(train$lwage))^2)\n",
     "\n",
-    "cat(\"Test MSE for the basic model: \", mse_test_ex, \" \")\n",
-    "cat(\"Test R2 for the basic model: \", r2_test_ex)"
+    "cat(\"Test MSE for the extra flexible model: \", mse_test_ex, \" \")\n",
+    "cat(\"Test R2 for the extra flexible model: \", r2_test_ex)"
    ]
   },
   {
@@ -807,9 +807,9 @@
     "mse_adj_l <- (ntrain / (ntrain - p_l - 1)) * mse_l\n",
     "\n",
     "cat(\"R-squared for the lasso with the extra flexible model (in-sample): \", r2_l, \"\\n\")\n",
-    "cat(\"adjusted R-squared for the extra flexible model (in-sample): \", r2_adj_l, \"\\n\")\n",
+    "cat(\"adjusted R-squared for the lasso with the extra flexible model (in-sample): \", r2_adj_l, \"\\n\")\n",
     "cat(\"MSE for the lasso with the extra flexible model (in-sample): \", mse_l, \"\\n\")\n",
-    "cat(\"adjusted MSE for the lasso with the extraflexible model (in-sample): \", mse_adj_l, \"\\n\")\n",
+    "cat(\"adjusted MSE for the lasso with the extra flexible model (in-sample): \", mse_adj_l, \"\\n\")\n",
     "\n",
     "# out-of-sample\n",
     "yhat_lcv_test <- predict(fit_lcv, newx = test_flex, s = \"lambda.min\")\n",
@@ -817,7 +817,7 @@
     "r2_lasso <- 1 - mse_lasso / mean((test$lwage - mean(train$lwage))^2)\n",
     "\n",
     "cat(\"\\n\")\n",
-    "cat(\"Test R2 for the lasso the extra flexible model: \", r2_lasso, \"\\n\")\n",
+    "cat(\"Test R2 for the lasso on the extra flexible model: \", r2_lasso, \"\\n\")\n",
     "cat(\"Test MSE for the lasso on the extra flexible model: \", mse_lasso)\n"
    ]
   },
