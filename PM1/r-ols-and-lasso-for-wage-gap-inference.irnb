@@ -153,7 +153,7 @@
     "table[1:12, 1] <- as.numeric(lapply(z, mean))\n",
     "table[1:12, 2] <- as.numeric(lapply(z_male, mean))\n",
     "table[1:12, 3] <- as.numeric(lapply(z_female, mean))\n",
-    "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Less then High School\", \"High School Graduate\", \"Some College\",\n",
+    "rownames(table) <- c(\"Log Wage\", \"Sex\", \"Less than High School\", \"High School Graduate\", \"Some College\",\n",
     "                     \"College Graduate\", \"Advanced Degree\", \"Northeast\", \"Midwest\", \"South\", \"West\", \"Experience\")\n",
     "colnames(table) <- c(\"All\", \"Men\", \"Women\")\n",
     "tab <- xtable(table, digits = 4)\n",
@@ -190,10 +190,10 @@
     "<tr> <th>  </th> <th> All </th> <th> Men </th> <th> Women </th>  </tr>\n",
     "  <tr> <td align=\"right\"> Log Wage </td> <td align=\"right\"> 2.9708 </td> <td align=\"right\"> 2.9878 </td> <td align=\"right\"> 2.9495 </td> </tr>\n",
     "  <tr> <td align=\"right\"> Sex </td> <td align=\"right\"> 0.4445 </td> <td align=\"right\"> 0.0000 </td> <td align=\"right\"> 1.0000 </td> </tr>\n",
-    "  <tr> <td align=\"right\"> Less then High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> Less than High School </td> <td align=\"right\"> 0.0233 </td> <td align=\"right\"> 0.0318 </td> <td align=\"right\"> 0.0127 </td> </tr>\n",
     "  <tr> <td align=\"right\"> High School Graduate </td> <td align=\"right\"> 0.2439 </td> <td align=\"right\"> 0.2943 </td> <td align=\"right\"> 0.1809 </td> </tr>\n",
     "  <tr> <td align=\"right\"> Some College </td> <td align=\"right\"> 0.2781 </td> <td align=\"right\"> 0.2733 </td> <td align=\"right\"> 0.2840 </td> </tr>\n",
-    "  <tr> <td align=\"right\"> Gollage Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
+    "  <tr> <td align=\"right\"> College Graduate </td> <td align=\"right\"> 0.3177 </td> <td align=\"right\"> 0.2940 </td> <td align=\"right\"> 0.3473 </td> </tr>\n",
     "  <tr> <td align=\"right\"> Advanced Degree </td> <td align=\"right\"> 0.1371 </td> <td align=\"right\"> 0.1066 </td> <td align=\"right\"> 0.1752 </td> </tr>\n",
     "  <tr> <td align=\"right\"> Northeast </td> <td align=\"right\"> 0.2596 </td> <td align=\"right\"> 0.2590 </td> <td align=\"right\"> 0.2604 </td> </tr>\n",
     "  <tr> <td align=\"right\"> Midwest </td> <td align=\"right\"> 0.2965 </td> <td align=\"right\"> 0.2981 </td> <td align=\"right\"> 0.2945 </td> </tr>\n",
@@ -237,7 +237,7 @@
     "id": "rHTtc671yor7"
    },
    "source": [
-    "Thus, the unconditional gender wage gap is about $3,8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience."
+    "Thus, the unconditional gender wage gap is about $3.8$\\% for the group of never married workers (women get paid less on average in our sample). We also observe that never married working women are relatively more educated than working men and have lower working experience."
    ]
   },
   {
@@ -279,7 +279,7 @@
    "source": [
     "nocontrol_fit <- lm(lwage ~ sex, data = data)\n",
     "nocontrol_est <- summary(nocontrol_fit)$coef[\"sex\", 1]\n",
-    "# HC - \"heteroskedasticity cosistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
+    "# HC - \"heteroskedasticity consistent\" -- HC3 is the SE that remains consistent in high dimensions\n",
     "hcv_coefs <- vcovHC(nocontrol_fit, type = \"HC3\")\n",
     "nocontrol_se <- sqrt(diag(hcv_coefs))[2] # Estimated std errors\n",
     "\n",
@@ -384,29 +384,21 @@
    },
    "outputs": [],
    "source": [
-    "xx0 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
-    "                    data = data[data$sex == 0, ])\n",
-    "y0 <- data[data$sex == 0, ]$lwage\n",
-    "xx1 <- model.matrix(~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we),\n",
-    "                    data = data[data$sex == 1, ])\n",
-    "y1 <- data[data$sex == 1, ]$lwage\n",
-    "mu1 <- colMeans(xx1)\n",
-    "mu0 <- colMeans(xx0)\n",
-    "betarest <- summary(control_fit)$coef[3:(ncol(xx0) + 1), 1] # the coefficients excluding intercept and \"sex\"\n",
+    "x <- model.matrix(control_fit)[, -(1:2)] # controls, without intercept and sex\n",
+    "d1 <- data$sex == 1\n",
+    "d0 <- data$sex == 0\n",
+    "dx <- colMeans(x[d1, ]) - colMeans(x[d0, ])\n",
     "\n",
-    "cat(\"The marginal gap:\", mean(data_female$lwage) - mean(data_male$lwage), \"\\n\")\n",
-    "diff.unexplained <- control_est\n",
-    "cat(\"The unexplained difference: \", diff.unexplained, \"\\n\")\n",
-    "diff.explained <- sum(betarest * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)]))\n",
-    "cat(\"The explained difference:\", diff.explained, \"\\n\")\n",
-    "cat(\"The sum of these differences:\", diff.unexplained + diff.explained, \"\\n\")"
+    "cat(\"The marginal gap:\", mean(data$lwage[d1]) - mean(data$lwage[d0]), \"\\n\")\n",
+    "cat(\"The unexplained difference:\", control_est, \"\\n\")\n",
+    "cat(\"The explained difference:\", sum(coef(control_fit)[-(1:2)] * dx), \"\\n\")"
    ]
   },
   {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "We next consider a Oaxaca-Blinder decomposition that also incorporates an interaction term."
+    "We next consider an Oaxaca-Blinder decomposition that also incorporates an interaction term."
    ]
   },
   {
@@ -419,22 +411,27 @@
    },
    "outputs": [],
    "source": [
-    "svd0 <- svd(xx0)\n",
-    "svd1 <- svd(xx1)\n",
-    "svd0$d[svd0$d <= 1e-10] <- 0\n",
-    "svd0$d[svd0$d > 1e-10] <- 1 / svd0$d[svd0$d > 1e-10]\n",
-    "beta0 <- (svd0$v %*% (svd0$d * svd0$d * t(svd0$v))) %*% t(xx0) %*% y0\n",
-    "svd1$d[svd1$d <= 1e-10] <- 0\n",
-    "svd1$d[svd1$d > 1e-10] <- 1 / svd1$d[svd1$d > 1e-10]\n",
-    "beta1 <- (svd1$v %*% (svd1$d * svd1$d * t(svd1$v))) %*% t(xx1) %*% y1\n",
+    "flex_without_sex <- ~ (exp1 + exp2 + exp3 + exp4) * (shs + hsg + scl + clg + C(occ2) + C(ind2) + mw + so + we)\n",
+    "x0 <- model.matrix(flex_without_sex, data = data[d0, ]) # men\n",
+    "x1 <- model.matrix(flex_without_sex, data = data[d1, ]) # women\n",
+    "# minimum-norm least squares, since some interaction columns are collinear within a group\n",
+    "b0 <- MASS::ginv(x0) %*% data$lwage[d0]\n",
+    "b1 <- MASS::ginv(x1) %*% data$lwage[d1]\n",
+    "xbar0 <- colMeans(x0)\n",
+    "xbar1 <- colMeans(x1)\n",
     "\n",
-    "cat(\"The marginal gap:\", mean(data_female$lwage) - mean(data_male$lwage), \"\\n\")\n",
-    "cat(\"The unexplained difference:\", beta1[1] - beta0[1], \"\\n\")\n",
-    "cat(\"The difference explained by endowment:\", sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)])), \"\\n\")\n",
-    "cat(\"The difference explained by coefficient:\", sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)]), \"\\n\")\n",
-    "cat(\"The sum of these differences:\",\n",
-    "    (beta1[1] - beta0[1] + sum(beta0[2:ncol(xx0)] * (mu1[2:ncol(xx0)] - mu0[2:ncol(xx0)]))\n",
-    "     + sum((beta1[2:ncol(xx0)] - beta0[2:ncol(xx0)]) * mu1[2:ncol(xx0)])), \"\\n\")"
+    "cat(\"The marginal gap:\", mean(data$lwage[d1]) - mean(data$lwage[d0]), \"\\n\")\n",
+    "cat(\"Endowments:\", sum(b0 * (xbar1 - xbar0)), \"\\n\")\n",
+    "cat(\"Intercepts:\", b1[1] - b0[1], \"\\n\")\n",
+    "cat(\"Coefficients:\", sum((b1 - b0)[-1] * xbar1[-1]), \"\\n\")\n",
+    "cat(\"Sum:\", sum(b0 * (xbar1 - xbar0)) + sum((b1 - b0) * xbar1), \"\\n\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Note on interpretation:** In this decomposition, the endowments part is the difference explained by the controls. The intercepts part and the coefficients part should **not** be interpreted separately: how the unexplained difference is split between them depends on arbitrary choices, such as the omitted baseline categories of the categorical variables and the zero point of continuous variables like experience (shifting such a variable changes the intercepts). Only their sum, the difference due to different coefficients for women and men (the unexplained part), is meaningful."
    ]
   },
   {
@@ -638,9 +635,9 @@
     "id": "unil0UcWyosK"
    },
    "source": [
-    "It it worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n",
+    "It is worth noticing that controlling for worker characteristics increases the gender wage gap from less than 4\\% to 7\\%. The controls we used in our analysis include 5 educational attainment indicators (less than high school graduates, high school graduates, some college, college graduate, and advanced degree), 4 region indicators (midwest, south, west, and northeast);  a quartic term (first, second, third, and fourth power) in experience and 22 occupation and 23 industry indicators.\n",
     "\n",
-    "Keep in mind that the predictive effect (PE) does not only measures discrimination (causal effect of being female), it also may reflect\n",
+    "Keep in mind that the predictive effect (PE) does not only measure discrimination (causal effect of being female), it also may reflect\n",
     "selection effects of unobserved differences in covariates between men and women in our sample.\n"
    ]
   },
