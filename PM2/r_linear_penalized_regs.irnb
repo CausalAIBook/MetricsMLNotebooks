@@ -223,7 +223,7 @@
     "id": "aRWiO93SUw1G"
    },
    "source": [
-    "We use glmnet's penalized estimators, which choose the penalty parameter via cross-validation (by default 10-fold cross-validation). These methods search over an adaptively chosen grid of hyperparameters. The parameter `alpha` controls what penalty (or allows for a convex combination of `l1` and `l2` penalty). Set `alpha=0.5` for elastic net.\n",
+    "We use glmnet's penalized estimators, which choose the penalty parameter via cross-validation (here 5-fold; glmnet's default is 10-fold). These methods search over an adaptively chosen grid of hyperparameters. The parameter `alpha` controls what penalty (or allows for a convex combination of `l1` and `l2` penalty). Set `alpha=0.5` for elastic net.\n",
     "\n",
     "Features will be standardized (by glmnet) so that penalization does not favor different features asymmetrically."
    ]
@@ -341,9 +341,9 @@
    "source": [
     "#### glmnet failure in Ridge\n",
     "\n",
-    "**Note**: Ridge regression performs worse relatively to the Ridge in the correponding [Python notebook](https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/main/PM2/python_linear_penalized_regs.ipynb). Even if one were to control for the randomness in the data and use the same data for both, R's glmnet fails.\n",
+    "**Note**: Ridge regression performs worse relatively to the Ridge in the corresponding [Python notebook](https://colab.research.google.com/github/CausalAIBook/MetricsMLNotebooks/blob/main/PM2/python_linear_penalized_regs.ipynb). Even if one were to control for the randomness in the data and use the same data for both, R's glmnet fails.\n",
     "\n",
-    "To understand why, look at the cross-validated MSE curve with different $\\lambda$ ()."
+    "To understand why, look at the cross-validated MSE curve with different $\\lambda$."
    ]
   },
   {
@@ -483,7 +483,7 @@
     "id": "NQGL2JsocEjC"
    },
    "source": [
-    "\\We use \"plug-in\" tuning with a theoretically valid choice of penalty $\\lambda = 2 \\cdot c \\hat{\\sigma} \\sqrt{n} \\Phi^{-1}(1-\\alpha/2p)$, where $c>1$ and $1-\\alpha$ is a confidence level, and $\\Phi^{-1}$ denotes the quantile function. Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\\epsilon$ and $X$ in the regression equation decay quickly at the tails.\n",
+    "We use \"plug-in\" tuning with a theoretically valid choice of penalty $\\lambda = 2 \\cdot c \\hat{\\sigma} \\sqrt{n} \\Phi^{-1}(1-\\alpha/2p)$, where $c>1$ and $1-\\alpha$ is a confidence level, and $\\Phi^{-1}$ denotes the quantile function. Under homoskedasticity, this choice ensures that the Lasso predictor is well behaved, delivering good predictive performance under approximate sparsity. In practice, this formula will work well even in the absence of homoskedasticity, especially when the random variables $\\epsilon$ and $X$ in the regression equation decay quickly at the tails.\n",
     "\n",
     "In practice, many people choose to use cross-validation, which is perfectly fine for predictive tasks. However, when conducting inference, to make our analysis valid we will require cross-fitting in addition to cross-validation. As we have not yet discussed cross-fitting, we rely on this theoretically-driven penalty in order to allow for accurate inference in the upcoming notebooks."
    ]
@@ -494,7 +494,7 @@
     "id": "G7yKoP1IcI5y"
    },
    "source": [
-    "We pull an anaue of R's rlasso. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\\\n",
+    "We use the function `rlasso` from the R package hdm. Rlasso functionality: it is searching the right set of regressors. This function was made for the case of ***p*** regressors and ***n*** observations where ***p >>>> n***. It assumes that the error is i.i.d. The errors may be non-Gaussian or heteroscedastic.\\\n",
     "The post lasso function makes OLS with the selected ***T*** regressors.\n",
     "To select those parameters, they use $\\lambda$ as variable to penalize\\\n",
     "**Funny thing: the function rlasso was named like that because it is the \"rigorous\" Lasso.**"
