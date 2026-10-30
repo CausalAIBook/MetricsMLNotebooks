@@ -137,3 +137,8 @@ dmypy.json
 /TEMP_updated_notebooks
 /tools
 .vscode/settings.json
+
+# make_book_outputs.sh: logs are not tracked, the figures are (*.png / *.pdf are ignored above)
+book_outputs/logs/
+!book_outputs/**/*.png
+!book_outputs/**/*.pdf

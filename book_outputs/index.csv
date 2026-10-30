@@ -1,0 +1,16 @@
+chapter,item,file,notebook,language,book_page,notes
+1,Table 1.1,ch01/table_1_1.csv,PM1/r-ols-and-lasso-for-wage-prediction.irnb,R,29,identical in Python
+1,Table 1.2,ch01/table_1_2.csv,PM1/r-ols-and-lasso-for-wage-prediction.irnb,R,30,"p of flexible Lasso is the number of selected regressors; the book prints 246, the number of candidates"
+1,Table 1.3,ch01/table_1_3.csv,PM1/r-ols-and-lasso-for-wage-prediction.irnb,R,31,
+1,Table 1.4,ch01/table_1_4.csv,PM1/r-ols-and-lasso-for-wage-prediction.irnb,R,32,
+1,Table 1.5,ch01/table_1_5.csv,PM1/r-ols-and-lasso-for-wage-gap-inference.irnb,R,33,
+1,Table 1.6,ch01/table_1_6.csv,PM1/r-ols-and-lasso-for-wage-gap-inference.irnb,R,33,
+1,Table 1.7,ch01/table_1_7.csv,PM1/r-ols-and-lasso-for-wage-gap-inference.irnb,R,35,"HC0 of Double Lasso is computed in the save cell; the notebook itself only prints HC3"
+2,Numbers pp. 49-50,ch02/numbers.csv,CM1/r-rct-vaccines.irnb,R,49-50,"ATE per 100,000 and vaccine efficacy with confidence intervals"
+2,Table 2.2,ch02/table_2_2.csv,CM1/r-rct-penn-precision-adj.irnb,R,57,
+3,Table 3.1,ch03/table_3_1.csv,PM2/r_linear_penalized_regs.irnb,R,86,
+3,Table 3.2,ch03/table_3_2.csv,PM2/r_ml_for_wage_prediction.irnb,R,87,
+4,Table 4.1,ch04/table_4_1.csv,PM2/r_convergence_hypothesis_double_lasso.irnb,R,106,identical in Python
+4,Figure 4.1,ch04/figure_4_1.png;ch04/figure_4_1.pdf,PM2/r_orthogonal_orig.irnb,R,111,"seeded since 2026-10-30; replaces the figure in the book"
+4,Table 4.2,ch04/table_4_2.csv,PM2/r_heterogenous_wage_effects.irnb,R,116,
+4,Table 4.3,ch04/table_4_3.csv,PM2/r_heterogenous_wage_effects.irnb,R,116,"seeded since 2026-10-30; replaces the numbers in the book"
