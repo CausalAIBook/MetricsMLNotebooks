@@ -101,7 +101,7 @@
    },
    "source": [
     "Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.\n",
-    "The preproccessed sample consists of $5150$ never-married individuals."
+    "The preprocessed sample consists of $5150$ never-married individuals."
    ]
   },
   {
@@ -182,7 +182,7 @@
     "tags": []
    },
    "source": [
-    "The following figure shows the weekly wage distribution from the US survey data."
+    "The following figure shows the hourly wage distribution from the US survey data."
    ]
   },
   {
@@ -281,10 +281,10 @@
     "\n",
     "Again, we generate $X$ in three ways:\n",
     "\n",
-    "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, regional indicators).\n",
+    "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, occupation and industry indicators, regional indicators).\n",
     "\n",
     "\n",
-    "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., $\\operatorname{exp}^2$ and $\\operatorname{exp}^3$) and additional two-way interactions.\n",
+    "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus transformations (e.g., $\\operatorname{exp}^2$ and $\\operatorname{exp}^3$) and additional two-way interactions.\n",
     "\n",
     "3. Extra Flexible Model: $X$ takes the flexible model and takes all pairwise interactions."
    ]
@@ -1036,7 +1036,7 @@
    "source": [
     "#### Penalized regressions (extra flexible model)\n",
     "\n",
-    "Now let's repeat our penalized regression analysis for the extra flexible model. Note this block takes a while ~ 1 hour 15 minutes. To reduce time substantially, reduce the number of folds in LAVA."
+    "Now let's repeat our penalized regression analysis for the extra flexible model. Note this block takes a while (around half an hour, depending on the machine). To reduce time substantially, reduce the number of folds in LAVA."
    ]
   },
   {
