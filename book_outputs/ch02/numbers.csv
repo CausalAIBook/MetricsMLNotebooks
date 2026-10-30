@@ -1,0 +1,5 @@
+"quantity","estimate","ci_lower","ci_upper","book_page"
+"ATE per 100,000 (overall)",-792.716075261392,-921.89998334576,-663.532167177025,49
+"VE in % (overall, normal approximation)",94.619341243626,90.8600212409205,98.2442088799366,50
+"VE in % (65 and older, normal approximation)",94.7069082201052,81.6044705723917,105.79357468458,50
+"VE in % (65 and older, Cornfield exact conditional interval)",NA,66.8099272744275,99.8727581294816,50

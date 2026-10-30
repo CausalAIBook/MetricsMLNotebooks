@@ -1,0 +1,5 @@
+"Model","Estimate","Std. Error"
+"reg without controls",-0.0383447336744147,0.0159082351610411
+"reg with controls",-0.0695532032968442,0.0156991999781784
+"partial out reg w/ controls",-0.0695532032968463,0.0150087324618737
+"Double Lasso (p-out w/ Lasso)",-0.0719355128339838,0.0153989688017479
