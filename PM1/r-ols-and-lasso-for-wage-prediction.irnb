@@ -198,6 +198,25 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.1 for the book reproduction (book_outputs/ch01/table_1_1.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch01\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "book_rows <- c(\"Log Wage\", \"Sex\", \"Some High School\", \"High School Graduate\", \"Some College\",\n",
+    "               \"College Graduate\", \"Advanced Degree\", \"Experience\")\n",
+    "table_1_1 <- data.frame(\n",
+    "  Variable = c(\"Log Wage\", \"Female\", book_rows[3:8]),\n",
+    "  `Sample Mean` = table[book_rows, 1],\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_1_1, file.path(book_dir, \"table_1_1.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "ivClVVsCykaw"
@@ -499,6 +518,18 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.2 for the book reproduction (book_outputs/ch01/table_1_2.csv)\n",
+    "table_1_2 <- data.frame(Model = c(\"basic\", \"flexible\", \"flexible Lasso\"), table)\n",
+    "colnames(table_1_2) <- c(\"Model\", \"p\", \"R2_sample\", \"MSE_sample\", \"R2_adj\", \"MSE_adj\")\n",
+    "write.csv(table_1_2, file.path(book_dir, \"table_1_2.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "vHTewaFjykaz"
@@ -672,6 +703,21 @@
   },
   {
    "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.3 for the book reproduction (book_outputs/ch01/table_1_3.csv)\n",
+    "table_1_3 <- data.frame(\n",
+    "  Model = c(\"basic\", \"flexible\", \"flexible Lasso\"),\n",
+    "  MSE_test = table2[, 1],\n",
+    "  R2_test = table2[, 2]\n",
+    ")\n",
+    "write.csv(table_1_3, file.path(book_dir, \"table_1_3.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "code",
    "execution_count": null,
    "metadata": {
     "id": "kFuPPNytyka2",
@@ -820,6 +866,21 @@
     "cat(\"Test R2 for the lasso on the extra flexible model: \", r2_lasso, \"\\n\")\n",
     "cat(\"Test MSE for the lasso on the extra flexible model: \", mse_lasso)\n"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.4 for the book reproduction (book_outputs/ch01/table_1_4.csv)\n",
+    "table_1_4 <- data.frame(\n",
+    "  Measure = c(\"MSE_sample\", \"MSE_adj\", \"MSE_test\", \"R2_sample\", \"R2_adj\", \"R2_test\"),\n",
+    "  OLS = c(mse_extra, mse_adjextra, mse_test_ex, r2_extra, r2_adjextra, r2_test_ex),\n",
+    "  Lasso = c(mse_l, mse_adj_l, mse_lasso, r2_l, r2_adj_l, r2_lasso)\n",
+    ")\n",
+    "write.csv(table_1_4, file.path(book_dir, \"table_1_4.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
   },
   {
    "cell_type": "markdown",

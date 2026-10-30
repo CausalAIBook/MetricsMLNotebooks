@@ -146,6 +146,26 @@
    "outputs": []
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 4.2 for the book reproduction (book_outputs/ch04/table_4_2.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch04\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "book_labels <- sub(\"^(.*):sex$\", \"sex:\\\\1\", rownames(result$coef)) # shs:sex -> sex:shs, as in the book\n",
+    "table_4_2 <- data.frame(\n",
+    "  Coefficient = book_labels,\n",
+    "  Estimate = result$coef[, 1],\n",
+    "  `Std. Error` = result$coef[, 2],\n",
+    "  `p-value` = result$coef[, 4],\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_4_2, file.path(book_dir, \"table_4_2.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "ZGpLAcymgFAn"
@@ -204,6 +224,23 @@
     "joint_ci\n",
     "print(xtable(joint_ci), type = \"latex\")"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 4.3 for the book reproduction (book_outputs/ch04/table_4_3.csv)\n",
+    "table_4_3 <- data.frame(\n",
+    "  Coefficient = sub(\"^(.*):sex$\", \"sex:\\\\1\", rownames(joint_ci)),\n",
+    "  Estimate = effects_female$coefficients,\n",
+    "  `CI lower` = joint_ci[, 1],\n",
+    "  `CI upper` = joint_ci[, 2],\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_4_3, file.path(book_dir, \"table_4_3.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
   }
  ],
  "metadata": {

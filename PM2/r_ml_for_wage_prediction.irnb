@@ -1089,6 +1089,28 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 3.2 for the book reproduction (book_outputs/ch03/table_3_2.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch03\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "table_3_2 <- data.frame(\n",
+    "  Method = c(\"OLS\", \"Lasso (Cross-validation)\", \"Lasso (Plug-in)\", \"Post-Lasso (Plug-in)\", \"Ridge\", \"Elastic Net\",\n",
+    "             \"Lava\"),\n",
+    "  Basic = c(r2_lm_basic, NA, NA, NA, NA, NA, NA),\n",
+    "  Flexible = c(r2_lm_flex, r2_lasso_cv_flex, r2_lasso_flex, r2_lasso_post_flex, r2_ridge_flex, r2_elnet_flex,\n",
+    "               fit_lava_flex[[6]]),\n",
+    "  `Extra Flexible` = c(r2_lm_extra, r2_lasso_cv_extra, r2_lasso_extra, r2_lasso_post_extra, r2_ridge_extra,\n",
+    "                       r2_elnet_extra, r2_lava_extra),\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_3_2, file.path(book_dir, \"table_3_2.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "Btez-AI8yE7S"

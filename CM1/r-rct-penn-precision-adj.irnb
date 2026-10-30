@@ -484,6 +484,26 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 2.2 for the book reproduction (book_outputs/ch02/table_2_2.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch02\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "table_2_2 <- data.frame(\n",
+    "  Statistic = c(\"Estimate\", \"Std. Error\"),\n",
+    "  CL = table[, 1],\n",
+    "  CRA = table[, 2],\n",
+    "  IRA = table[, 3],\n",
+    "  `IRA-DL` = table[, 4],\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_2_2, file.path(book_dir, \"table_2_2.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "srdCKAK8ellD"

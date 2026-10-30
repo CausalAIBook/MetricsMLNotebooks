@@ -162,6 +162,26 @@
   },
   {
    "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.5 for the book reproduction (book_outputs/ch01/table_1_5.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch01\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "book_rows <- c(\"Log Wage\", \"Less than High School\", \"High School Graduate\", \"Some College\",\n",
+    "               \"College Graduate\", \"Advanced Degree\", \"Experience\")\n",
+    "table_1_5 <- data.frame(\n",
+    "  Variable = book_rows,\n",
+    "  All = table[book_rows, \"All\"],\n",
+    "  Male = table[book_rows, \"Men\"],\n",
+    "  Female = table[book_rows, \"Women\"]\n",
+    ")\n",
+    "write.csv(table_1_5, file.path(book_dir, \"table_1_5.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "code",
    "execution_count": null,
    "metadata": {
     "colab": {
@@ -596,6 +616,23 @@
   },
   {
    "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.6 for the book reproduction (book_outputs/ch01/table_1_6.csv)\n",
+    "table_1_6 <- data.frame(\n",
+    "  Model = c(\"reg without controls\", \"reg with controls\", \"partial out reg w/ controls\",\n",
+    "            \"Double Lasso (p-out w/ Lasso)\"),\n",
+    "  Estimate = table[, 1],\n",
+    "  `Std. Error` = table[, 2],\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_1_6, file.path(book_dir, \"table_1_6.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "code",
    "execution_count": null,
    "metadata": {
     "colab": {
@@ -808,6 +845,24 @@
     "\n",
     "print(tab, type = \"latex\")"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 1.7 for the book reproduction (book_outputs/ch01/table_1_7.csv)\n",
+    "# The book also reports the HC0 standard error of Double Lasso, which the cells above do not compute\n",
+    "partial_lasso_se_hc0 <- sqrt(diag(vcovHC(partial_lasso_fit, type = \"HC0\")))[2]\n",
+    "table_1_7 <- data.frame(\n",
+    "  Model = c(\"Regression\", \"Double Lasso (p-out w/ Lasso)\"),\n",
+    "  Estimate = c(control_est, partial_lasso_est),\n",
+    "  HC0 = c(control_se_hc0, partial_lasso_se_hc0),\n",
+    "  HC3 = c(control_se_hc3, partial_lasso_se)\n",
+    ")\n",
+    "write.csv(table_1_7, file.path(book_dir, \"table_1_7.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
   },
   {
    "cell_type": "markdown",

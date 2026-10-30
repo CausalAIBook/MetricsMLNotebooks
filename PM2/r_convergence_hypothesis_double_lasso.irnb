@@ -359,6 +359,26 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 4.1 for the book reproduction (book_outputs/ch04/table_4_1.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch04\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "table_4_1 <- data.frame(\n",
+    "  Method = table[, 1],\n",
+    "  Estimate = as.numeric(table[, 2]),\n",
+    "  `Std. Error` = as.numeric(table[, 3]),\n",
+    "  `CI lower` = as.numeric(table[, 4]),\n",
+    "  `CI upper` = as.numeric(table[, 5]),\n",
+    "  check.names = FALSE\n",
+    ")\n",
+    "write.csv(table_4_1, file.path(book_dir, \"table_4_1.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "smPkxqCpgMR8"

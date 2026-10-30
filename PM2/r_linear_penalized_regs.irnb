@@ -868,6 +868,20 @@
   },
   {
    "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Collect Table 3.1 for the book reproduction: sparse regime (saved below)\n",
+    "book_rows <- c(1, 4, 5, 2, 3, 6) # order of the methods in the book\n",
+    "table_3_1 <- data.frame(\n",
+    "  Method = c(\"Lasso (Cross-Validation)\", \"Lasso (Plug-in)\", \"Post-Lasso (Plug-in)\", \"Ridge\", \"Elastic Net\", \"Lava\"),\n",
+    "  Sparse = table[book_rows, 1]\n",
+    ")"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "code",
    "execution_count": null,
    "metadata": {
     "id": "npU6rAHRUs_s",
@@ -1034,6 +1048,16 @@
     "print(tab, type = \"latex\") # set type=\"latex\" for printing table in LaTeX\n",
     "tab"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Collect Table 3.1 for the book reproduction: dense regime (saved below)\n",
+    "table_3_1$Dense <- table[book_rows, 1]"
+   ],
+   "execution_count": null,
+   "outputs": []
   },
   {
    "cell_type": "code",
@@ -1250,6 +1274,19 @@
     "print(tab, type = \"latex\") # set type=\"latex\" for printing table in LaTeX\n",
     "tab"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Table 3.1 for the book reproduction (book_outputs/ch03/table_3_1.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch03\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "table_3_1$`Sparse+Dense` <- table[book_rows, 1]\n",
+    "write.csv(table_3_1, file.path(book_dir, \"table_3_1.csv\"), row.names = FALSE)"
+   ],
+   "execution_count": null,
+   "outputs": []
   },
   {
    "cell_type": "code",

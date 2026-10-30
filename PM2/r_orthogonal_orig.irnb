@@ -231,6 +231,19 @@
    "outputs": []
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save Figure 4.1 for the book reproduction (book_outputs/ch04/figure_4_1.png and .pdf)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch04\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "ggsave(file.path(book_dir, \"figure_4_1.png\"), hist_plot, width = 5.5, height = 3.5, units = \"in\", dpi = 300)\n",
+    "ggsave(file.path(book_dir, \"figure_4_1.pdf\"), hist_plot, width = 5.5, height = 3.5, units = \"in\")"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "8hrJ3M5mrD8_"

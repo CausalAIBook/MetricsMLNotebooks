@@ -223,6 +223,22 @@
    ]
   },
   {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below)\n",
+    "book_numbers <- data.frame(\n",
+    "  quantity = c(\"ATE per 100,000 (overall)\", \"VE in % (overall, normal approximation)\"),\n",
+    "  estimate = c(delta_hat, 100 * VE),\n",
+    "  ci_lower = c(ci_delta[1], 100 * ci_ve[[1]]),\n",
+    "  ci_upper = c(ci_delta[2], 100 * ci_ve[[2]]),\n",
+    "  book_page = c(49, 50)\n",
+    ")"
+   ],
+   "execution_count": null,
+   "outputs": []
+  },
+  {
    "cell_type": "markdown",
    "metadata": {
     "id": "kqupG5u7erNn"
@@ -280,6 +296,22 @@
     "  1, \"]\"\n",
     "))"
    ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below)\n",
+    "book_numbers <- rbind(book_numbers, data.frame(\n",
+    "  quantity = \"VE in % (65 and older, normal approximation)\",\n",
+    "  estimate = 100 * VE,\n",
+    "  ci_lower = 100 * ci_ve[[1]],\n",
+    "  ci_upper = 100 * ci_ve[[2]],\n",
+    "  book_page = 50\n",
+    "))"
+   ],
+   "execution_count": null,
+   "outputs": []
   },
   {
    "cell_type": "markdown",
@@ -443,6 +475,26 @@
    "metadata": {
     "id": "pvs4wwrbLpdF"
    },
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "source": [
+    "# Save the numbers on pp. 49-50 of the book for the reproduction (book_outputs/ch02/numbers.csv)\n",
+    "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch02\")\n",
+    "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
+    "ci_cornfield <- 100 * cornfield_ve_ci(1, 3239 + 805, 19, 3255 + 812)\n",
+    "book_numbers <- rbind(book_numbers, data.frame(\n",
+    "  quantity = \"VE in % (65 and older, Cornfield exact conditional interval)\",\n",
+    "  estimate = NA,\n",
+    "  ci_lower = ci_cornfield[[\"lower\"]],\n",
+    "  ci_upper = ci_cornfield[[\"upper\"]],\n",
+    "  book_page = 50\n",
+    "))\n",
+    "write.csv(book_numbers, file.path(book_dir, \"numbers.csv\"), row.names = FALSE)"
+   ],
    "execution_count": null,
    "outputs": []
   },
