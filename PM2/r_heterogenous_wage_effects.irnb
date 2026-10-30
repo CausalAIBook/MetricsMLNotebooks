@@ -12,7 +12,7 @@
     "\n",
     "\n",
     "\n",
-    "This analysis allows a closer look how the gender wage gap is related to other socio-economic variables.\n",
+    "This analysis allows a closer look at how the gender wage gap is related to other socio-economic variables.\n",
     "\n"
    ]
   },
@@ -199,6 +199,7 @@
    },
    "outputs": [],
    "source": [
+    "set.seed(123)\n",
     "joint_ci <- confint(effects_female, level = 0.95, joint = TRUE)\n",
     "joint_ci\n",
     "print(xtable(joint_ci), type = \"latex\")"
