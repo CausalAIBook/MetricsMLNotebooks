@@ -27,13 +27,15 @@ book_outputs/
   ch04/figure_4_1.png  figures as PNG (300 dpi) and PDF
 ```
 
+Tables and numbers are rounded to the decimals printed in the book, so they can be compared with it directly.
+
 ## Not generated 
 
 | Chapter | Items | Why |
 |---|---|---|
 | 0 | Figures 0.1–0.5 | introduction examples; no code in this repository |
-| 1 | Figures 1.1, 1.2, 1.4 | portraits and illustrations |
-| 1 | Figure 1.3 | illustration of polynomial approximation; no code in this repository |
+| 1 | Figures 1.1, 1.3 | portraits and illustrations |
+| 1 | Figure 1.2 | illustration of polynomial approximation; no code in this repository |
 | 2 | Figure 2.1, Table 2.1 | photo; FDA briefing data |
 | 2 | Figures 2.2, 2.3 | causal diagrams |
 | 3 | Figures 3.1, 3.2, 3.6 | illustrations |
