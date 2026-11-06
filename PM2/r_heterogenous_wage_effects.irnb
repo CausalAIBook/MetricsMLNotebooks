@@ -160,7 +160,8 @@
     "  `p-value` = result$coef[, 4],\n",
     "  check.names = FALSE\n",
     ")\n",
-    "write.csv(table_4_2, file.path(book_dir, \"table_4_2.csv\"), row.names = FALSE)"
+    "table_4_2[-1] <- lapply(table_4_2[-1], sprintf, fmt = \"%.4f\") # decimals as printed in the book\n",
+    "write.csv(table_4_2, file.path(book_dir, \"table_4_2.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -237,7 +238,8 @@
     "  `CI upper` = joint_ci[, 2],\n",
     "  check.names = FALSE\n",
     ")\n",
-    "write.csv(table_4_3, file.path(book_dir, \"table_4_3.csv\"), row.names = FALSE)"
+    "table_4_3[-1] <- lapply(table_4_3[-1], sprintf, fmt = \"%.4f\") # decimals as printed in the book\n",
+    "write.csv(table_4_3, file.path(book_dir, \"table_4_3.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []

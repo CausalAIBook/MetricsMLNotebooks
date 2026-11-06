@@ -167,7 +167,7 @@
     "# Save Table 1.5 for the book reproduction (book_outputs/ch01/table_1_5.csv)\n",
     "book_dir <- file.path(Sys.getenv(\"BOOK_OUTPUT_DIR\", \"book_outputs\"), \"ch01\")\n",
     "dir.create(book_dir, recursive = TRUE, showWarnings = FALSE)\n",
-    "book_rows <- c(\"Log Wage\", \"Less than High School\", \"High School Graduate\", \"Some College\",\n",
+    "book_rows <- c(\"Log Wage\", \"Some High School\", \"High School Graduate\", \"Some College\",\n",
     "               \"College Graduate\", \"Advanced Degree\", \"Experience\")\n",
     "table_1_5 <- data.frame(\n",
     "  Variable = book_rows,\n",
@@ -175,7 +175,8 @@
     "  Male = table[book_rows, \"Men\"],\n",
     "  Female = table[book_rows, \"Women\"]\n",
     ")\n",
-    "write.csv(table_1_5, file.path(book_dir, \"table_1_5.csv\"), row.names = FALSE)"
+    "table_1_5[-1] <- lapply(table_1_5[-1], sprintf, fmt = \"%.4f\") # decimals as printed in the book\n",
+    "write.csv(table_1_5, file.path(book_dir, \"table_1_5.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -626,7 +627,8 @@
     "  `Std. Error` = table[, 2],\n",
     "  check.names = FALSE\n",
     ")\n",
-    "write.csv(table_1_6, file.path(book_dir, \"table_1_6.csv\"), row.names = FALSE)"
+    "table_1_6[-1] <- lapply(table_1_6[-1], sprintf, fmt = \"%.3f\") # decimals as printed in the book\n",
+    "write.csv(table_1_6, file.path(book_dir, \"table_1_6.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -859,7 +861,8 @@
     "  HC0 = c(control_se_hc0, partial_lasso_se_hc0),\n",
     "  HC3 = c(control_se_hc3, partial_lasso_se)\n",
     ")\n",
-    "write.csv(table_1_7, file.path(book_dir, \"table_1_7.csv\"), row.names = FALSE)"
+    "table_1_7[-1] <- lapply(table_1_7[-1], sprintf, fmt = \"%.3f\") # decimals as printed in the book\n",
+    "write.csv(table_1_7, file.path(book_dir, \"table_1_7.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []

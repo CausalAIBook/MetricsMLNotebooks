@@ -226,12 +226,12 @@
    "cell_type": "code",
    "metadata": {},
    "source": [
-    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below)\n",
+    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below), rounded as in the book\n",
     "book_numbers <- data.frame(\n",
     "  quantity = c(\"ATE per 100,000 (overall)\", \"VE in % (overall, normal approximation)\"),\n",
-    "  estimate = c(delta_hat, 100 * VE),\n",
-    "  ci_lower = c(ci_delta[1], 100 * ci_ve[[1]]),\n",
-    "  ci_upper = c(ci_delta[2], 100 * ci_ve[[2]]),\n",
+    "  estimate = c(sprintf(\"%.1f\", delta_hat), sprintf(\"%.1f\", 100 * VE)),\n",
+    "  ci_lower = c(sprintf(\"%.0f\", ci_delta[1]), sprintf(\"%.1f\", 100 * ci_ve[[1]])),\n",
+    "  ci_upper = c(sprintf(\"%.0f\", ci_delta[2]), sprintf(\"%.1f\", 100 * ci_ve[[2]])),\n",
     "  book_page = c(49, 50)\n",
     ")"
    ],
@@ -301,12 +301,12 @@
    "cell_type": "code",
    "metadata": {},
    "source": [
-    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below)\n",
+    "# Collect the numbers on pp. 49-50 of the book for the reproduction (saved below), rounded as in the book\n",
     "book_numbers <- rbind(book_numbers, data.frame(\n",
     "  quantity = \"VE in % (65 and older, normal approximation)\",\n",
-    "  estimate = 100 * VE,\n",
-    "  ci_lower = 100 * ci_ve[[1]],\n",
-    "  ci_upper = 100 * ci_ve[[2]],\n",
+    "  estimate = sprintf(\"%.0f\", 100 * VE),\n",
+    "  ci_lower = sprintf(\"%.0f\", 100 * ci_ve[[1]]),\n",
+    "  ci_upper = sprintf(\"%.0f\", 100 * ci_ve[[2]]),\n",
     "  book_page = 50\n",
     "))"
    ],
@@ -489,11 +489,11 @@
     "book_numbers <- rbind(book_numbers, data.frame(\n",
     "  quantity = \"VE in % (65 and older, Cornfield exact conditional interval)\",\n",
     "  estimate = NA,\n",
-    "  ci_lower = ci_cornfield[[\"lower\"]],\n",
-    "  ci_upper = ci_cornfield[[\"upper\"]],\n",
+    "  ci_lower = sprintf(\"%.1f\", ci_cornfield[[\"lower\"]]),\n",
+    "  ci_upper = sprintf(\"%.1f\", ci_cornfield[[\"upper\"]]),\n",
     "  book_page = 50\n",
     "))\n",
-    "write.csv(book_numbers, file.path(book_dir, \"numbers.csv\"), row.names = FALSE)"
+    "write.csv(book_numbers, file.path(book_dir, \"numbers.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []

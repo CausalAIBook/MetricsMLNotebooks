@@ -211,7 +211,8 @@
     "  `Sample Mean` = table[book_rows, 1],\n",
     "  check.names = FALSE\n",
     ")\n",
-    "write.csv(table_1_1, file.path(book_dir, \"table_1_1.csv\"), row.names = FALSE)"
+    "table_1_1[-1] <- lapply(table_1_1[-1], sprintf, fmt = \"%.2f\") # decimals as printed in the book\n",
+    "write.csv(table_1_1, file.path(book_dir, \"table_1_1.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -524,7 +525,9 @@
     "# Save Table 1.2 for the book reproduction (book_outputs/ch01/table_1_2.csv)\n",
     "table_1_2 <- data.frame(Model = c(\"basic\", \"flexible\", \"flexible Lasso\"), table)\n",
     "colnames(table_1_2) <- c(\"Model\", \"p\", \"R2_sample\", \"MSE_sample\", \"R2_adj\", \"MSE_adj\")\n",
-    "write.csv(table_1_2, file.path(book_dir, \"table_1_2.csv\"), row.names = FALSE)"
+    "table_1_2$p[3] <- p2 # as in the book: p of Lasso is the number of candidate regressors (flexible model)\n",
+    "table_1_2[-(1:2)] <- lapply(table_1_2[-(1:2)], sprintf, fmt = \"%.2f\") # decimals as printed in the book\n",
+    "write.csv(table_1_2, file.path(book_dir, \"table_1_2.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -711,7 +714,8 @@
     "  MSE_test = table2[, 1],\n",
     "  R2_test = table2[, 2]\n",
     ")\n",
-    "write.csv(table_1_3, file.path(book_dir, \"table_1_3.csv\"), row.names = FALSE)"
+    "table_1_3[-1] <- lapply(table_1_3[-1], sprintf, fmt = \"%.3f\") # decimals as printed in the book\n",
+    "write.csv(table_1_3, file.path(book_dir, \"table_1_3.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
@@ -877,7 +881,8 @@
     "  OLS = c(mse_extra, mse_adjextra, mse_test_ex, r2_extra, r2_adjextra, r2_test_ex),\n",
     "  Lasso = c(mse_l, mse_adj_l, mse_lasso, r2_l, r2_adj_l, r2_lasso)\n",
     ")\n",
-    "write.csv(table_1_4, file.path(book_dir, \"table_1_4.csv\"), row.names = FALSE)"
+    "table_1_4[-1] <- lapply(table_1_4[-1], sprintf, fmt = \"%.3f\") # decimals as printed in the book\n",
+    "write.csv(table_1_4, file.path(book_dir, \"table_1_4.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []

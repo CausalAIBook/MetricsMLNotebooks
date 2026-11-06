@@ -373,7 +373,8 @@
     "  `CI upper` = as.numeric(table[, 5]),\n",
     "  check.names = FALSE\n",
     ")\n",
-    "write.csv(table_4_1, file.path(book_dir, \"table_4_1.csv\"), row.names = FALSE)"
+    "table_4_1[-1] <- lapply(table_4_1[-1], sprintf, fmt = \"%.3f\") # decimals as printed in the book\n",
+    "write.csv(table_4_1, file.path(book_dir, \"table_4_1.csv\"), row.names = FALSE, quote = 1)"
    ],
    "execution_count": null,
    "outputs": []
