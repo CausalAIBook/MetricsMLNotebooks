@@ -1,4 +1,4 @@
-"""Helper for make_book_outputs.sh: reads book_outputs/index.csv and turns notebooks into scripts.
+"""Helper for make_book_outputs.sh/.py: reads book_outputs/index.csv and turns notebooks into scripts.
 
 Commands (chapters are numbers; none means all chapters in the index):
   notebooks [--missing] [CHAPTER ...]  notebooks that produce the book items (with --missing: only those
@@ -24,7 +24,7 @@ PY_INSTALL = re.compile(r'^\s*[!%]\s*pip3?\s+install\b')
 
 
 def index_rows(chapters):
-    with open(INDEX, newline='') as f:
+    with open(INDEX, newline='', encoding='utf-8') as f:
         rows = list(csv.DictReader(f))
     if chapters:
         wanted = {int(c) for c in chapters}
@@ -41,7 +41,7 @@ def unique(seq):
 
 
 def code_cells(path):
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         nb = json.load(f)
     return [''.join(c['source']) for c in nb['cells'] if c['cell_type'] == 'code']
 
@@ -108,7 +108,10 @@ def split_installs(code, is_r):
 
 
 def is_r_notebook(path):
-    return path.endswith('.irnb') or 'ir' == json.load(open(path)).get('metadata', {}).get('kernelspec', {}).get('name')
+    if path.endswith('.irnb'):
+        return True
+    with open(path, encoding='utf-8') as f:
+        return json.load(f).get('metadata', {}).get('kernelspec', {}).get('name') == 'ir'
 
 
 def main(argv):
@@ -125,7 +128,7 @@ def main(argv):
         nb, outfile = args
         is_r = is_r_notebook(os.path.join(ROOT, nb))
         cells = [split_installs(c, is_r)[0] for c in code_cells(os.path.join(ROOT, nb))]
-        with open(outfile, 'w') as f:
+        with open(outfile, 'w', encoding='utf-8') as f:
             f.write(f'# Generated from {nb} by book_outputs/helper.py (install commands removed)\n\n')
             f.write('\n\n'.join(cells) + '\n')
     elif cmd == 'installs':

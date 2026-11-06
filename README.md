@@ -1,6 +1,6 @@
 # Book outputs for Applied Causal ML
 
-This branch regenerates the numbers, tables and figures of the book from the notebooks. Running `make_book_outputs.sh` executes only the notebooks that produce something used in the book and writes the results to one folder per chapter.
+This branch regenerates the numbers, tables and figures of the book from the notebooks. Running `make_book_outputs.sh` (macOS / Linux) or `make_book_outputs.py` (also Windows) executes only the notebooks that produce something used in the book and writes the results to one folder per chapter.
 
 Currently covered: **Chapters 1–4**.
 
@@ -16,6 +16,17 @@ Currently covered: **Chapters 1–4**.
 ```
 
 Each notebook runs as a script in a temporary directory. Its install commands are skipped (that is what `--setup` is for), and its log goes to `book_outputs/logs/`.
+
+### Windows
+
+`make_book_outputs.py` does the same as `make_book_outputs.sh`, with the same options, and also runs on Windows. **It has not been tested on Windows yet.**
+
+```bat
+python make_book_outputs.py --setup
+python make_book_outputs.py -j 4
+```
+
+It needs Python 3 and R 4.2 or newer. If `Rscript` is not on the PATH, it uses the newest R in `C:\Program Files\R`; otherwise set `RSCRIPT` to the path of `Rscript.exe`.
 
 ## Layout
 
@@ -45,4 +56,4 @@ Tables and numbers are rounded to the decimals printed in the book, so they can 
 
 1. Add a save cell after each cell that produces a book item (same style as the existing ones).
 2. Add one row per item to `book_outputs/index.csv`; separate several files of one item with `;`.
-3. Run `./make_book_outputs.sh <chapter>` and compare the files with the book.
+3. Run `./make_book_outputs.sh <chapter>` (or `python make_book_outputs.py <chapter>`) and compare the files with the book.
