@@ -78,7 +78,12 @@
     "library(nnet)\n",
     "library(gbm)\n",
     "library(rpart.plot)\n",
-    "library(keras)"
+    "library(keras)\n",
+    "\n",
+    "# The R package keras needs TensorFlow with Keras 2: let reticulate set up Python 3.12 with TensorFlow and\n",
+    "# tf-keras (e.g. on Colab); ignored if RETICULATE_PYTHON points to a Python with TensorFlow already\n",
+    "reticulate::py_require(python_version = \"3.12\")\n",
+    "py_require_legacy_keras()"
    ]
   },
   {
@@ -113,7 +118,7 @@
    },
    "source": [
     "Again, we consider data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015.\n",
-    "The preproccessed sample consists of $5150$ never-married individuals."
+    "The preprocessed sample consists of $5150$ never-married individuals."
    ]
   },
   {
@@ -194,7 +199,7 @@
     "tags": []
    },
    "source": [
-    "The following figure shows the weekly wage distribution from the US survey data."
+    "The following figure shows the hourly wage distribution from the US survey data."
    ]
   },
   {
@@ -293,10 +298,10 @@
     "$$\\hat g(Z) = \\hat \\beta'X.$$\n",
     "Again, we generate $X$ in two ways:\n",
     "\n",
-    "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, regional indicators).\n",
+    "1. Basic Model:   $X$ consists of a set of raw regressors (e.g. gender, experience, education indicators, occupation and industry indicators, regional indicators).\n",
     "\n",
     "\n",
-    "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus occupation and industry indicators, transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions.\n"
+    "2. Flexible Model:  $X$ consists of all raw regressors from the basic model plus transformations (e.g., ${exp}^2$ and ${exp}^3$) and additional two-way interactions.\n"
    ]
   },
   {
@@ -945,7 +950,7 @@
     "tags": []
    },
    "source": [
-    "#Non-linear models"
+    "# Non-linear models"
    ]
   },
   {
@@ -1273,6 +1278,9 @@
    },
    "outputs": [],
    "source": [
+    "# Seed for reproducible weights and training (sets the R, Python, NumPy and TensorFlow seeds)\n",
+    "tensorflow::set_random_seed(1234)\n",
+    "\n",
     "# Define the neural network architecture\n",
     "model <- keras_model_sequential() %>%\n",
     "  layer_dense(units = 50, activation = \"relu\", input_shape = dim(model_x_basic_train)[2]) %>%\n",
@@ -1281,7 +1289,7 @@
     "\n",
     "# Compile the model\n",
     "model %>% compile(\n",
-    "  optimizer = optimizer_adam(lr = 0.01),\n",
+    "  optimizer = optimizer_adam(learning_rate = 0.01),\n",
     "  loss = \"mse\",\n",
     "  metrics = c(\"mae\"),\n",
     ")\n",
@@ -1503,7 +1511,7 @@
     "tags": []
    },
    "source": [
-    "In the final step, we can build a prediction model by combing the strengths of the models we considered so far. This ensemble method is of the form\n",
+    "In the final step, we can build a prediction model by combining the strengths of the models we considered so far. This ensemble method is of the form\n",
     "\t$$ f(x) = \\sum_{k=1}^K \\alpha_k f_k(x) $$\n",
     "where the $f_k$'s denote our prediction rules from the table above and the $\\alpha_k$'s are the corresponding weights.\n",
     "\n",
@@ -1671,9 +1679,9 @@
     "id": "0G7F6n_2ELZJ"
    },
    "source": [
-    "# Automatic Machine Learning with H20 AutoML\n",
+    "# Automatic Machine Learning with H2O AutoML\n",
     "\n",
-    "We illustrate how to predict an outcome variable Y in a high-dimensional setting, using the AutoML package *H2O* that covers the complete pipeline from the raw dataset to the deployable machine learning model. In last few years, AutoML or automated machine learning has become widely popular among data science community. Again, we reanalyze the wage prediction problem using data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015."
+    "We illustrate how to predict an outcome variable Y in a high-dimensional setting, using the AutoML package *H2O* that covers the complete pipeline from the raw dataset to the deployable machine learning model. In the last few years, AutoML or automated machine learning has become widely popular among the data science community. Again, we reanalyze the wage prediction problem using data from the U.S. March Supplement of the Current Population Survey (CPS) in 2015."
    ]
   },
   {
@@ -1791,7 +1799,7 @@
     "id": "b6-CATAVHQtV"
    },
    "source": [
-    "We see that two Stacked Ensembles are at the top of the leaderboard. Stacked Ensembles often outperform a single model. The out-of-sample (test) MSE of the leading model is given by"
+    "Stacked Ensembles are typically at the top of the leaderboard, since they often outperform a single model. The out-of-sample (test) MSE of the leading model is given by"
    ]
   },
   {
