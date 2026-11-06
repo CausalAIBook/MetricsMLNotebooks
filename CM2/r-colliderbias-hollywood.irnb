@@ -15,9 +15,9 @@
     "id": "52GxYF5-lFy1"
    },
    "source": [
-    "Here is a simple mnemonic example to illustate the collider or M-bias.\n",
+    "Here is a simple mnemonic example to illustrate collider bias, also known as Heckman selection bias.\n",
     "\n",
-    "Here the idea is that people who get to Hollywood have to have high congenility = talent + beauty.  Funnily enough this induces a negative correlation between talents and looks, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that \"talent and beauty are negatively correlated\" for celebrities.  "
+    "We use the notation of Chapter 6 of the book: $T$ is talent, $B$ is bonhomie (approachability or friendliness) and $C$ is celebrity (success or popularity). Here the idea is that people who get to Hollywood have to have high celebrity = talent + bonhomie.  Funnily enough this induces a negative correlation between talent and bonhomie, when we condition on the set of actors or celebrities.  This simple example explains an anecdotal observation that \"talent and bonhomie are negatively correlated\" for celebrities.  "
    ]
   },
   {
@@ -58,7 +58,7 @@
    },
    "outputs": [],
    "source": [
-    "causal_graph <- dagitty(\"dag{ Talent -> Congen <- Beauty }\")\n",
+    "causal_graph <- dagitty(\"dag{ Talent -> Celebrity <- Bonhomie }\")\n",
     "plot(causal_graph)"
    ]
   },
@@ -76,16 +76,17 @@
    "outputs": [],
    "source": [
     "# collider bias\n",
+    "set.seed(123)\n",
     "n <- 1000000\n",
     "Talent <- rnorm(n) # talent\n",
-    "Beauty <- rnorm(n) # beauty\n",
-    "Congen <- Talent + Beauty + rnorm(n) # congeniality\n",
-    "TalentH <- subset(Talent, Congen > 0) # condition on Congen>0\n",
-    "BeautyH <- subset(Beauty, Congen > 0) # condition on Congen>0\n",
+    "Bonhomie <- rnorm(n) # bonhomie\n",
+    "Celebrity <- Talent + Bonhomie + rnorm(n) # celebrity\n",
+    "TalentH <- subset(Talent, Celebrity > 0) # condition on Celebrity>0\n",
+    "BonhomieH <- subset(Bonhomie, Celebrity > 0) # condition on Celebrity>0\n",
     "\n",
-    "summary(lm(Talent ~ Beauty)) # regression of Talent on Beauty\n",
-    "summary(lm(Talent ~ Beauty + Congen)) # regression of Talent on Beauty and Congen\n",
-    "summary(lm(TalentH ~ BeautyH)) # regression of Talent on Beauty, conditional on Congen>0."
+    "summary(lm(Talent ~ Bonhomie)) # regression of Talent on Bonhomie\n",
+    "summary(lm(Talent ~ Bonhomie + Celebrity)) # regression of Talent on Bonhomie and Celebrity\n",
+    "summary(lm(TalentH ~ BonhomieH)) # regression of Talent on Bonhomie, conditional on Celebrity>0."
    ]
   },
   {
@@ -94,7 +95,7 @@
     "id": "Y08MPHCClFy5"
    },
    "source": [
-    "We can also use package Dagitty to illustrate collider bias, also known as M-bias."
+    "We can also use package Dagitty to illustrate collider bias."
    ]
   },
   {
@@ -110,14 +111,14 @@
    },
    "outputs": [],
    "source": [
-    "## If we want to infer causal effect of Beauty on Talent,\n",
+    "## If we want to infer causal effect of Bonhomie on Talent,\n",
     "## we can apply the command to figure out\n",
     "## variables we should condition on:\n",
     "\n",
-    "adjustmentSets(causal_graph, \"Talent\", \"Beauty\")\n",
+    "adjustmentSets(causal_graph, \"Bonhomie\", \"Talent\")\n",
     "\n",
     "## empty set -- we should not condition on the additional\n",
-    "## variable Congen."
+    "## variable Celebrity."
    ]
   },
   {
@@ -130,11 +131,11 @@
    },
    "outputs": [],
    "source": [
-    "## Generate data where Congen = .5*Talent + .5*Beauty\n",
+    "## Generate data where Celebrity = .5*Talent + .5*Bonhomie\n",
     "set.seed(123)\n",
     "data <- simulateSEM(causal_graph, .5)\n",
-    "confint(lm(Talent ~ Beauty, data))[\"Beauty\", ]\n",
-    "confint(lm(Talent ~ Beauty + Congen, data))[\"Beauty\", ]"
+    "confint(lm(Talent ~ Bonhomie, data))[\"Bonhomie\", ]\n",
+    "confint(lm(Talent ~ Bonhomie + Celebrity, data))[\"Bonhomie\", ]"
    ]
   }
  ],
