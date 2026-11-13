@@ -1938,7 +1938,9 @@
     "id": "brC7ST6qInti"
    },
    "source": [
-    "We observe both a similar MSE and $R^2$ relative to the better performing models in our previous results."
+    "We observe both a similar MSE and $R^2$ relative to the better performing models in our previous results.\n",
+    "\n",
+    "Note that the AutoML results depend on the machine: AutoML stops after a time budget (`max_runtime_secs`), so which models it manages to train depends on the speed of the computer, even with a fixed seed. The numbers can therefore differ slightly between runs and from the value reported in Chapter 8 of the book."
    ]
   },
   {
