@@ -21,7 +21,7 @@
     "$$\n",
     "x \\mapsto exp(4 x)\n",
     "$$\n",
-    "can be easily approximated by a tree-based methods (Trees, Random Forest) and a neural network (2 Layered Neural Network)"
+    "can be easily approximated by tree-based methods (Trees, Random Forest) and a neural network (2 Layered Neural Network)"
    ]
   },
   {
@@ -56,7 +56,12 @@
     "library(randomForest)\n",
     "library(rpart)\n",
     "library(gbm)\n",
-    "library(keras)"
+    "library(keras)\n",
+    "\n",
+    "# The R package keras needs TensorFlow with Keras 2: let reticulate set up Python 3.12 with TensorFlow and\n",
+    "# tf-keras (e.g. on Colab); ignored if RETICULATE_PYTHON points to a Python with TensorFlow already\n",
+    "reticulate::py_require(python_version = \"3.12\")\n",
+    "py_require_legacy_keras()"
    ]
   },
   {
@@ -117,7 +122,7 @@
     "\n",
     "# shallow tree\n",
     "TreeModel <- rpart(y_train ~ x_train, cp = .01) # cp is penalty level\n",
-    "pred_tm <- predict(TreeModel, newx = x_train)\n",
+    "pred_tm <- predict(TreeModel)\n",
     "plot(x_train, y_train, type = \"p\", pch = 19, xlab = \"z\", ylab = \"g(z)\")\n",
     "points(x_train, pred_tm, col = 3, pch = 19)"
    ]
@@ -149,7 +154,7 @@
     "\n",
     "\n",
     "TreeModel <- rpart(y_train ~ x_train, cp = .0005) # cp is penalty level\n",
-    "pred_tm <- predict(TreeModel, newx = x_train)\n",
+    "pred_tm <- predict(TreeModel)\n",
     "plot(x_train, y_train, type = \"p\", pch = 19, xlab = \"z\", ylab = \"g(z)\")\n",
     "points(x_train, pred_tm, col = 3, pch = 19)"
    ]
@@ -356,7 +361,7 @@
     "    layer_dense(units = 1)\n",
     "\n",
     "  model %>% compile(\n",
-    "    optimizer = optimizer_adam(lr = 0.01),\n",
+    "    optimizer = optimizer_adam(learning_rate = 0.01),\n",
     "    loss = \"mse\",\n",
     "    metrics = c(\"mae\"),\n",
     "  )\n",
@@ -383,6 +388,8 @@
    },
    "outputs": [],
    "source": [
+    "# Seed for reproducible weights and training (sets the R, Python, NumPy and TensorFlow seeds)\n",
+    "tensorflow::set_random_seed(123)\n",
     "model <- build_model()\n",
     "summary(model)"
    ]
@@ -467,6 +474,9 @@
    },
    "outputs": [],
    "source": [
+    "# Seed for reproducible weights and training (sets the R, Python, NumPy and TensorFlow seeds)\n",
+    "tensorflow::set_random_seed(123)\n",
+    "\n",
     "# Define the neural network architecture\n",
     "model <- keras_model_sequential() %>%\n",
     "  layer_dense(units = 200, activation = \"relu\", input_shape = 1) %>%\n",
@@ -475,7 +485,7 @@
     "\n",
     "# Compile the model\n",
     "model %>% compile(\n",
-    "  optimizer = optimizer_adam(lr = 0.01),\n",
+    "  optimizer = optimizer_adam(learning_rate = 0.01),\n",
     "  loss = \"mse\",\n",
     "  metrics = c(\"mae\"),\n",
     ")\n",
