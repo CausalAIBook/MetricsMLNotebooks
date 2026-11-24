@@ -71,7 +71,7 @@
     "tags": []
    },
    "source": [
-    "# Graphs for 401(K) Analsyis\n"
+    "# Graphs for 401(K) Analysis\n"
    ]
   },
   {
@@ -92,7 +92,7 @@
     " * $Y$ -- net financial assets;\n",
     " * $X$ -- worker characteristics (income, family size, other retirement plans; see lecture notes for details);\n",
     " * $F$ -- latent (unobserved) firm characteristics\n",
-    " * $D$ -- 401(K) eligibility, deterimined by $F$ and $X$"
+    " * $D$ -- 401(K) eligibility, determined by $F$ and $X$"
    ]
   },
   {
@@ -137,7 +137,7 @@
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
-    "F [uobserved, pos=\"0, -1\"]\n",
+    "F [unobserved, pos=\"0, -1\"]\n",
     "D -> Y\n",
     "X -> D\n",
     "F -> X\n",
@@ -204,7 +204,7 @@
    "source": [
     "**What is the underlying principle?**\n",
     "\n",
-    "Here conditioning on X blocks backdoor paths from Y to D (Pearl).  Dagitty correctly finds X (and does many more correct decisions when we consider more elaborate structures. Why do we want to consider more elaborate structures? The very empirical problem requires us to do so!)"
+    "Here conditioning on X blocks backdoor paths from Y to D (Pearl).  Dagitty correctly finds X (and makes many more correct decisions when we consider more elaborate structures. Why do we want to consider more elaborate structures? The very empirical problem requires us to do so!)"
    ]
   },
   {
@@ -221,7 +221,7 @@
     "tags": []
    },
    "source": [
-    "**Another Graph (wherere $X$ determines $F$):**"
+    "**Another Graph (where $X$ determines $F$):**"
    ]
   },
   {
@@ -249,7 +249,7 @@
     "Y [outcome,pos=\"4, 0\"]\n",
     "D [exposure,pos=\"0, 0\"]\n",
     "X [confounder, pos=\"2,-2\"]\n",
-    "F [uobserved, pos=\"0, -1\"]\n",
+    "F [unobserved, pos=\"0, -1\"]\n",
     "D -> Y\n",
     "X -> D\n",
     "X -> F\n",
@@ -315,7 +315,7 @@
     "tags": []
    },
    "source": [
-    "This is much more realistic graph to consider."
+    "This is a much more realistic graph to consider."
    ]
   },
   {
@@ -449,7 +449,7 @@
     "tags": []
    },
    "source": [
-    "**Note that no output means that there is no valid adustment set (among observed variables).**"
+    "**Note that no output means that there is no valid adjustment set (among observed variables).**"
    ]
   },
   {
@@ -570,7 +570,7 @@
     "X [confounder, pos=\"2,-2\"]\n",
     "F [unobserved, pos=\"0, -1\"]\n",
     "A [unobserved, pos=\"-1, -1\"]\n",
-    "M [uobserved, pos=\"2, -.5\"]\n",
+    "M [unobserved, pos=\"2, -.5\"]\n",
     "D -> Y\n",
     "X -> D\n",
     "F -> D\n",
@@ -583,7 +583,7 @@
     "X -> M\n",
     "X -> Y}')\n",
     "\n",
-    "print(adjustmentSets(G6, \"D\", \"Y\"), effect = \"total\")\n",
+    "print(adjustmentSets(G6, \"D\", \"Y\", effect = \"total\"))\n",
     "\n",
     "ggdag(G6) + theme_dag()"
    ]
@@ -613,7 +613,7 @@
    "source": [
     " # Question:\n",
     "\n",
-    "Given the analysis above, do you find the adjustment for workers' characteristics a credible strategy to identify the causal (total effect) of 401 (k) elligibility on net financial wealth?\n"
+    "Given the analysis above, do you find the adjustment for workers' characteristics a credible strategy to identify the causal (total effect) of 401(k) eligibility on net financial wealth?\n"
    ]
   }
  ],
