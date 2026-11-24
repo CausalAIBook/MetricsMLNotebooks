@@ -743,7 +743,7 @@
    "source": [
     "# Because residuals are output, reconstruct fitted values for use in ensemble\n",
     "dhat_rf <- D - dml2_results$dtil\n",
-    "dhat_rf <- y - dml2_results$ytil"
+    "yhat_rf <- y - dml2_results$ytil"
    ]
   },
   {
@@ -812,7 +812,7 @@
    },
    "source": [
     "\n",
-    "Ideally, we would do (semi) cross-fitting with AutoML in order to find good first-stage models and re-run DML with these models. Unfortunately this is not easy to do in R. In the case of semi cross-fitting, we can use R's H20 AutoML trained on the entire training set $y\\sim X$, $D \\sim X$, $Z\\sim X$ to determine the best model (eg ensemble), but H20 does not allow you to extract said model so we can re-use that in DML."
+    "Ideally, we would do (semi) cross-fitting with AutoML in order to find good first-stage models and re-run DML with these models. Unfortunately this is not easy to do in R. In the case of semi cross-fitting, we can use R's H2O AutoML trained on the entire training set $y\\sim X$, $D \\sim X$, $Z\\sim X$ to determine the best model (eg ensemble), but H2O does not allow you to extract said model so we can re-use that in DML."
    ]
   },
   {
@@ -942,7 +942,7 @@
     "# Least squares model average\n",
     "\n",
     "ma_dtil <- lm(D ~ dhat_lasso + dhat_lasso_logistic + dhat_rf + dhat_tr + dhat_boost)$residuals\n",
-    "ma_ytil <- lm(y ~ yhat_lasso + yhat_lasso_logistic + dhat_rf + yhat_tr + yhat_boost)$residuals\n",
+    "ma_ytil <- lm(y ~ yhat_lasso + yhat_lasso_logistic + yhat_rf + yhat_tr + yhat_boost)$residuals\n",
     "\n",
     "rfit <- lm(ma_ytil ~ ma_dtil) # estimate the main parameter by regressing one residual on the other\n",
     "coef_est <- coef(rfit)[2] # extract coefficient\n",
@@ -1236,7 +1236,7 @@
     "yhat0_rf <- dml2_results$yhat0\n",
     "yhat1_rf <- dml2_results$yhat1\n",
     "dhat_rf <- dml2_results$dhat\n",
-    "dhat_rf <- dml2_results$yhat"
+    "yhat_rf <- dml2_results$yhat"
    ]
   },
   {
@@ -1340,10 +1340,10 @@
     "# Here, the best performance for Y is the random forest and for D the boosted tree\n",
     "\n",
     "# residuals\n",
-    "ytil <- y - dhat_rf\n",
+    "ytil <- y - yhat_rf\n",
     "dtil <- D - dhat_boost\n",
     "# doubly robust quantity for every sample\n",
-    "drhat <- yhat1_rf - yhat0_rf + (y - dhat_rf) * (D / dhat_boost - (1 - D) / (1 - dhat_boost))\n",
+    "drhat <- yhat1_rf - yhat0_rf + (y - yhat_rf) * (D / dhat_boost - (1 - D) / (1 - dhat_boost))\n",
     "coef_est <- mean(drhat)\n",
     "vari <- var(drhat)\n",
     "se <- sqrt(vari / nrow(X))\n",
@@ -1369,7 +1369,7 @@
     "# We'll look at weights that do best job for Y overall. Could also use different weights for Y0 and Y1\n",
     "\n",
     "ma_dw <- lm(D ~ dhat_lasso + dhat_rf + dhat_tr + dhat_boost)$coef\n",
-    "ma_yw <- lm(y ~ yhat_lasso + dhat_rf + yhat_tr + yhat_boost)$coef\n",
+    "ma_yw <- lm(y ~ yhat_lasso + yhat_rf + yhat_tr + yhat_boost)$coef\n",
     "\n",
     "Dhats <- cbind(as.matrix(rep(1, nrow(X))), dhat_lasso, dhat_rf, dhat_tr, dhat_boost)\n",
     "Y0s <- cbind(as.matrix(rep(1, nrow(X))), yhat0_lasso, yhat0_rf, yhat0_tr, yhat0_boost)\n",
@@ -1432,7 +1432,7 @@
     "\n",
     "We run through PLR and IRM using `DoubleML` below to illustrate. The `DoubleML` package internally builds on `mlr3`. We use the meta package `mlr3` to generate predictions with machine learning methods. A comprehensive introduction and description of the `mlr3` package is provided in the [mlr3book](https://mlr3book.mlr-org.com/). A list of all learners that you can use in `mlr3` can be found [here](https://mlr3extralearners.mlr-org.com/articles/learners/list_learners.html). The entry in the columns *mlr3 Package* and *Packages* indicate which packages must be installed/loaded in your R session.\n",
     "\n",
-    "You find additional information about `DoubleML` on the package on the package website https://docs.doubleml.org/ and the R documentation page https://docs.doubleml.org/r/stable/."
+    "You find additional information about `DoubleML` on the package website https://docs.doubleml.org/ and the R documentation page https://docs.doubleml.org/r/stable/."
    ]
   },
   {
@@ -1952,7 +1952,7 @@
     "tags": []
    },
    "source": [
-    "The best model with lowest RMSE is the PLR model estimated via lasso (or boosting based on the RSME Y). It gives the following estimate:"
+    "The best model with lowest RMSE is the PLR model estimated via lasso (or boosting based on the RMSE Y). It gives the following estimate:"
    ]
   },
   {
@@ -2272,7 +2272,7 @@
    },
    "source": [
     "These estimates that flexibly account for confounding are\n",
-    "substantially attenuated relative to the baseline estimate (*19559*) that does not account for confounding. They suggest much smaller causal effects of 401(k) eligiblity on financial asset holdings."
+    "substantially attenuated relative to the baseline estimate (*19559*) that does not account for confounding. They suggest much smaller causal effects of 401(k) eligibility on financial asset holdings."
    ]
   }
  ],
