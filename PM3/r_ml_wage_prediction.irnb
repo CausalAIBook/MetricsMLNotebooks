@@ -1279,7 +1279,7 @@
    "outputs": [],
    "source": [
     "# Seed for reproducible weights and training (sets the R, Python, NumPy and TensorFlow seeds)\n",
-    "tensorflow::set_random_seed(1234)\n",
+    "tensorflow::set_random_seed(3)\n",
     "\n",
     "# Define the neural network architecture\n",
     "model <- keras_model_sequential() %>%\n",
@@ -1638,6 +1638,13 @@
     "tab <- xtable(table, digits = 3)\n",
     "print(tab, type = \"latex\") # set type=\"latex\" for printing table in LaTeX\n",
     "tab"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Note:** The least-squares weights are very sensitive to small changes in the predictions, because the predictions of the different methods are highly correlated. They change, for example, with the random seed of the neural network, so they can differ from those reported in Chapter 8 of the book."
    ]
   },
   {
