@@ -31,7 +31,7 @@
     "tags": []
    },
    "source": [
-    "We consider the problem of estimating the effect of gun ownership on the homicide rate. For this purpose, we perform inference on $\\beta$ in the following the partially linear model:\n",
+    "We consider the problem of estimating the effect of gun ownership on the homicide rate. For this purpose, we perform inference on $\\beta$ in the following partially linear model:\n",
     "$$\n",
     "Y_{j, t}=\\beta D_{j,(t-1)}+g\\left(X_{j, t}, \\bar{X}_j, \\bar{X}_t, X_{j, 0}, Y_{j, 0}, t\\right)+\\epsilon_{j, t}\n",
     "$$\n",
@@ -116,7 +116,12 @@
     "library(tensorflow)\n",
     "library(xtable)\n",
     "library(dplyr)\n",
-    "library(sandwich)"
+    "library(sandwich)\n",
+    "\n",
+    "# The R package keras needs TensorFlow with Keras 2: let reticulate set up Python 3.12 with TensorFlow and\n",
+    "# tf-keras (e.g. on Colab); ignored if RETICULATE_PYTHON points to a Python with TensorFlow already\n",
+    "reticulate::py_require(python_version = \"3.12\")\n",
+    "py_require_legacy_keras()"
    ]
   },
   {
@@ -461,7 +466,7 @@
     "id": "EdhH_81itPev"
    },
    "source": [
-    "Since our goal is to estimate the effect of gun ownership after controlling for a rich set county characteristics, we now include all controls."
+    "Since our goal is to estimate the effect of gun ownership after controlling for a rich set of county characteristics, we now include all controls."
    ]
   },
   {
@@ -502,7 +507,7 @@
    "source": [
     "## DML Estimates\n",
     "\n",
-    "We perform inference on $\\beta$ in the following the partially linear model:\n",
+    "We perform inference on $\\beta$ in the following partially linear model:\n",
     " $$\n",
     "Y_{j, t}=\\beta D_{j,(t-1)}+g(Z_{j,t})+\\epsilon_{j, t}.\n",
     "$$\n",
@@ -542,11 +547,13 @@
    },
    "outputs": [],
    "source": [
-    "# NB: this cell takes > 3 hours to runon colab. To reduce computation time,\n",
+    "# NB: this cell takes > 3 hours to run on Colab. To reduce computation time,\n",
     "# reduce the number of cross-fitting folds. Note this may affect stability\n",
     "# of estimates.\n",
     "\n",
     "set.seed(123)\n",
+    "# Seed for the neural networks (sets the R, Python, NumPy and TensorFlow seeds)\n",
+    "tensorflow::set_random_seed(123)\n",
     "\n",
     "# Cross-fitting\n",
     "n <- nrow(usedata)\n",
