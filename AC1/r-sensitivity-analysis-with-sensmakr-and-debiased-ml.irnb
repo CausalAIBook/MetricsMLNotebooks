@@ -15,7 +15,7 @@
     "tags": []
    },
    "source": [
-    "# Sensitivity Analysis for Unobserved Confounder with DML and Sensmakr\n",
+    "# Sensitivity Analysis for Unobserved Confounder with DML and Sensemakr\n",
     "\n",
     "Here we experiment with using package \"sensemakr\" in conjunction with debiased ML."
    ]
@@ -123,7 +123,7 @@
     "The key variable of interest is whether the responders were directly harmed (``directlyharmed``).\n",
     "We want to know if being directly harmed in the conflict causes people to support peace-enforcing measures.\n",
     "The measured confounders include dummy variables ``female``, ``farmer``, ``herder``, ``pastvoted``, along with ``age`` and household size (``hhsize``).\n",
-    "There is also a village indicator. We deal with village by and partialling out a full set of village dummy variables before conducting\n",
+    "There is also a village indicator. We deal with village by partialling out a full set of village dummy variables before conducting\n",
     "the analysis. The standard errors will be clustered at the village level."
    ]
   },
@@ -139,7 +139,7 @@
     "\n",
     "We will:\n",
     "- mimic the partialling out procedure with machine learning tools;\n",
-    "- invoke Sensmakr to compute $\\phi^2$ and plot sensitivity results.\n"
+    "- invoke Sensemakr to compute $\\phi^2$ and plot sensitivity results.\n"
    ]
   },
   {
@@ -205,7 +205,7 @@
     "file <- \"https://raw.githubusercontent.com/CausalAIBook/MetricsMLNotebooks/main/data/darfur.csv\"\n",
     "data <- read.csv(file)\n",
     "dim(data)\n",
-    "attach(darfur)"
+    "attach(data)"
    ]
   },
   {
@@ -414,7 +414,7 @@
     "BiasSq <- kappa * varianceRatio\n",
     "\n",
     "# Compute absolute value of the bias\n",
-    "print(cat(\"absolute value of the bias:\", sqrt(BiasSq)[1]))\n",
+    "cat(\"absolute value of the bias:\", sqrt(BiasSq)[1], \"\\n\")\n",
     "\n",
     "# plotting\n",
     "gridr2_dc <- seq(0, .3, by = .001)\n",
@@ -537,11 +537,11 @@
     "  cat(\"fold: \")\n",
     "  for (b in seq_along(I)) {\n",
     "    dfit <- dreg(x[-I[[b]], ], d[-I[[b]]]) # take a fold out\n",
-    "    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a foldt out\n",
+    "    yfit <- yreg(x[-I[[b]], ], y[-I[[b]]]) # take a fold out\n",
     "    dhat <- predict(dfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
     "    yhat <- predict(yfit, x[I[[b]], ], type = \"response\") # predict the left-out fold\n",
     "    dtil[I[[b]]] <- (d[I[[b]]] - dhat) # record residual for the left-out fold\n",
-    "    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residial for the left-out fold\n",
+    "    ytil[I[[b]]] <- (y[I[[b]]] - yhat) # record residual for the left-out fold\n",
     "    cat(b, \" \")\n",
     "  }\n",
     "  rfit <- felm(ytil ~ dtil | 0 | 0 | clusterID) # get clustered standard errors using felm\n",
