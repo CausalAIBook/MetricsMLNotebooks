@@ -32,7 +32,7 @@
     "\\end{align}\n",
     "where for every variable $V$ we denote with $\\tilde{V} = V - E[V|X]$.\n",
     "\n",
-    "When the dimension of the proxy treatment variables $Q$ is larger than the dimension of proxy outcome variables $S$, then the above system of equations is over-identified. In these settings, we first project the \"technical instrument\" variables $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$ onto the space of \"technical treatment\" variables $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ and use the projected $\\tilde{V}$ as a new \"technical instrument\". In particular, we run an OLS regression of $\\tilde{W}$ on $\\tilde{V},$ and define $\\tilde{Z} = E[\\tilde{W}\\mid \\tilde{V}] = B \\tilde{V}$, where the $t$-th row $\\beta_t$ of the matrix $B$ is the OLS coefficient in the regression of $\\tilde{W}_t$ on $\\tilde{V}$. These new variables $\\tilde{Z}$, can also be viewed as engineered technical instrumental variables. Then we have the exactly identified system of equations:\n",
+    "When the dimension of the proxy treatment variables $Q$ is larger than the dimension of proxy outcome variables $S$, then the above system of equations is over-identified. In these settings, we first project the \"technical treatment\" variables $\\tilde{W}=(\\tilde{D}, \\tilde{S})$ onto the space of \"technical instrument\" variables $\\tilde{V}=(\\tilde{D}, \\tilde{Q})$ and use the projected $\\tilde{W}$ as a new \"technical instrument\". In particular, we run an OLS regression of $\\tilde{W}$ on $\\tilde{V},$ and define $\\tilde{Z} = E[\\tilde{W}\\mid \\tilde{V}] = B \\tilde{V}$, where the $t$-th row $\\beta_t$ of the matrix $B$ is the OLS coefficient in the regression of $\\tilde{W}_t$ on $\\tilde{V}$. These new variables $\\tilde{Z}$, can also be viewed as engineered technical instrumental variables. Then we have the exactly identified system of equations:\n",
     "\\begin{align}\n",
     "E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) \\tilde{Z} \\right] := E\\left[(\\tilde{Y} - \\alpha \\tilde{D} - \\delta \\tilde{S}) B \\left(\\begin{aligned}\\tilde{D}\\\\ \\tilde{Q}\\end{aligned}\\right) \\right] = 0\n",
     "\\end{align}\n",
@@ -141,7 +141,7 @@
     "id": "64UHEtu1f8BU"
    },
    "source": [
-    "We define the technical instrument $V=(D, Q)$ and technical treatment $W=(D, S)$. Estimating the treatement effect is then just a matter of solving an instrument variable regression problem with instruments $V$ and treatments $W$ and looking at the first coefficient associated with $D$."
+    "We define the technical instrument $V=(D, Q)$ and technical treatment $W=(D, S)$. Estimating the treatment effect is then just a matter of solving an instrumental variable regression problem with instruments $V$ and treatments $W$ and looking at the first coefficient associated with $D$."
    ]
   },
   {
@@ -213,7 +213,7 @@
     "    sfit <- sreg(x[-I[[b]], ], s[-I[[b]]]) # take a fold out\n",
     "    dtil[I[[b]]] <- (d[I[[b]]] - x[I[[b]], ] %*% as.matrix(dfit$coefficients)) # record residual\n",
     "    qtil[I[[b]]] <- (q[I[[b]]] - x[I[[b]], ] %*% as.matrix(qfit$coefficients)) # record residual\n",
-    "    ytil[I[[b]]] <- (y[I[[b]]] - x[I[[b]], ] %*% as.matrix(yfit$coefficients)) # record residial\n",
+    "    ytil[I[[b]]] <- (y[I[[b]]] - x[I[[b]], ] %*% as.matrix(yfit$coefficients)) # record residual\n",
     "    stil[I[[b]]] <- (s[I[[b]]] - x[I[[b]], ] %*% as.matrix(sfit$coefficients)) # record residual\n",
     "    cat(b, \" \")\n",
     "  }\n",
@@ -261,7 +261,7 @@
     "} # ML method=ols\n",
     "\n",
     "dml_piv <- lm_dml_for_proxyiv(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold = 5)\n",
-    "dml_piv"
+    "# dml_piv"
    ]
   },
   {
@@ -287,7 +287,7 @@
     "\n",
     "Unobserved confounding ($A$): family income\n",
     "\n",
-    "The observed covariates are put in to 3 groups:\n",
+    "The observed covariates are put into 3 groups:\n",
     "\n",
     "\n",
     "*   Proxy treatment control ($Q$): mother's education\n",
@@ -326,8 +326,8 @@
    },
    "outputs": [],
    "source": [
-    "# Filter data to exclude entries where income, number of cigarettes smoked,\n",
-    "# race, age are not asked or not known\n",
+    "# Filter data to exclude entries where birth weight, parity, race, number of cigarettes smoked,\n",
+    "# income or age are not asked or not known\n",
     "data <- data[data$wt != 999, ]\n",
     "data <- data[data$parity != 99, ]\n",
     "data <- data[data$parity != 9, ]\n",
@@ -384,7 +384,7 @@
     "} # ML method=ols\n",
     "\n",
     "dml_bw_piv <- lm_dml_for_proxyiv(X, D, Q, S, Y, dreg, qreg, yreg, sreg, nfold = 5)\n",
-    "dml_bw_piv"
+    "# dml_bw_piv"
    ]
   }
  ],
